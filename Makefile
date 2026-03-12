@@ -6,7 +6,7 @@ TARGET_GOARCH ?= $(shell go env GOARCH)
 TARGET_GOOS ?= $(shell go env GOOS)
 
 VERSION ?= $(shell git describe --tags)
-TAG ?= "minio/mc:$(VERSION)"
+TAG ?= "pgsty/mc:$(VERSION)"
 
 GOLANGCI = $(GOPATH)/bin/golangci-lint
 
@@ -68,7 +68,7 @@ hotfix-vars:
 	$(eval LDFLAGS := $(shell MC_RELEASE="RELEASE" MC_HOTFIX="hotfix.$(shell git rev-parse --short HEAD)" go run buildscripts/gen-ldflags.go $(shell git describe --tags --abbrev=0 | \
     sed 's#RELEASE\.\([0-9]\+\)-\([0-9]\+\)-\([0-9]\+\)T\([0-9]\+\)-\([0-9]\+\)-\([0-9]\+\)Z#\1-\2-\3T\4:\5:\6Z#')))
 	$(eval VERSION := $(shell git describe --tags --abbrev=0).hotfix.$(shell git rev-parse --short HEAD))
-	$(eval TAG := "minio/mc:$(VERSION)")
+	$(eval TAG := "pgsty/mc:$(VERSION)")
 
 hotfix: hotfix-vars install ## builds mc binary with hotfix tags
 	@mv -f ./mc ./mc.$(VERSION)
@@ -87,7 +87,7 @@ docker-hotfix: hotfix-push checks ## builds mc docker container with hotfix tags
 	@echo "Building mc docker image '$(TAG)'"
 	@docker build -q --no-cache -t $(TAG) --build-arg RELEASE=$(VERSION) . -f Dockerfile.hotfix
 
-# Builds MinIO and installs it to $GOPATH/bin.
+# Builds mc and installs it to $GOPATH/bin.
 install: build
 	@echo "Installing mc binary to '$(GOPATH)/bin/mc'"
 	@mkdir -p $(GOPATH)/bin && cp -f $(PWD)/mc $(GOPATH)/bin/mc

@@ -1,5 +1,19 @@
 # MinIO Client Quickstart Guide
-[![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io) [![Go Report Card](https://goreportcard.com/badge/minio/mc)](https://goreportcard.com/report/minio/mc) [![Docker Pulls](https://img.shields.io/docker/pulls/minio/mc.svg?maxAge=604800)](https://hub.docker.com/r/minio/mc/) [![license](https://img.shields.io/badge/license-AGPL%20V3-blue)](https://github.com/minio/mc/blob/master/LICENSE)
+
+> [!IMPORTANT]
+> **This is a community-maintained fork of [minio/mc](https://github.com/minio/mc), maintained by [Pigsty](https://pigsty.io).**
+> This project is **NOT** affiliated with, endorsed by, or sponsored by MinIO, Inc.
+> "MinIO" is a trademark of MinIO, Inc., used here solely to identify the upstream project.
+>
+> Distributed under the original [GNU AGPLv3](LICENSE) license.
+
+Documentation mirror: [https://silo.pigsty.io](https://silo.pigsty.io)
+
+Docker Hub mirror: [https://hub.docker.com/r/pgsty/mc](https://hub.docker.com/r/pgsty/mc)  `pgsty/mc`
+
+APT/YUM repo for `minio` and `mcli`: [https://pigsty.io/docs/repo/infra/list/#object-storage](https://pigsty.io/docs/repo/infra/list/#object-storage)
+
+[![Go Report Card](https://goreportcard.com/badge/minio/mc)](https://goreportcard.com/report/minio/mc) [![Docker Pulls](https://img.shields.io/docker/pulls/pgsty/mc.svg?maxAge=604800)](https://hub.docker.com/r/pgsty/mc/) [![license](https://img.shields.io/badge/license-AGPL%20V3-blue)](https://github.com/pgsty/mc/blob/master/LICENSE)
 
 # Documentation
 - [MC documentation](https://docs.min.io/community/minio-object-store/reference/minio-mc.html)
@@ -53,20 +67,20 @@ MinIO Client (mc) provides a modern alternative to UNIX commands like ls, cat, c
 ## Docker Container
 ### Stable
 ```
-docker pull minio/mc
-docker run minio/mc ls play
+docker pull pgsty/mc
+docker run pgsty/mc ls play
 ```
 
 ### Edge
 ```
-docker pull minio/mc:edge
-docker run minio/mc:edge ls play
+docker pull pgsty/mc:RELEASE.YYYY-MM-DDThh-mm-ssZ
+docker run pgsty/mc:RELEASE.YYYY-MM-DDThh-mm-ssZ ls play
 ```
 
 **Note:** Above examples run `mc` against MinIO [_play_ environment](#test-your-setup) by default. To run `mc` against other S3 compatible servers, start the container this way:
 
 ```
-docker run -it --entrypoint=/bin/sh minio/mc
+docker run -it --entrypoint=/bin/sh pgsty/mc
 ```
 
 then use the [`mc alias` command](#add-a-cloud-storage-service).
@@ -77,7 +91,7 @@ When using the Docker container in GitLab CI, you must [set the entrypoint to an
 ```
 deploy:
   image:
-    name: minio/mc
+    name: pgsty/mc
     entrypoint: ['']
   stage: deploy
   before_script:
@@ -246,7 +260,7 @@ cat      cp       event    head     mb       pipe     rm       share    stat    
 ```
 
 ## Contribute to MinIO Project
-Please follow MinIO [Contributor's Guide](https://github.com/minio/mc/blob/master/CONTRIBUTING.md)
+Please follow MinIO [Contributor's Guide](https://github.com/pgsty/mc/blob/master/CONTRIBUTING.md)
 
 ## License
-Use of `mc` is governed by the GNU AGPLv3 license that can be found in the [LICENSE](https://github.com/minio/mc/blob/master/LICENSE) file.
+Use of `mc` is governed by the GNU AGPLv3 license that can be found in the [LICENSE](https://github.com/pgsty/mc/blob/master/LICENSE) file.

@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "RELEASE.*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Compute release variables
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION_HYPHEN="${TAG#RELEASE.}"
+          PKG_VERSION="$(echo "${VERSION_HYPHEN}" | sed -E 's/^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2})-([0-9]{2})-([0-9]{2})Z$/\1\2\3\4\5\6.0.0/')"
+          if [ "${PKG_VERSION}" = "${VERSION_HYPHEN}" ]; then
+            echo "Invalid release tag format: ${TAG}"
+            exit 1
+          fi
+          VERSION_COLON="$(echo "${VERSION_HYPHEN}" | sed -E 's/T([0-9]{2})-([0-9]{2})-([0-9]{2})Z$/T\1:\2:\3Z/')"
+          LDFLAGS="$(MC_RELEASE=RELEASE go run buildscripts/gen-ldflags.go "${VERSION_COLON}")"
+
+          {
+            echo "RELEASE_TAG=${TAG}"
+            echo "PKG_VERSION=${PKG_VERSION}"
+            echo "LDFLAGS=${LDFLAGS}"
+          } >> "${GITHUB_ENV}"
+
+          echo "Release tag: ${TAG}"
+          echo "Package version: ${PKG_VERSION}"
+          echo "LDFLAGS: ${LDFLAGS}"
+
+      - name: Validate Docker Hub credentials
+        run: |
+          set -euo pipefail
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ] || [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "Missing Docker Hub credentials. Set DOCKERHUB_USERNAME and DOCKERHUB_TOKEN repository secrets."
+            exit 1
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and publish with GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --clean --skip=validate --config .github/goreleaser.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LDFLAGS: ${{ env.LDFLAGS }}
+          PKG_VERSION: ${{ env.PKG_VERSION }}
+
+      - name: Collect package artifacts
+        run: |
+          set -euo pipefail
+          mapfile -t package_files < <(find dist -maxdepth 2 -type f \
+            \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' \) | sort)
+          if [ "${#package_files[@]}" -eq 0 ]; then
+            echo "No packages were generated."
+            exit 1
+          fi
+
+          for file in "${package_files[@]}"; do
+            sha256sum "${file}" > "${file}.sha256sum"
+          done
+
+          printf '%s\n' "${package_files[@]}" | sed 's#^dist/##' | jq -R -s --arg tag "${RELEASE_TAG}" \
+            '{package:"mcli",tag:$tag,artifacts:(split("\\n")[:-1])}' \
+            > dist/downloads-mcli.json
+
+          find dist -maxdepth 2 -type f \
+            \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' -o -name '*.sha256sum' -o -name 'downloads-mcli.json' -o -name '*checksums.txt' \) | sort
+
+      - name: Upload release artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find dist -maxdepth 2 -type f \
+            \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' -o -name '*.sha256sum' -o -name 'downloads-mcli.json' -o -name '*checksums.txt' \) | sort)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release artifacts to upload."
+            exit 1
+          fi
+          gh release upload "${RELEASE_TAG}" "${files[@]}" --clobber
+
+      - name: Upload dist artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

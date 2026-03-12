@@ -7,7 +7,7 @@ FROM registry.access.redhat.com/ubi8/ubi-micro:latest
 ARG TARGETARCH
 ARG RELEASE
 
-LABEL maintainer="MinIO Inc <dev@min.io>"
+LABEL maintainer="pgsty <https://github.com/pgsty/mc>"
 
 # On RHEL the certificate bundle is located at:
 # - /etc/pki/tls/certs/ca-bundle.crt (RHEL 6)

@@ -1,0 +1,75 @@
+name: Test Release Pipeline
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/goreleaser.yml"
+      - "Dockerfile.goreleaser"
+      - ".github/workflows/release.yml"
+      - ".github/workflows/test-release.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Compute test variables
+        run: |
+          set -euo pipefail
+          VERSION_COLON="2026-02-14T12:00:00Z"
+          PKG_VERSION="20260214120000.0.0"
+          LDFLAGS="$(MC_RELEASE=RELEASE go run buildscripts/gen-ldflags.go "${VERSION_COLON}")"
+          echo "PKG_VERSION=${PKG_VERSION}" >> "${GITHUB_ENV}"
+          echo "LDFLAGS=${LDFLAGS}" >> "${GITHUB_ENV}"
+          echo "PKG_VERSION: ${PKG_VERSION}"
+          echo "LDFLAGS: ${LDFLAGS}"
+
+      - name: GoReleaser config check
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: check --config .github/goreleaser.yml
+
+      - name: Build snapshot artifacts
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: "~> v2"
+          args: release --snapshot --clean --skip=publish,docker --config .github/goreleaser.yml
+        env:
+          LDFLAGS: ${{ env.LDFLAGS }}
+          PKG_VERSION: ${{ env.PKG_VERSION }}
+
+      - name: Validate package artifacts
+        run: |
+          set -euo pipefail
+          mapfile -t package_files < <(find dist -maxdepth 2 -type f \
+            \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' \) | sort)
+          if [ "${#package_files[@]}" -eq 0 ]; then
+            echo "No package artifacts were generated."
+            exit 1
+          fi
+
+          for file in "${package_files[@]}"; do
+            sha256sum "${file}" > "${file}.sha256sum"
+          done
+
+          printf '%s\n' "${package_files[@]}" | sed 's#^dist/##' | jq -R -s --arg tag "snapshot" \
+            '{package:"mcli",tag:$tag,artifacts:(split("\\n")[:-1])}' \
+            > dist/downloads-mcli.json
+
+          find dist -maxdepth 2 -type f \
+            \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' -o -name '*.sha256sum' -o -name 'downloads-mcli.json' -o -name '*checksums.txt' \) | sort

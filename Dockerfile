@@ -1,6 +1,6 @@
 FROM golang:1.22-alpine as build
 
-LABEL maintainer="MinIO Inc <dev@min.io>"
+LABEL maintainer="pgsty <https://github.com/pgsty/mc>"
 
 ENV GOPATH /go
 ENV CGO_ENABLED 0

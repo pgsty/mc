@@ -1,0 +1,20 @@
+FROM registry.access.redhat.com/ubi9/ubi:latest AS certs
+RUN dnf -y install ca-certificates && \
+    update-ca-trust && \
+    cp /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /tmp/ca-certificates.crt && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf
+
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+
+LABEL maintainer="pgsty <https://github.com/pgsty/mc>" \
+      description="MinIO client community fork, build by pgsty"
+
+COPY --from=certs /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY mc /usr/bin/mc
+COPY LICENSE /licenses/LICENSE
+COPY CREDITS /licenses/CREDITS
+
+RUN chmod +x /usr/bin/mc
+
+ENTRYPOINT ["/usr/bin/mc"]
