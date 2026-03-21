@@ -79,28 +79,44 @@ jobs:
           LDFLAGS: ${{ env.LDFLAGS }}
           PKG_VERSION: ${{ env.PKG_VERSION }}
 
-      - name: Collect package artifacts
+      - name: Install pkger
         run: |
           set -euo pipefail
-          mapfile -t package_files < <(find dist -maxdepth 2 -type f \
-            \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' \) | sort)
-          if [ "${#package_files[@]}" -eq 0 ]; then
-            echo "No packages were generated."
-            exit 1
-          fi
+          go install github.com/minio/pkger/v2@v2.6.18
+          echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
 
-          for file in "${package_files[@]}"; do
-            sha256sum "${file}" > "${file}.sha256sum"
-          done
+      - name: Prepare package layout
+        run: |
+          set -euo pipefail
+          copy_binary() {
+            local arch="$1"
+            local pattern="$2"
+            local src
+            src="$(find dist -maxdepth 2 -type f -path "dist/${pattern}/mcli" | head -n1 || true)"
+            if [ -z "${src}" ]; then
+              echo "Missing GoReleaser binary for ${arch} (${pattern})"
+              exit 1
+            fi
+            mkdir -p "dist/linux-${arch}"
+            cp "${src}" "dist/linux-${arch}/mcli.${RELEASE_TAG}"
+          }
 
-          printf '%s\n' "${package_files[@]}" | sed 's#^dist/##' | jq -R -s --arg tag "${RELEASE_TAG}" \
-            '{package:"mcli",tag:$tag,artifacts:(split("\\n")[:-1])}' \
-            > dist/downloads-mcli.json
+          copy_binary amd64 "mcli_linux_amd64*"
+          copy_binary arm64 "mcli_linux_arm64*"
+
+      - name: Build standard pkger packages
+        run: |
+          set -euo pipefail
+          pkger -r "${RELEASE_TAG}" --appName mcli --releaseDir dist --ignore
+
+          # Keep only full package files; drop convenience symlinks (mcli.rpm/mcli.deb/mcli.apk)
+          find dist/linux-* -maxdepth 1 -type l \
+            \( -name 'mcli.rpm' -o -name 'mcli.deb' -o -name 'mcli.apk' \) -delete
 
           find dist -maxdepth 2 -type f \
             \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' -o -name '*.sha256sum' -o -name 'downloads-mcli.json' -o -name '*checksums.txt' \) | sort
 
-      - name: Upload release artifacts
+      - name: Upload pkger artifacts to GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

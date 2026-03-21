@@ -14,9 +14,9 @@ before:
     - go mod download
 
 builds:
-  - id: mc
+  - id: mcli
     main: .
-    binary: mc
+    binary: mcli
     goos:
       - linux
       - darwin
@@ -32,41 +32,32 @@ builds:
     ldflags:
       - "{{ .Env.LDFLAGS }}"
 
-archives:
-  - id: mc
-    ids:
-      - mc
-    name_template: "mc_{{ .Env.PKG_VERSION }}_{{ .Os }}_{{ .Arch }}"
+  - id: mc-docker
+    main: .
+    binary: mc
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    goamd64:
+      - v1
+    flags:
+      - -tags=kqueue
+      - -trimpath
+    ldflags:
+      - "{{ .Env.LDFLAGS }}"
 
-nfpms:
+archives:
   - id: mcli
     ids:
-      - mc
-    package_name: mcli
-    vendor: Pigsty
-    homepage: https://pigsty.io
-    maintainer: Pigsty Maintainers <hello@pigsty.io>
-    description: MinIO Client community fork maintained by Pigsty.
-    license: AGPL-3.0
-    bindir: /usr/bin
-    formats:
-      - deb
-      - rpm
-      - apk
-    contents:
-      - src: NOTICE
-        dst: /usr/share/mcli/NOTICE
-      - src: CREDITS
-        dst: /usr/share/mcli/CREDITS
-      - src: LICENSE
-        dst: /usr/share/mcli/LICENSE
-      - src: README.md
-        dst: /usr/share/mcli/README.md
+      - mcli
+    name_template: "mcli_{{ .Env.PKG_VERSION }}_{{ .Os }}_{{ .Arch }}"
 
 dockers:
   - id: mc-amd64
     ids:
-      - mc
+      - mc-docker
     goos: linux
     goarch: amd64
     dockerfile: Dockerfile.goreleaser
@@ -85,7 +76,7 @@ dockers:
 
   - id: mc-arm64
     ids:
-      - mc
+      - mc-docker
     goos: linux
     goarch: arm64
     dockerfile: Dockerfile.goreleaser
@@ -113,7 +104,7 @@ docker_manifests:
       - "pgsty/mc:latest-arm64"
 
 checksum:
-  name_template: "mc_{{ .Env.PKG_VERSION }}_checksums.txt"
+  name_template: "mcli_{{ .Env.PKG_VERSION }}_checksums.txt"
   algorithm: sha256
 
 release:

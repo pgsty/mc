@@ -30,9 +30,11 @@ jobs:
       - name: Compute test variables
         run: |
           set -euo pipefail
+          RELEASE_TAG="RELEASE.2026-02-14T12-00-00Z"
           VERSION_COLON="2026-02-14T12:00:00Z"
           PKG_VERSION="20260214120000.0.0"
           LDFLAGS="$(MC_RELEASE=RELEASE go run buildscripts/gen-ldflags.go "${VERSION_COLON}")"
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> "${GITHUB_ENV}"
           echo "PKG_VERSION=${PKG_VERSION}" >> "${GITHUB_ENV}"
           echo "LDFLAGS=${LDFLAGS}" >> "${GITHUB_ENV}"
           echo "PKG_VERSION: ${PKG_VERSION}"
@@ -53,23 +55,35 @@ jobs:
           LDFLAGS: ${{ env.LDFLAGS }}
           PKG_VERSION: ${{ env.PKG_VERSION }}
 
-      - name: Validate package artifacts
+      - name: Install pkger
         run: |
           set -euo pipefail
-          mapfile -t package_files < <(find dist -maxdepth 2 -type f \
-            \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' \) | sort)
-          if [ "${#package_files[@]}" -eq 0 ]; then
-            echo "No package artifacts were generated."
-            exit 1
-          fi
+          go install github.com/minio/pkger/v2@v2.6.18
+          echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
 
-          for file in "${package_files[@]}"; do
-            sha256sum "${file}" > "${file}.sha256sum"
-          done
+      - name: Package snapshot binaries with pkger
+        run: |
+          set -euo pipefail
+          copy_binary() {
+            local arch="$1"
+            local pattern="$2"
+            local src
+            src="$(find dist -maxdepth 2 -type f -path "dist/${pattern}/mcli" | head -n1 || true)"
+            if [ -z "${src}" ]; then
+              echo "Missing GoReleaser binary for ${arch} (${pattern})"
+              exit 1
+            fi
+            mkdir -p "dist/linux-${arch}"
+            cp "${src}" "dist/linux-${arch}/mcli.${RELEASE_TAG}"
+          }
 
-          printf '%s\n' "${package_files[@]}" | sed 's#^dist/##' | jq -R -s --arg tag "snapshot" \
-            '{package:"mcli",tag:$tag,artifacts:(split("\\n")[:-1])}' \
-            > dist/downloads-mcli.json
+          copy_binary amd64 "mcli_linux_amd64*"
+          copy_binary arm64 "mcli_linux_arm64*"
+          pkger -r "${RELEASE_TAG}" --appName mcli --releaseDir dist --ignore
+
+          # Keep only full package files; drop convenience symlinks (mcli.rpm/mcli.deb/mcli.apk)
+          find dist/linux-* -maxdepth 1 -type l \
+            \( -name 'mcli.rpm' -o -name 'mcli.deb' -o -name 'mcli.apk' \) -delete
 
           find dist -maxdepth 2 -type f \
             \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' -o -name '*.sha256sum' -o -name 'downloads-mcli.json' -o -name '*checksums.txt' \) | sort
