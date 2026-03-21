@@ -63,42 +63,42 @@ func (stat statMessage) String() (msg string) {
 	stat.Key = fmt.Sprintf("%-10s: %s", "Name", stat.Key)
 	msgBuilder.WriteString(console.Colorize("Name", stat.Key) + "\n")
 	if !stat.Date.IsZero() && !stat.Date.Equal(timeSentinel) {
-		msgBuilder.WriteString(fmt.Sprintf("%-10s: %s ", "Date", stat.Date.Format(printDate)) + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s: %s \n", "Date", stat.Date.Format(printDate))
 	}
 	if stat.Type != "folder" {
-		msgBuilder.WriteString(fmt.Sprintf("%-10s: %-6s ", "Size", humanize.IBytes(uint64(stat.Size))) + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s: %-6s \n", "Size", humanize.IBytes(uint64(stat.Size)))
 	}
 
 	if stat.ETag != "" {
-		msgBuilder.WriteString(fmt.Sprintf("%-10s: %s ", "ETag", stat.ETag) + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s: %s \n", "ETag", stat.ETag)
 	}
 	if stat.VersionID != "" {
 		versionIDField := stat.VersionID
 		if stat.DeleteMarker {
 			versionIDField += " (delete-marker)"
 		}
-		msgBuilder.WriteString(fmt.Sprintf("%-10s: %s ", "VersionID", versionIDField) + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s: %s \n", "VersionID", versionIDField)
 	}
-	msgBuilder.WriteString(fmt.Sprintf("%-10s: %s ", "Type", stat.Type) + "\n")
+	fmt.Fprintf(&msgBuilder, "%-10s: %s \n", "Type", stat.Type)
 	if stat.Expires != nil && !stat.Expires.IsZero() && !stat.Expires.Equal(timeSentinel) {
-		msgBuilder.WriteString(fmt.Sprintf("%-10s: %s ", "Expires", stat.Expires.Format(printDate)) + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s: %s \n", "Expires", stat.Expires.Format(printDate))
 	}
 	if stat.Expiration != nil && !stat.Expiration.IsZero() && !stat.Expiration.Equal(timeSentinel) {
-		msgBuilder.WriteString(fmt.Sprintf("%-10s: %s (lifecycle-rule-id: %s) ", "Expiration",
-			stat.Expiration.Local().Format(printDate), stat.ExpirationRuleID) + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s: %s (lifecycle-rule-id: %s) \n", "Expiration",
+			stat.Expiration.Local().Format(printDate), stat.ExpirationRuleID)
 	}
 	if len(stat.Checksum) > 0 {
 		cs := strings.TrimSuffix(strings.TrimPrefix(fmt.Sprintf("%v", stat.Checksum), "map["), "]")
-		msgBuilder.WriteString(fmt.Sprintf("%-10s: %v", "Checksum", cs) + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s: %v\n", "Checksum", cs)
 	}
 	if stat.Restore != nil {
-		msgBuilder.WriteString(fmt.Sprintf("%-10s:", "Restore") + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s:\n", "Restore")
 		if !stat.Restore.ExpiryTime.IsZero() && !stat.Restore.ExpiryTime.Equal(timeSentinel) {
-			msgBuilder.WriteString(fmt.Sprintf("  %-10s: %s", "ExpiryTime",
-				stat.Restore.ExpiryTime.Local().Format(printDate)) + "\n")
+			fmt.Fprintf(&msgBuilder, "  %-10s: %s\n", "ExpiryTime",
+				stat.Restore.ExpiryTime.Local().Format(printDate))
 		}
-		msgBuilder.WriteString(fmt.Sprintf("  %-10s: %t", "Ongoing",
-			stat.Restore.OngoingRestore) + "\n")
+		fmt.Fprintf(&msgBuilder, "  %-10s: %t\n", "Ongoing",
+			stat.Restore.OngoingRestore)
 	}
 	maxKeyMetadata := 0
 	maxKeyEncrypted := 0
@@ -120,41 +120,41 @@ func (stat statMessage) String() (msg string) {
 		var found bool
 		if enabled, ok := stat.Metadata["X-Amz-Server-Side-Encryption-Bucket-Key-Enabled"]; ok {
 			if enabled == "true" {
-				msgBuilder.WriteString(fmt.Sprintf("%-10s: SSE-%s\n", "Encryption", "KMS"))
+				fmt.Fprintf(&msgBuilder, "%-10s: SSE-%s\n", "Encryption", "KMS")
 			}
 			// we still need to treat this as 'true' because X-Amz-Server-Side-Encryption-Bucket-Key-Enabled
 			// can be set to 'false' by the server to indicate there is no SSE enabled on the object
 			// we shouldn't be printing `unknown` in that scenario.
 			found = true
 		} else if keyID, ok := stat.Metadata["X-Amz-Server-Side-Encryption-Aws-Kms-Key-Id"]; ok {
-			msgBuilder.WriteString(fmt.Sprintf("%-10s: SSE-%s (%s)\n", "Encryption", "KMS", keyID))
+			fmt.Fprintf(&msgBuilder, "%-10s: SSE-%s (%s)\n", "Encryption", "KMS", keyID)
 			found = true
 		} else if _, ok := stat.Metadata["X-Amz-Server-Side-Encryption-Customer-Key-Md5"]; ok {
-			msgBuilder.WriteString(fmt.Sprintf("%-10s: SSE-%s\n", "Encryption", "C"))
+			fmt.Fprintf(&msgBuilder, "%-10s: SSE-%s\n", "Encryption", "C")
 			found = true
 		} else if algo, ok := stat.Metadata["X-Amz-Server-Side-Encryption"]; ok && algo == "AES256" {
-			msgBuilder.WriteString(fmt.Sprintf("%-10s: SSE-%s\n", "Encryption", "S3"))
+			fmt.Fprintf(&msgBuilder, "%-10s: SSE-%s\n", "Encryption", "S3")
 			found = true
 		}
 		if !found {
 			// encryption headers are present but not something we recognize, check `mc stat --debug`
 			// to obtain more information and understand if we are missing something.
-			msgBuilder.WriteString(fmt.Sprintf("%-10s: SSE-%s\n", "Encryption", "Unknown"))
+			fmt.Fprintf(&msgBuilder, "%-10s: SSE-%s\n", "Encryption", "Unknown")
 		}
 	}
 
 	if maxKeyMetadata > 0 {
-		msgBuilder.WriteString(fmt.Sprintf("%-10s:", "Metadata") + "\n")
+		fmt.Fprintf(&msgBuilder, "%-10s:\n", "Metadata")
 		for k, v := range stat.Metadata {
 			// Skip encryption headers, we print them later.
 			if !strings.HasPrefix(strings.ToLower(k), serverEncryptionKeyPrefix) {
-				msgBuilder.WriteString(fmt.Sprintf("  %-*.*s: %s ", maxKeyMetadata, maxKeyMetadata, k, v) + "\n")
+				fmt.Fprintf(&msgBuilder, "  %-*.*s: %s \n", maxKeyMetadata, maxKeyMetadata, k, v)
 			}
 		}
 	}
 
 	if stat.ReplicationStatus != "" {
-		msgBuilder.WriteString(fmt.Sprintf("%-10s: %s ", "Replication Status", stat.ReplicationStatus))
+		fmt.Fprintf(&msgBuilder, "%-10s: %s ", "Replication Status", stat.ReplicationStatus)
 	}
 
 	msgBuilder.WriteString("\n")
@@ -460,9 +460,9 @@ func (v bucketInfoMessage) String() string {
 	key := fmt.Sprintf("%-10s: %s", "Name", keyStr)
 	b.WriteString(console.Colorize("Title", key) + "\n")
 	if !v.Date.IsZero() && !v.Date.Equal(timeSentinel) {
-		b.WriteString(fmt.Sprintf("%-10s: %s ", "Date", v.Date.Format(printDate)) + "\n")
+		fmt.Fprintf(&b, "%-10s: %s \n", "Date", v.Date.Format(printDate))
 	}
-	b.WriteString(fmt.Sprintf("%-10s: %-6s \n", "Size", "N/A"))
+	fmt.Fprintf(&b, "%-10s: %-6s \n", "Size", "N/A")
 
 	fType := func() string {
 		if v.Prefix {
@@ -473,7 +473,7 @@ func (v bucketInfoMessage) String() string {
 		}
 		return "file"
 	}()
-	b.WriteString(fmt.Sprintf("%-10s: %s \n", "Type", fType))
+	fmt.Fprintf(&b, "%-10s: %s \n", "Type", fType)
 	fmt.Fprintf(&b, "\n")
 
 	if !v.Prefix {

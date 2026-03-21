@@ -302,7 +302,7 @@ func (m *topDriveUI) View() string {
 			order = "ASC"
 		}
 
-		s.WriteString(fmt.Sprintf("\n%s \u25C0 Pool %d \u25B6 | Sort By: %s (u,t,r,w,d,a,U) | (O)rder: %s ", m.spinner.View(), m.pool+1, m.sortBy, order))
+		fmt.Fprintf(&s, "\n%s \u25C0 Pool %d \u25B6 | Sort By: %s (u,t,r,w,d,a,U) | (O)rder: %s ", m.spinner.View(), m.pool+1, m.sortBy, order)
 	}
 	return s.String() + "\n"
 }

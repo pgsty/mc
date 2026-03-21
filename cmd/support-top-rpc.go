@@ -443,9 +443,9 @@ func (m *topRPCUI) View() string {
 	}
 	s.WriteString(pre)
 	if truncate {
-		s.WriteString(fmt.Sprintf("SHOWING %s Host %d to %d of %d%s. ↑ and ↓ available. <tab>=TO/FROM r=RECON q=Q p=PING.", dir, 1+m.offset, m.offset+hostsShown, len(allhosts), sortBy))
+		fmt.Fprintf(&s, "SHOWING %s Host %d to %d of %d%s. ↑ and ↓ available. <tab>=TO/FROM r=RECON q=Q p=PING.", dir, 1+m.offset, m.offset+hostsShown, len(allhosts), sortBy)
 	} else {
-		s.WriteString(fmt.Sprintf("SHOWING traffic %s hosts%s. <tab>=TO/FROM r=RECON q=Q p=PING.", dir, sortBy))
+		fmt.Fprintf(&s, "SHOWING traffic %s hosts%s. <tab>=TO/FROM r=RECON q=Q p=PING.", dir, sortBy)
 	}
 	return s.String()
 }

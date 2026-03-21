@@ -113,7 +113,7 @@ func (m *serviceRestartUI) View() string {
 		return s.String()
 	}
 
-	s.WriteString(fmt.Sprintf("Service status: %s ", m.meter.View()))
+	fmt.Fprintf(&s, "Service status: %s ", m.meter.View())
 
 	msg := msgI.(serviceRestartMessage)
 	state := msg.State

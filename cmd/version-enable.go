@@ -84,7 +84,7 @@ type versionEnableMessage struct {
 		Status           string   `json:"status"`
 		MFADelete        string   `json:"MFADelete"`
 		ExcludedPrefixes []string `json:"ExcludedPrefixes,omitempty"`
-		ExcludeFolders   bool     `json:"ExcludeFolders,,omitempty"`
+		ExcludeFolders   bool     `json:"ExcludeFolders,omitempty"`
 	} `json:"versioning"`
 }
 

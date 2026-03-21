@@ -481,7 +481,7 @@ func (m *replicateBacklogUI) helpView() string {
 func (m *replicateBacklogUI) View() string {
 	var sb strings.Builder
 	if !m.quitting {
-		sb.WriteString(fmt.Sprintf("%s\n", m.spinner.View()))
+		fmt.Fprintf(&sb, "%s\n", m.spinner.View())
 	}
 
 	if m.count > 0 {

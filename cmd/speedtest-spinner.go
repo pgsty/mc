@@ -156,9 +156,9 @@ func (m *speedTestUI) View() string {
 
 	// Print the spinner
 	if !m.quitting {
-		s.WriteString(fmt.Sprintf("\n%s: %s\n\n", m.result.Type.Name(), m.spinner.View()))
+		fmt.Fprintf(&s, "\n%s: %s\n\n", m.result.Type.Name(), m.spinner.View())
 	} else {
-		s.WriteString(fmt.Sprintf("\n%s: %s\n\n", m.result.Type.Name(), m.spinner.Style.Render(tickCell)))
+		fmt.Fprintf(&s, "\n%s: %s\n\n", m.result.Type.Name(), m.spinner.Style.Render(tickCell))
 	}
 
 	if ores != nil {
