@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine as build
+FROM golang:1.26.2-alpine as build
 
 LABEL maintainer="pgsty <https://github.com/pgsty/mc>"
 

@@ -78,7 +78,7 @@ mc.exe --help
 ## 通过源码安装
 通过源码安装仅适用于开发人员和高级用户。`mc update`命令不支持基于源码安装的更新通知。请从https://min.io/download/#minio-client下载官方版本。
 
-如果您没有Golang环境，请参照[如何安装Golang](https://golang.org/doc/install)。
+如果您没有Golang环境，请参照[如何安装Golang](https://golang.org/doc/install)。最低需要的版本是[go1.26.2](https://golang.org/dl/#stable)。
 
 ```
 go get -d github.com/minio/mc
