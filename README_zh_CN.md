@@ -1,159 +1,145 @@
-# MinIO客户端快速入门指南
-[![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io) [![Go Report Card](https://goreportcard.com/badge/minio/mc)](https://goreportcard.com/report/minio/mc) [![Docker Pulls](https://img.shields.io/docker/pulls/pgsty/mc.svg?maxAge=604800)](https://hub.docker.com/r/pgsty/mc/)
+<h1 align="center">mcli</h1>
 
-> 这是由 [Pigsty](https://pigsty.io) 维护的社区分支，不是 MinIO 官方发行版。
-> 本分支禁用 `mc update`；请通过 [Pigsty 软件仓库](https://pigsty.io/docs/repo/infra/list/#object-storage)
-> 或 [pgsty/mc Releases](https://github.com/pgsty/mc/releases) 升级。
+<p align="center">
+  <strong>审慎维护的 MinIO Client 社区分支</strong><br>
+  为 Silo、Pigsty 与 S3 兼容对象存储提供带版本的客户端构建与兼容管理工具。
+</p>
 
-MinIO Client (mc)为ls，cat，cp，mirror，diff，find等UNIX命令提供了一种替代方案。它支持文件系统和兼容Amazon S3的云存储服务（AWS Signature v2和v4）。
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="https://silo.pigsty.cc">文档</a> ·
+  <a href="https://github.com/pgsty/mc/releases">版本发布</a> ·
+  <a href="https://hub.docker.com/r/pgsty/mc">容器镜像</a> ·
+  <a href="https://pigsty.cc/docs/repo/infra/list/#object-storage">Linux 软件包</a>
+</p>
 
+<p align="center">
+  <a href="https://github.com/pgsty/mc/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/pgsty/mc?include_prereleases&label=release&logo=github"></a>
+  <a href="https://hub.docker.com/r/pgsty/mc"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/pgsty/mc?logo=docker"></a>
+  <a href="go.mod"><img alt="Go Version" src="https://img.shields.io/github/go-mod/go-version/pgsty/mc?logo=go"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPLv3-blue"></a>
+</p>
 
+> [!IMPORTANT]
+> `pgsty/mc` 是由 [Pigsty](https://pigsty.cc) 独立维护、从开源 [MinIO Client](https://github.com/minio/mc) 延续而来的社区分支。本项目与 MinIO, Inc. 不存在隶属、背书或赞助关系；文中使用 “MinIO” 仅用于说明上游项目及兼容谱系。
+
+## 概述
+
+`pgsty/mc` 维护一条基于上游 MinIO Client 归档分支 [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88) 的下游版本线，在上游仓库归档后继续提供可维护的客户端构建。
+
+本分支的存在，是为了让 [Silo](https://github.com/pgsty/minio) 与 Pigsty 部署拥有可通过同一供应链构建、修补、测试和发布的兼容命令行客户端。它同时也是面向文件系统与 Amazon S3 兼容对象存储的通用客户端。
+
+## 维护政策
+
+活跃的 `master` 版本线覆盖：
+
+- 构建、工具链与依赖项维护；
+- 适用的安全修复与敏感输出加固；
+- 针对可复现缺陷与 Silo 互操作问题的范围明确的修复；
+- 带版本的归档包、Linux 软件包、校验和与多架构镜像；
+- 发布自动化、文档与 Pigsty 集成。
+
+改动保持克制，并在可行时提供测试。所有维护均为尽力而为，不承诺固定的响应、修复或发布时间。
+
+### 范围之外
+
+- 独立客户端路线图、新对象存储协议或假设性的新命令；
+- 大规模重写或显著扩大下游差异的改动；
+- 历史版本或多条支持分支；
+- 商业支持、SLA、7×24 服务或 SUBNET 服务；
+- 对所有 S3 实现或 MinIO 未来私有 API 的兼容保证。
+
+## 兼容策略
+
+本分支尽量保留：
+
+- `github.com/minio/mc` module path、`~/.mc` 配置与用户熟悉的命令行为；
+- S3 Signature V2/V4 访问方式，以及常用 MinIO/Silo 管理流程；
+- `RELEASE.YYYY-MM-DDTHH-MM-SSZ` 标签与容器的 `mc` 入口；
+- 源码构建使用 `mc`，独立归档包与 Linux 软件包使用 `mcli`；Silo 镜像同时提供两个命令名。
+
+`mc update` 已被有意禁用。请通过 [Pigsty 软件仓库](https://pigsty.cc/docs/repo/infra/list/#object-storage) 或 [GitHub Releases](https://github.com/pgsty/mc/releases) 升级。
+
+兼容是目标，而非保证。服务端专用管理命令可能随版本变化。请锁定版本、阅读版本说明、保留回滚路径，并在生产使用前针对目标服务完成测试。
+
+## 发行产物
+
+| 产物 | 位置 |
+| :-- | :-- |
+| 源码 | [`github.com/pgsty/mc`](https://github.com/pgsty/mc) |
+| 独立归档包 | [GitHub Releases](https://github.com/pgsty/mc/releases)，提供 Linux、macOS、Windows 的 `amd64` 与 `arm64` 版本，命令名为 `mcli` |
+| Linux 软件包 | 面向 `x86_64`/`aarch64` 的 RPM、DEB 与 APK，同时通过 [Pigsty 软件仓库](https://pigsty.cc/docs/repo/infra/list/#object-storage) 分发 |
+| 容器镜像 | [`pgsty/mc`](https://hub.docker.com/r/pgsty/mc)，支持 `linux/amd64` 与 `linux/arm64` 多架构清单，以 `mc` 作为入口 |
+| Silo 内置客户端 | [`pgsty/minio`](https://hub.docker.com/r/pgsty/minio) 以 `mcli` 提供本客户端，并保留 `mc` 兼容别名 |
+| 文档 | [Silo 中文文档](https://silo.pigsty.cc) 与 [MinIO Client 命令参考](https://docs.min.io/community/minio-object-store/reference/minio-mc.html) |
+
+## 快速开始
+
+独立归档包与 Linux 软件包使用 `mcli` 命令：
+
+```bash
+mcli alias set local http://127.0.0.1:9000 ACCESS_KEY SECRET_KEY
+mcli mb local/demo
+mcli cp README.md local/demo/
+mcli ls local/demo
 ```
-ls        列出文件和文件夹。
-mb        创建一个存储桶或一个文件夹。
-cat       显示文件和对象内容。
-pipe      将一个STDIN重定向到一个对象或者文件或者STDOUT。
-share     生成用于共享的URL。
-cp        拷贝文件和对象。
-mirror    给存储桶和文件夹做镜像。
-find      基于参数查找文件。
-diff      对两个文件夹或者存储桶比较差异。
-rm        删除文件和对象。
-events    管理对象通知。
-watch     监听文件和对象的事件。
-anonymous 管理访问策略。
-session   为cp命令管理保存的会话。
-config    管理mc配置文件。
-update    本 Pigsty 构建已禁用自更新。
-version   输出版本信息。
+
+容器保留用户熟悉的 `mc` 入口：
+
+```bash
+docker run --rm pgsty/mc:latest --version
+docker run --rm pgsty/mc:latest ls play
 ```
 
-## Docker容器
-### 稳定版
-```
-docker pull pgsty/mc
-docker run pgsty/mc ls play
-```
+> [!WARNING]
+> 生产环境应锁定具体版本而不是使用 `latest`，验证校验和，使用 TLS 与最小权限凭据，并先用非生产数据测试破坏性命令。
 
-### 尝鲜版
-```
-docker pull pgsty/mc:RELEASE.YYYY-MM-DDThh-mm-ssZ
-docker run pgsty/mc:RELEASE.YYYY-MM-DDThh-mm-ssZ ls play
-```
+从源码构建：
 
-**注意:** 上述示例默认使用MinIO[演示环境](#test-your-setup)做演示，如果想用`mc`操作其它S3兼容的服务，采用下面的方式来启动容器：
-
-```
-docker run -it --entrypoint=/bin/sh pgsty/mc
-```
-
-然后使用[`mc config`命令](#add-a-cloud-storage-service)。
-
-## macOS
-请从 [pgsty/mc Releases](https://github.com/pgsty/mc/releases)
-下载对应的 macOS 压缩包及校验和。MinIO 官方 Homebrew Tap 安装的是上游版本。
-
-## GNU/Linux
-请从 [Pigsty 软件仓库](https://pigsty.io/docs/repo/infra/list/#object-storage)
-安装 `mcli` 软件包，或从 [pgsty/mc Releases](https://github.com/pgsty/mc/releases)
-下载压缩包及校验和。
-
-## Microsoft Windows
-请从 [pgsty/mc Releases](https://github.com/pgsty/mc/releases)
-下载 Windows 压缩包及校验和。
-
-## 通过源码安装
-通过源码安装仅适用于开发人员和高级用户。本分支的 `mc update` 始终禁用。
-
-如果您没有Golang环境，请参照[如何安装Golang](https://golang.org/doc/install)。最低需要的版本是[go1.26.5](https://golang.org/dl/#stable)。
-
-```
+```bash
 git clone https://github.com/pgsty/mc.git
 cd mc
 make build
+./mc --version
 ```
 
-## 添加一个云存储服务
-如果你打算仅在POSIX兼容文件系统中使用`mc`,那你可以直接略过本节，跳到[日常使用](#everyday-use)。
+## 常用命令
 
-添加一个或多个S3兼容的服务，请参考下面说明。`mc`将所有的配置信息都存储在``~/.mc/config.json``文件中。
+| 命令 | 用途 |
+| :-- | :-- |
+| `alias` | 配置凭据与服务端点 |
+| `ls`、`tree`、`stat`、`du` | 检查存储桶、对象与本地文件 |
+| `mb`、`rb` | 创建或删除存储桶 |
+| `cp`、`get`、`put`、`mv`、`rm` | 传输与管理对象 |
+| `mirror`、`diff`、`find` | 同步、比较与搜索数据 |
+| `anonymous`、`share` | 管理匿名访问与临时 URL |
+| `version`、`retention`、`legalhold`、`ilm` | 管理数据保护策略 |
+| `replicate` | 配置存储桶复制 |
+| `admin` | 运维兼容的 MinIO/Silo 服务端 |
 
-```
-mc alias set <ALIAS> <YOUR-S3-ENDPOINT> <YOUR-ACCESS-KEY> <YOUR-SECRET-KEY> [--api API-SIGNATURE]
-```
+运行 `mcli --help`、`mcli <command> --help`，或查阅[客户端命令参考](https://docs.min.io/community/minio-object-store/reference/minio-mc.html)了解完整命令集。
 
-别名就是给你的云存储服务起了一个短点的外号。S3 endpoint,access key和secret key是你的云存储服务提供的。API签名是可选参数，默认情况下，它被设置为"S3v4"。
+## 参与贡献
 
-### 示例-MinIO云存储
-从MinIO服务获得URL、access key和secret key。
+欢迎安全与依赖项更新、可复现缺陷修复、互操作测试、发布自动化、打包与文档改进。
 
-```
-mc alias set minio http://192.168.1.51 BKIKJAA5BMMU2RHO6IBB V7f1CwQqAcwo80UEIJEjc5gVQUSSx5ohQ9GSrr12 --api s3v4
-```
+Issue 与 Pull Request 应说明受影响的客户端与服务端版本、复现步骤、影响、预期行为、测试与兼容性说明。大型改动请先提交 Issue 讨论。
 
-### 示例-Amazon S3云存储
-参考[AWS Credentials指南](http://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html)获取你的AccessKeyID和SecretAccessKey。
+## 背景
 
-```
-mc alias set s3 https://s3.amazonaws.com BKIKJAA5BMMU2RHO6IBB V7f1CwQqAcwo80UEIJEjc5gVQUSSx5ohQ9GSrr12 --api s3v4
-```
+上游 [`minio/mc`](https://github.com/minio/mc) 仓库在 2025 年最后一条开发线后归档。Pigsty 维护此分支，是因为 Silo 需要可复现的配套客户端发布渠道，而不能继续依赖已经归档的上游项目。
 
-### 示例-Google云存储
-参考[Google Credentials Guide](https://cloud.google.com/storage/docs/migrating?hl=en#keys)获取你的AccessKeyID和SecretAccessKey。
+相关上游变化、替代方案评估与早期分支维护记录见以下文章：
 
-```
-mc alias set gcs  https://storage.googleapis.com BKIKJAA5BMMU2RHO6IBB V8f1CwQqAcwo80UEIJEjc5gVQUSSx5ohQ9GSrr12 --api s3v2
-```
+| 文章 | 主题 |
+| :-- | :-- |
+| [MinIO已死](https://vonng.com/db/minio-is-dead/) | 上游项目与发行模式的变化 |
+| [MinIO已死，谁能接盘？](https://vonng.com/db/minio-alternative/) | 可选替代方案评估 |
+| [MinIO 已死，MinIO 复生](https://vonng.com/db/minio-resurrect/) | 建立服务端与客户端发行流水线 |
+| [续命 MinIO：承诺兑现](https://vonng.com/db/minio-promise-kept/) | 初期安全与维护工作 |
 
-注意：Google云存储只支持旧版签名版本V2，所以你需要选择S3v2。
+## 许可证与商标
 
-## 验证
-`mc`预先配置了云存储服务URL：https://play.min.io，别名“play”。它是一个用于研发和测试的MinIO服务。如果想测试Amazon S3,你可以将“play”替换为“s3”。
+客户端继续采用 [GNU Affero General Public License v3.0](LICENSE) 发布。上游作者与署名信息见 [`CREDITS`](CREDITS)。
 
-*示例:*
-
-列出https://play.min.io上的所有存储桶。
-
-```
-mc ls play
-[2016-03-22 19:47:48 PDT]     0B my-bucketname/
-[2016-03-22 22:01:07 PDT]     0B mytestbucket/
-[2016-03-22 20:04:39 PDT]     0B mybucketname/
-[2016-01-28 17:23:11 PST]     0B newbucket/
-[2016-03-20 09:08:36 PDT]     0B s3git-test/
-```
-<a name="everyday-use"></a>
-## 日常使用
-
-### Shell别名
-你可以添加shell别名来覆盖默认的Unix工具命令。
-
-```
-alias ls='mc ls'
-alias cp='mc cp'
-alias cat='mc cat'
-alias mkdir='mc mb'
-alias pipe='mc pipe'
-alias find='mc find'
-```
-
-### Shell自动补全
-`mc` 已内置 Bash、Zsh 和 Fish 自动补全。运行以下命令安装，然后重启 Shell：
-
-```
-mc --autocompletion
-```
-
-```
-mc <TAB>
-admin    config   diff     ls       mirror   policy   session  update   watch
-cat      cp       events   mb       pipe     rm       share    version
-```
-
-## 了解更多
-- [MinIO Client完全指南](https://docs.min.io/community/minio-object-store/reference/minio-mc.html?ref=gh)
-- [MinIO快速入门](https://docs.min.io/community/minio-object-store/operations/deployments/baremetal-deploy-minio-on-redhat-linux.html?ref=gh)
-- [MinIO官方文档](https://docs.min.io/community/minio-object-store/index.html?ref=gh)
-
-## 贡献
-请遵守MinIO[贡献者指南](https://github.com/minio/mc/blob/master/docs/zh_CN/CONTRIBUTING.md)
+MinIO 是 MinIO, Inc. 的商标。Pigsty、Silo、`pgsty/mc` 与 `mcli` 均为独立社区项目，与 MinIO, Inc. 不存在隶属或背书关系。

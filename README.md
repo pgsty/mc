@@ -1,252 +1,144 @@
-# MinIO Client Quickstart Guide
+<h1 align="center">mcli</h1>
+
+<p align="center">
+  <strong>A conservatively maintained MinIO Client fork</strong><br>
+  Versioned client builds and compatible administration tooling for Silo, Pigsty, and S3-compatible object storage.
+</p>
+
+<p align="center">
+  <a href="README_zh_CN.md">中文</a> ·
+  <a href="https://silo.pigsty.io">Documentation</a> ·
+  <a href="https://github.com/pgsty/mc/releases">Releases</a> ·
+  <a href="https://hub.docker.com/r/pgsty/mc">Container Images</a> ·
+  <a href="https://pigsty.io/docs/repo/infra/list/#object-storage">Linux Packages</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/pgsty/mc/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/pgsty/mc?include_prereleases&label=release&logo=github"></a>
+  <a href="https://hub.docker.com/r/pgsty/mc"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/pgsty/mc?logo=docker"></a>
+  <a href="go.mod"><img alt="Go Version" src="https://img.shields.io/github/go-mod/go-version/pgsty/mc?logo=go"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-AGPLv3-blue"></a>
+</p>
 
 > [!IMPORTANT]
-> **This is a community-maintained fork of [minio/mc](https://github.com/minio/mc), maintained by [Pigsty](https://pigsty.io).**
-> This project is **NOT** affiliated with, endorsed by, or sponsored by MinIO, Inc.
-> "MinIO" is a trademark of MinIO, Inc., used here solely to identify the upstream project.
->
-> Distributed under the original [GNU AGPLv3](LICENSE) license.
+> `pgsty/mc` is an independent, community-maintained fork of the open-source [MinIO Client](https://github.com/minio/mc), published by [Pigsty](https://pigsty.io). It is not affiliated with, endorsed by, or sponsored by MinIO, Inc. “MinIO” is used only to identify the upstream project and compatibility lineage.
 
-Documentation mirror: [https://silo.pigsty.io](https://silo.pigsty.io)
+## Overview
 
-Docker Hub mirror: [https://hub.docker.com/r/pgsty/mc](https://hub.docker.com/r/pgsty/mc)  `pgsty/mc`
+`pgsty/mc` maintains one downstream release line based on the archived upstream MinIO Client branch at [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88). It provides maintained client builds after the upstream repository was archived.
 
-APT/YUM repo for `minio` and `mcli`: [https://pigsty.io/docs/repo/infra/list/#object-storage](https://pigsty.io/docs/repo/infra/list/#object-storage)
+This fork exists so [Silo](https://github.com/pgsty/minio) and Pigsty deployments have a compatible CLI that can be built, patched, tested, and released through the same maintained supply chain. It also remains a general-purpose client for filesystems and Amazon S3-compatible object stores.
 
-`mc update` is disabled in this fork. Upgrade through the Pigsty package
-repository or the [pgsty/mc Releases page](https://github.com/pgsty/mc/releases).
+## Maintenance Policy
 
-[![Go Report Card](https://goreportcard.com/badge/minio/mc)](https://goreportcard.com/report/minio/mc) [![Docker Pulls](https://img.shields.io/docker/pulls/pgsty/mc.svg?maxAge=604800)](https://hub.docker.com/r/pgsty/mc/) [![license](https://img.shields.io/badge/license-AGPL%20V3-blue)](https://github.com/pgsty/mc/blob/master/LICENSE)
+The active `master` release line covers:
 
-# Documentation
-- [MC documentation](https://docs.min.io/community/minio-object-store/reference/minio-mc.html)
+- build, toolchain, and dependency maintenance;
+- applicable security fixes and sensitive-output hardening;
+- focused fixes for reproducible defects and Silo interoperability;
+- versioned archives, Linux packages, checksums, and multi-architecture images;
+- release automation, documentation, and Pigsty integration.
 
-MinIO Client (mc) provides a modern alternative to UNIX commands like ls, cat, cp, mirror, diff, find etc. It supports filesystems and Amazon S3 compatible cloud storage service (AWS Signature v2 and v4).
+Changes are kept narrow and tested where practical. Maintenance is best effort; no response, remediation, or release schedule is guaranteed.
 
-```
-  alias      manage server credentials in configuration file
-  admin      manage MinIO servers
-  anonymous  manage anonymous access to buckets and objects
-  batch      manage batch jobs
-  cp         copy objects
-  cat        display object contents
-  diff       list differences in object name, size, and date between two buckets
-  du         summarize disk usage recursively
-  encrypt    manage bucket encryption config
-  event      manage object notifications
-  find       search for objects
-  get        get s3 object to local
-  head       display first 'n' lines of an object
-  ilm        manage bucket lifecycle
-  idp        manage MinIO IDentity Provider server configuration
-  license    license related commands
-  legalhold  manage legal hold for object(s)
-  ls         list buckets and objects
-  mb         make a bucket
-  mv         move objects
-  mirror     synchronize object(s) to a remote site
-  od         measure single stream upload and download
-  ping       perform liveness check
-  pipe       stream STDIN to an object
-  put        upload an object to a bucket
-  quota      manage bucket quota
-  rm         remove object(s)
-  retention  set retention for object(s)
-  rb         remove a bucket
-  replicate  configure server side bucket replication
-  ready      checks if the cluster is ready or not
-  sql        run sql queries on objects
-  stat       show object metadata
-  support    support related commands
-  share      generate URL for temporary access to an object
-  tree       list buckets and objects in a tree format
-  tag        manage tags for bucket and object(s)
-  undo       undo PUT/DELETE operations
-  update     self-update is disabled in this Pigsty build
-  version    manage bucket versioning
-  watch      listen for object notification events
+### Out of scope
+
+- a separate client roadmap, new object-storage protocol, or speculative commands;
+- broad rewrites or changes that materially expand the downstream delta;
+- historical releases or multiple support branches;
+- commercial support, SLAs, 24×7 coverage, or SUBNET services;
+- guaranteed compatibility with every S3 implementation or future proprietary MinIO API.
+
+## Compatibility
+
+This fork aims to preserve:
+
+- the `github.com/minio/mc` module path, `~/.mc` configuration, and familiar command behavior;
+- S3 Signature V2/V4 access and common MinIO/Silo administration workflows;
+- `RELEASE.YYYY-MM-DDTHH-MM-SSZ` tags and the `mc` container entrypoint;
+- the `mc` name for source builds, while standalone archives and Linux packages use `mcli`; the Silo image provides both names.
+
+The `mc update` command is intentionally disabled. Upgrade through the [Pigsty package repository](https://pigsty.io/docs/repo/infra/list/#object-storage) or [GitHub Releases](https://github.com/pgsty/mc/releases).
+
+Compatibility is a goal, not a guarantee. Server-specific administration commands may vary across versions. Pin releases, review the release notes, keep a rollback path, and test the client against the target service before production use.
+
+## Release Artifacts
+
+| Artifact | Location |
+| :-- | :-- |
+| Source | [`github.com/pgsty/mc`](https://github.com/pgsty/mc) |
+| Standalone archives | [GitHub Releases](https://github.com/pgsty/mc/releases), providing `mcli` for Linux, macOS, and Windows on `amd64` and `arm64` |
+| Linux packages | RPM, DEB, and APK for `x86_64`/`aarch64`, also distributed through the [Pigsty repository](https://pigsty.io/docs/repo/infra/list/#object-storage) |
+| Container image | [`pgsty/mc`](https://hub.docker.com/r/pgsty/mc), multi-arch for `linux/amd64` and `linux/arm64`, with `mc` as the entrypoint |
+| Silo bundle | [`pgsty/minio`](https://hub.docker.com/r/pgsty/minio) includes the client as `mcli` with an `mc` compatibility alias |
+| Documentation | [Silo documentation](https://silo.pigsty.io) and the [MinIO Client reference](https://docs.min.io/community/minio-object-store/reference/minio-mc.html) |
+
+## Quick Start
+
+Standalone archives and Linux packages expose the command as `mcli`:
+
+```bash
+mcli alias set local http://127.0.0.1:9000 ACCESS_KEY SECRET_KEY
+mcli mb local/demo
+mcli cp README.md local/demo/
+mcli ls local/demo
 ```
 
-## Docker Container
-### Stable
-```
-docker pull pgsty/mc
-docker run pgsty/mc ls play
-```
+The container retains the familiar `mc` entrypoint:
 
-### Edge
-```
-docker pull pgsty/mc:RELEASE.YYYY-MM-DDThh-mm-ssZ
-docker run pgsty/mc:RELEASE.YYYY-MM-DDThh-mm-ssZ ls play
+```bash
+docker run --rm pgsty/mc:latest --version
+docker run --rm pgsty/mc:latest ls play
 ```
 
-**Note:** Above examples run `mc` against MinIO [_play_ environment](#test-your-setup) by default. To run `mc` against other S3 compatible servers, start the container this way:
+> [!WARNING]
+> For production, pin a release instead of `latest`, verify checksums, use TLS and least-privilege credentials, and test destructive commands against non-production data first.
 
-```
-docker run -it --entrypoint=/bin/sh pgsty/mc
-```
+Build from source:
 
-then use the [`mc alias` command](#add-a-cloud-storage-service).
-
-### GitLab CI
-When using the Docker container in GitLab CI, you must [set the entrypoint to an empty string](https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#override-the-entrypoint-of-an-image).
-
-```
-deploy:
-  image:
-    name: pgsty/mc
-    entrypoint: ['']
-  stage: deploy
-  before_script:
-    - mc alias set minio $MINIO_HOST $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
-  script:
-    - mc cp <source> <destination>
-```
-
-## macOS
-Download the matching archive and checksum from the
-[pgsty/mc Releases page](https://github.com/pgsty/mc/releases). The upstream
-Homebrew tap installs the upstream project, not this fork.
-
-## GNU/Linux
-Install the `mcli` package from the
-[Pigsty package repository](https://pigsty.io/docs/repo/infra/list/#object-storage),
-or download an archive and checksum from the
-[pgsty/mc Releases page](https://github.com/pgsty/mc/releases).
-
-## Microsoft Windows
-Download the Windows archive and checksum from the
-[pgsty/mc Releases page](https://github.com/pgsty/mc/releases).
-
-## Install from Source
-Source installation is only intended for developers and advanced users. If you do not have a working Golang environment, please follow [How to install Golang](https://golang.org/doc/install). Minimum version required is [go1.26.5](https://golang.org/dl/#stable)
-
-```sh
+```bash
 git clone https://github.com/pgsty/mc.git
 cd mc
 make build
+./mc --version
 ```
 
-## Add a Cloud Storage Service
-If you are planning to use `mc` only on POSIX compatible filesystems, you may skip this step and proceed to [everyday use](#everyday-use).
+## Common Commands
 
-To add one or more Amazon S3 compatible hosts, please follow the instructions below. `mc` stores all its configuration information in ``~/.mc/config.json`` file.
+| Command | Purpose |
+| :-- | :-- |
+| `alias` | Configure credentials and endpoints |
+| `ls`, `tree`, `stat`, `du` | Inspect buckets, objects, and local files |
+| `mb`, `rb` | Create or remove buckets |
+| `cp`, `get`, `put`, `mv`, `rm` | Transfer and manage objects |
+| `mirror`, `diff`, `find` | Synchronize, compare, and search data |
+| `anonymous`, `share` | Manage anonymous access and temporary URLs |
+| `version`, `retention`, `legalhold`, `ilm` | Manage data-protection policies |
+| `replicate` | Configure bucket replication |
+| `admin` | Operate compatible MinIO/Silo servers |
 
-```
-mc alias set <ALIAS> <YOUR-S3-ENDPOINT> <YOUR-ACCESS-KEY> <YOUR-SECRET-KEY> --api <API-SIGNATURE> --path <BUCKET-LOOKUP-TYPE>
-```
+Run `mcli --help`, `mcli <command> --help`, or consult the [client reference](https://docs.min.io/community/minio-object-store/reference/minio-mc.html) for the complete command set.
 
-`<ALIAS>` is simply a short name to your cloud storage service. S3 end-point, access and secret keys are supplied by your cloud storage provider. API signature is an optional argument. By default, it is set to "S3v4".
+## Contributing
 
-Path is an optional argument. It is used to indicate whether dns or path style url requests are supported by the server. It accepts "on", "off" as valid values to enable/disable path style requests.. By default, it is set to "auto" and SDK automatically determines the type of url lookup to use.
+Useful contributions include security and dependency updates, reproducible bug fixes, interoperability tests, release automation, packaging, and documentation.
 
-### Example - MinIO Cloud Storage
-MinIO server startup banner displays URL, access and secret keys.
+Issues and pull requests should include the affected client and server versions, reproduction steps, impact, expected behavior, tests, and compatibility notes. Discuss large changes in an issue first.
 
-```
-mc alias set minio http://192.168.1.51 BKIKJAA5BMMU2RHO6IBB V7f1CwQqAcwo80UEIJEjc5gVQUSSx5ohQ9GSrr12
-```
+## Background
 
-### Example - Amazon S3 Cloud Storage
-Get your AccessKeyID and SecretAccessKey by following [AWS Credentials Guide](http://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html).
+The upstream [`minio/mc`](https://github.com/minio/mc) repository was archived after its final 2025 development line. Pigsty maintains this fork because Silo needs a reproducible companion client release channel rather than depending on an archived upstream project.
 
-```
-mc alias set s3 https://s3.amazonaws.com BKIKJAA5BMMU2RHO6IBB V7f1CwQqAcwo80UEIJEjc5gVQUSSx5ohQ9GSrr12
-```
+The broader upstream changes, alternatives considered, and early fork maintenance record are documented below:
 
-**Note**: As an IAM user on Amazon S3 you need to make sure the user has full access to the buckets or set the following restricted policy for your IAM user
+| Essay | Subject |
+| :-- | :-- |
+| [MinIO Is Dead](https://blog.vonng.com/en/db/minio-is-dead/) | Changes to the upstream project and distribution model |
+| [MinIO Is Dead, Long Live MinIO](https://blog.vonng.com/en/db/minio-resurrect/) | Establishing the server and client release pipeline |
+| [Two months into maintaining a MinIO fork](https://blog.vonng.com/en/db/minio-promise-kept/) | Initial security and maintenance work |
 
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "AllowBucketStat",
-            "Effect": "Allow",
-            "Action": [
-                "s3:HeadBucket"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Sid": "AllowThisBucketOnly",
-            "Effect": "Allow",
-            "Action": "s3:*",
-            "Resource": [
-                "arn:aws:s3:::<your-restricted-bucket>/*",
-                "arn:aws:s3:::<your-restricted-bucket>"
-            ]
-        }
-    ]
-}
-```
+## License and Trademark
 
-### Example - Google Cloud Storage
-Get your AccessKeyID and SecretAccessKey by following [Google Credentials Guide](https://cloud.google.com/storage/docs/migrating?hl=en#keys)
+The client remains licensed under the [GNU Affero General Public License v3.0](LICENSE). See [`CREDITS`](CREDITS) for upstream authorship and attribution.
 
-```
-mc alias set gcs  https://storage.googleapis.com BKIKJAA5BMMU2RHO6IBB V8f1CwQqAcwo80UEIJEjc5gVQUSSx5ohQ9GSrr12
-```
-
-## Test Your Setup
-`mc` is pre-configured with https://play.min.io, aliased as "play". It is a hosted MinIO server for testing and development purpose.  To test Amazon S3, simply replace "play" with "s3" or the alias you used at the time of setup.
-
-*Example:*
-
-List all buckets from https://play.min.io
-
-```
-mc ls play
-[2016-03-22 19:47:48 PDT]     0B my-bucketname/
-[2016-03-22 22:01:07 PDT]     0B mytestbucket/
-[2016-03-22 20:04:39 PDT]     0B mybucketname/
-[2016-01-28 17:23:11 PST]     0B newbucket/
-[2016-03-20 09:08:36 PDT]     0B s3git-test/
-```
-
-Make a bucket
-`mb` command creates a new bucket.
-
-*Example:*
-```
-mc mb play/mybucket
-Bucket created successfully `play/mybucket`.
-```
-
-Copy Objects
-`cp` command copies data from one or more sources to a target.
-
-*Example:*
-```
-mc cp myobject.txt play/mybucket
-myobject.txt:    14 B / 14 B  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  100.00 % 41 B/s 0
-```
-
-## Everyday Use
-
-### Shell aliases
-You may add shell aliases to override your common Unix tools.
-
-```
-alias ls='mc ls'
-alias cp='mc cp'
-alias cat='mc cat'
-alias mkdir='mc mb'
-alias pipe='mc pipe'
-alias find='mc find'
-```
-
-### Shell autocompletion
-In case you are using bash, zsh or fish. Shell completion is embedded by default in `mc`, to install auto-completion use `mc --autocompletion`. Restart the shell, mc will auto-complete commands as shown below.
-
-```
-mc <TAB>
-admin    config   diff     find     ls       mirror   policy   session  sql      update   watch
-cat      cp       event    head     mb       pipe     rm       share    stat     version
-```
-
-## Contribute to MinIO Project
-Please follow MinIO [Contributor's Guide](https://github.com/pgsty/mc/blob/master/CONTRIBUTING.md)
-
-## License
-Use of `mc` is governed by the GNU AGPLv3 license that can be found in the [LICENSE](https://github.com/pgsty/mc/blob/master/LICENSE) file.
+MinIO is a trademark of MinIO, Inc. Pigsty, Silo, `pgsty/mc`, and `mcli` are independent community efforts and are not affiliated with or endorsed by MinIO, Inc.
