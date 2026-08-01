@@ -17,7 +17,7 @@ COPY --from=build /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /etc/pki/ca-
 COPY CREDITS /licenses/CREDITS
 COPY LICENSE /licenses/LICENSE
 
-ADD https://dl.min.io/client/mc/hotfixes/linux-${TARGETARCH}/archive/mc.${RELEASE} /usr/bin/mc
+COPY mc.${RELEASE} /usr/bin/mc
 
 RUN chmod +x /usr/bin/mc
 

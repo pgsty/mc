@@ -1,22 +1,28 @@
-FROM golang:1.26.2-alpine as build
+FROM golang:1.26.5-alpine AS build
 
 LABEL maintainer="pgsty <https://github.com/pgsty/mc>"
 
 ENV GOPATH /go
 ENV CGO_ENABLED 0
 
+WORKDIR /src
 
 RUN apk add -U --no-cache ca-certificates
-RUN apk add -U curl
-RUN curl -s -q https://raw.githubusercontent.com/minio/mc/master/LICENSE -o /go/LICENSE
-RUN curl -s -q https://raw.githubusercontent.com/minio/mc/master/CREDITS -o /go/CREDITS
-RUN go install -v -ldflags "$(go run buildscripts/gen-ldflags.go)" "github.com/minio/mc@latest"
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+ARG LDFLAGS=""
+RUN go build -trimpath -tags kqueue \
+    -ldflags "${LDFLAGS}" \
+    -o /go/bin/mc .
 
 FROM scratch
 
-COPY --from=build /go/bin/mc  /usr/bin/mc
-COPY --from=build /go/CREDITS /licenses/CREDITS
-COPY --from=build /go/LICENSE /licenses/LICENSE
+COPY --from=build /go/bin/mc /usr/bin/mc
+COPY --from=build /src/CREDITS /licenses/CREDITS
+COPY --from=build /src/LICENSE /licenses/LICENSE
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ENTRYPOINT ["mc"]

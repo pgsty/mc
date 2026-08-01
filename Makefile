@@ -75,15 +75,14 @@ hotfix: hotfix-vars install ## builds mc binary with hotfix tags
 	@minisign -qQSm ./mc.$(VERSION) -s "${CRED_DIR}/minisign.key" < "${CRED_DIR}/minisign-passphrase"
 	@sha256sum < ./mc.$(VERSION) | sed 's, -,mc.$(VERSION),g' > mc.$(VERSION).sha256sum
 
-hotfix-push: hotfix
-	@scp -q -r mc.$(VERSION)* minio@dl-0.min.io:~/releases/client/mc/hotfixes/$(TARGET_GOOS)-$(TARGET_GOARCH)/archive/
-	@scp -q -r mc.$(VERSION)* minio@dl-1.min.io:~/releases/client/mc/hotfixes/$(TARGET_GOOS)-$(TARGET_GOARCH)/archive/
-	@echo "Published new hotfix binaries at https://dl.min.io/client/mc/hotfixes/$(TARGET_GOOS)-$(TARGET_GOARCH)/archive/mc.$(VERSION)"
+hotfix-push:
+	@echo "hotfix-push is disabled: publish fork artifacts through the pgsty/mc GitHub release workflow" >&2
+	@false
 
 docker-hotfix-push: docker-hotfix
 	@docker push -q $(TAG) && echo "Published new container $(TAG)"
 
-docker-hotfix: hotfix-push checks ## builds mc docker container with hotfix tags
+docker-hotfix: hotfix checks ## builds mc docker container with hotfix tags
 	@echo "Building mc docker image '$(TAG)'"
 	@docker build -q --no-cache -t $(TAG) --build-arg RELEASE=$(VERSION) . -f Dockerfile.hotfix
 

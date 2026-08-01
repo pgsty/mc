@@ -1,0 +1,15 @@
+.git
+.github
+.idea
+.vscode
+.run*
+.DS_Store
+dist
+build
+release
+cover.out
+coverage.txt
+*.test
+*.tar.bz2
+/mc
+/mc.gz
