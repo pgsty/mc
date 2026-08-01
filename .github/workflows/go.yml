@@ -19,7 +19,7 @@ jobs:
       GO111MODULE: on
     strategy:
       matrix:
-        go-version: [1.26.2]
+        go-version: [1.26.5]
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Set up Go ${{ matrix.go-version }} on ${{ matrix.os }}
@@ -52,8 +52,14 @@ jobs:
           MC_TEST_ENABLE_HTTPS: true
           MC_TEST_SKIP_INSECURE: true
           MC_TEST_SKIP_BUILD: true
+          MINIO_RELEASE: RELEASE.2026-06-18T00-00-00Z
+          MINIO_ARCHIVE: minio_20260618000000.0.0_linux_amd64.tar.gz
+          MINIO_ARCHIVE_SHA256: 0ba637b050be30d8c65142798c363cfb7392bf731d2f572aefd2e7bf1fd59a10
         run: |
-          wget https://dl.min.io/server/minio/release/linux-amd64/minio && chmod +x minio
+          curl -fsSLO "https://github.com/pgsty/minio/releases/download/${MINIO_RELEASE}/${MINIO_ARCHIVE}"
+          echo "${MINIO_ARCHIVE_SHA256}  ${MINIO_ARCHIVE}" | sha256sum --check --strict
+          tar -xzf "${MINIO_ARCHIVE}"
+          test -x minio
           mkdir -p ~/.minio/certs/ && cp testdata/localhost.crt ~/.minio/certs/public.crt && cp testdata/localhost.key ~/.minio/certs/private.key
           sudo cp testdata/localhost.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
           ./minio server /tmp/test-xl/{1...4}/ & sleep 10
@@ -69,7 +75,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: 1.26.2
+          go-version: 1.26.5
 
       - name: Checkout code
         uses: actions/checkout@v4
