@@ -172,14 +172,17 @@ func dumpHTTPReqTo(out io.Writer, req *http.Request, resp *http.Response) error 
 		return err
 	}
 
-	hdrs := req.Header
+	// Redact a copy so debug tracing never changes a request the caller may
+	// inspect or reuse.
+	safeReq := req.Clone(req.Context())
+	hdrs := safeReq.Header
 	for _, hdr := range []string{"Authorization", "x-subnet-license", "x-subnet-api-key"} {
 		if val := hdrs.Get(hdr); val != "" {
-			req.Header.Set(hdr, strings.Repeat("*", len(val)))
+			safeReq.Header.Set(hdr, strings.Repeat("*", len(val)))
 		}
 	}
 
-	query := req.URL.Query()
+	query := safeReq.URL.Query()
 	for _, q := range []string{"api-key", "api_key"} {
 		if values, ok := query[q]; ok {
 			maskLen := 0
@@ -189,10 +192,10 @@ func dumpHTTPReqTo(out io.Writer, req *http.Request, resp *http.Response) error 
 			query.Set(q, strings.Repeat("*", maskLen))
 		}
 	}
-	req.URL.RawQuery = query.Encode()
+	safeReq.URL.RawQuery = query.Encode()
 
 	// Only display request header.
-	reqTrace, err := httputil.DumpRequestOut(req, false)
+	reqTrace, err := httputil.DumpRequestOut(safeReq, false)
 	if err != nil {
 		return err
 	}
@@ -203,9 +206,23 @@ func dumpHTTPReqTo(out io.Writer, req *http.Request, resp *http.Response) error 
 		return err
 	}
 
-	// SUBNET responses may contain API keys or licenses. Response headers are
-	// sufficient for debugging without copying credentials into debug logs.
-	respTrace, err := httputil.DumpResponse(resp, false)
+	// SUBNET responses may contain API keys or licenses. Redact a response copy
+	// and omit its body so tracing never exposes credentials or mutates caller
+	// state.
+	safeResp := *resp
+	safeResp.Header = resp.Header.Clone()
+	for _, hdr := range []string{"Authorization", "x-subnet-license", "x-subnet-api-key", "Set-Cookie"} {
+		values := safeResp.Header.Values(hdr)
+		if len(values) == 0 {
+			continue
+		}
+		maskLen := 0
+		for _, val := range values {
+			maskLen = max(maskLen, len(val))
+		}
+		safeResp.Header.Set(hdr, strings.Repeat("*", maskLen))
+	}
+	respTrace, err := httputil.DumpResponse(&safeResp, false)
 	if err != nil {
 		return err
 	}
