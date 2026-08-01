@@ -13,6 +13,9 @@ Docker Hub mirror: [https://hub.docker.com/r/pgsty/mc](https://hub.docker.com/r/
 
 APT/YUM repo for `minio` and `mcli`: [https://pigsty.io/docs/repo/infra/list/#object-storage](https://pigsty.io/docs/repo/infra/list/#object-storage)
 
+`mc update` is disabled in this fork. Upgrade through the Pigsty package
+repository or the [pgsty/mc Releases page](https://github.com/pgsty/mc/releases).
+
 [![Go Report Card](https://goreportcard.com/badge/minio/mc)](https://goreportcard.com/report/minio/mc) [![Docker Pulls](https://img.shields.io/docker/pulls/pgsty/mc.svg?maxAge=604800)](https://hub.docker.com/r/pgsty/mc/) [![license](https://img.shields.io/badge/license-AGPL%20V3-blue)](https://github.com/pgsty/mc/blob/master/LICENSE)
 
 # Documentation
@@ -59,7 +62,7 @@ MinIO Client (mc) provides a modern alternative to UNIX commands like ls, cat, c
   tree       list buckets and objects in a tree format
   tag        manage tags for bucket and object(s)
   undo       undo PUT/DELETE operations
-  update     update mc to latest release
+  update     self-update is disabled in this Pigsty build
   version    manage bucket versioning
   watch      listen for object notification events
 ```
@@ -101,44 +104,27 @@ deploy:
 ```
 
 ## macOS
-### Homebrew
-Install mc packages using [Homebrew](http://brew.sh/)
-
-```
-brew install minio/stable/mc
-mc --help
-```
+Download the matching archive and checksum from the
+[pgsty/mc Releases page](https://github.com/pgsty/mc/releases). The upstream
+Homebrew tap installs the upstream project, not this fork.
 
 ## GNU/Linux
-### Binary Download
-| Platform | Architecture | URL |
-| ---------- | -------- |------|
-|GNU/Linux|64-bit Intel|https://dl.min.io/client/mc/release/linux-amd64/mc |
-|GNU/Linux|64-bit PPC|https://dl.min.io/client/mc/release/linux-ppc64le/mc |
-|GNU/Linux|64-bit ARM|https://dl.min.io/client/mc/release/linux-arm64/mc |
-|Linux/s390x|S390X|https://dl.min.io/client/mc/release/linux-s390x/mc |
-
-```
-wget https://dl.min.io/client/mc/release/linux-amd64/mc
-chmod +x mc
-./mc --help
-```
+Install the `mcli` package from the
+[Pigsty package repository](https://pigsty.io/docs/repo/infra/list/#object-storage),
+or download an archive and checksum from the
+[pgsty/mc Releases page](https://github.com/pgsty/mc/releases).
 
 ## Microsoft Windows
-### Binary Download
-| Platform | Architecture | URL |
-| ---------- | -------- |------|
-|Microsoft Windows|64-bit Intel|https://dl.min.io/client/mc/release/windows-amd64/mc.exe |
-
-```
-mc.exe --help
-```
+Download the Windows archive and checksum from the
+[pgsty/mc Releases page](https://github.com/pgsty/mc/releases).
 
 ## Install from Source
-Source installation is only intended for developers and advanced users. If you do not have a working Golang environment, please follow [How to install Golang](https://golang.org/doc/install). Minimum version required is [go1.26.2](https://golang.org/dl/#stable)
+Source installation is only intended for developers and advanced users. If you do not have a working Golang environment, please follow [How to install Golang](https://golang.org/doc/install). Minimum version required is [go1.26.5](https://golang.org/dl/#stable)
 
 ```sh
-go install github.com/minio/mc@latest
+git clone https://github.com/pgsty/mc.git
+cd mc
+make build
 ```
 
 ## Add a Cloud Storage Service

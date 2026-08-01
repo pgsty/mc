@@ -1,5 +1,9 @@
 # MinIO客户端快速入门指南
-[![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io) [![Go Report Card](https://goreportcard.com/badge/minio/mc)](https://goreportcard.com/report/minio/mc) [![Docker Pulls](https://img.shields.io/docker/pulls/minio/mc.svg?maxAge=604800)](https://hub.docker.com/r/minio/mc/)
+[![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io) [![Go Report Card](https://goreportcard.com/badge/minio/mc)](https://goreportcard.com/report/minio/mc) [![Docker Pulls](https://img.shields.io/docker/pulls/pgsty/mc.svg?maxAge=604800)](https://hub.docker.com/r/pgsty/mc/)
+
+> 这是由 [Pigsty](https://pigsty.io) 维护的社区分支，不是 MinIO 官方发行版。
+> 本分支禁用 `mc update`；请通过 [Pigsty 软件仓库](https://pigsty.io/docs/repo/infra/list/#object-storage)
+> 或 [pgsty/mc Releases](https://github.com/pgsty/mc/releases) 升级。
 
 MinIO Client (mc)为ls，cat，cp，mirror，diff，find等UNIX命令提供了一种替代方案。它支持文件系统和兼容Amazon S3的云存储服务（AWS Signature v2和v4）。
 
@@ -20,70 +24,53 @@ watch     监听文件和对象的事件。
 anonymous 管理访问策略。
 session   为cp命令管理保存的会话。
 config    管理mc配置文件。
-update    检查软件更新。
+update    本 Pigsty 构建已禁用自更新。
 version   输出版本信息。
 ```
 
 ## Docker容器
 ### 稳定版
 ```
-docker pull minio/mc
-docker run minio/mc ls play
+docker pull pgsty/mc
+docker run pgsty/mc ls play
 ```
 
 ### 尝鲜版
 ```
-docker pull minio/mc:edge
-docker run minio/mc:edge ls play
+docker pull pgsty/mc:RELEASE.YYYY-MM-DDThh-mm-ssZ
+docker run pgsty/mc:RELEASE.YYYY-MM-DDThh-mm-ssZ ls play
 ```
 
 **注意:** 上述示例默认使用MinIO[演示环境](#test-your-setup)做演示，如果想用`mc`操作其它S3兼容的服务，采用下面的方式来启动容器：
 
 ```
-docker run -it --entrypoint=/bin/sh minio/mc
+docker run -it --entrypoint=/bin/sh pgsty/mc
 ```
 
 然后使用[`mc config`命令](#add-a-cloud-storage-service)。
 
 ## macOS
-### Homebrew
-使用[Homebrew](http://brew.sh/)安装mc。
-
-```
-brew install minio/stable/mc
-mc --help
-```
+请从 [pgsty/mc Releases](https://github.com/pgsty/mc/releases)
+下载对应的 macOS 压缩包及校验和。MinIO 官方 Homebrew Tap 安装的是上游版本。
 
 ## GNU/Linux
-### 下载二进制文件
-| 平台 | CPU架构 | URL |
-| ---------- | -------- |------|
-|GNU/Linux|64-bit Intel|https://dl.min.io/client/mc/release/linux-amd64/mc |
-
-```
-chmod +x mc
-./mc --help
-```
+请从 [Pigsty 软件仓库](https://pigsty.io/docs/repo/infra/list/#object-storage)
+安装 `mcli` 软件包，或从 [pgsty/mc Releases](https://github.com/pgsty/mc/releases)
+下载压缩包及校验和。
 
 ## Microsoft Windows
-### 下载二进制文件
-| 平台 | CPU架构 | URL |
-| ---------- | -------- |------|
-|Microsoft Windows|64-bit Intel|https://dl.min.io/client/mc/release/windows-amd64/mc.exe |
-
-```
-mc.exe --help
-```
+请从 [pgsty/mc Releases](https://github.com/pgsty/mc/releases)
+下载 Windows 压缩包及校验和。
 
 ## 通过源码安装
-通过源码安装仅适用于开发人员和高级用户。`mc update`命令不支持基于源码安装的更新通知。请从https://min.io/download/#minio-client下载官方版本。
+通过源码安装仅适用于开发人员和高级用户。本分支的 `mc update` 始终禁用。
 
-如果您没有Golang环境，请参照[如何安装Golang](https://golang.org/doc/install)。最低需要的版本是[go1.26.2](https://golang.org/dl/#stable)。
+如果您没有Golang环境，请参照[如何安装Golang](https://golang.org/doc/install)。最低需要的版本是[go1.26.5](https://golang.org/dl/#stable)。
 
 ```
-go get -d github.com/minio/mc
-cd ${GOPATH}/src/github.com/minio/mc
-make
+git clone https://github.com/pgsty/mc.git
+cd mc
+make build
 ```
 
 ## 添加一个云存储服务
@@ -151,11 +138,10 @@ alias find='mc find'
 ```
 
 ### Shell自动补全
-你也可以下载[`autocomplete/bash_autocomplete`](https://raw.githubusercontent.com/minio/mc/master/autocomplete/bash_autocomplete)到`/etc/bash_completion.d/`，然后将其重命名为`mc`。别忘了在这个文件运行source命令让其在你的当前shell上可用。
+`mc` 已内置 Bash、Zsh 和 Fish 自动补全。运行以下命令安装，然后重启 Shell：
 
 ```
-sudo wget https://raw.githubusercontent.com/minio/mc/master/autocomplete/bash_autocomplete -O /etc/bash_completion.d/mc
-source /etc/bash_completion.d/mc
+mc --autocompletion
 ```
 
 ```
