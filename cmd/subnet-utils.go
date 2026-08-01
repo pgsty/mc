@@ -162,8 +162,12 @@ func subnetHTTPDo(req *http.Request) (resp *http.Response, err error) {
 
 // dumpHTTP - dump HTTP request and response.
 func dumpHTTPReq(req *http.Request, resp *http.Response) error {
+	return dumpHTTPReqTo(os.Stderr, req, resp)
+}
+
+func dumpHTTPReqTo(out io.Writer, req *http.Request, resp *http.Response) error {
 	// Starts http dump.
-	_, err := fmt.Fprintln(os.Stderr, "---------START-HTTP---------")
+	_, err := fmt.Fprintln(out, "---------START-HTTP---------")
 	if err != nil {
 		return err
 	}
@@ -177,8 +181,12 @@ func dumpHTTPReq(req *http.Request, resp *http.Response) error {
 
 	query := req.URL.Query()
 	for _, q := range []string{"api-key", "api_key"} {
-		if val := query.Get(q); val != "" {
-			query.Add(q, strings.Repeat("*", len(val)))
+		if values, ok := query[q]; ok {
+			maskLen := 0
+			for _, val := range values {
+				maskLen = max(maskLen, len(val))
+			}
+			query.Set(q, strings.Repeat("*", maskLen))
 		}
 	}
 	req.URL.RawQuery = query.Encode()
@@ -190,24 +198,26 @@ func dumpHTTPReq(req *http.Request, resp *http.Response) error {
 	}
 
 	// Write request to trace output.
-	_, err = fmt.Fprint(os.Stderr, string(reqTrace))
+	_, err = fmt.Fprint(out, string(reqTrace))
 	if err != nil {
 		return err
 	}
 
-	respTrace, err := httputil.DumpResponse(resp, true)
+	// SUBNET responses may contain API keys or licenses. Response headers are
+	// sufficient for debugging without copying credentials into debug logs.
+	respTrace, err := httputil.DumpResponse(resp, false)
 	if err != nil {
 		return err
 	}
 
 	// Write response to trace output.
-	_, err = fmt.Fprint(os.Stderr, strings.TrimSuffix(string(respTrace), "\r\n"))
+	_, err = fmt.Fprint(out, strings.TrimSuffix(string(respTrace), "\r\n"))
 	if err != nil {
 		return err
 	}
 
 	// Ends the http dump.
-	_, err = fmt.Fprintln(os.Stderr, "---------END-HTTP---------")
+	_, err = fmt.Fprintln(out, "---------END-HTTP---------")
 	return err
 }
 

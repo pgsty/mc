@@ -18,9 +18,68 @@
 package cmd
 
 import (
+	"bytes"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
+
+func TestDumpHTTPReqRedactsSecrets(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "https://example.test/debug?api-key=&api-key=query-secret&api-key=second-secret&api_key=underscore-secret", nil)
+	req.Header.Set("Authorization", "Bearer auth-secret")
+	req.Header.Set("x-subnet-license", "license-header-secret")
+	req.Header.Set("x-subnet-api-key", "header-api-secret")
+	responseBody := `{"api_key":"response-api-secret","license":"response-license-secret"}`
+	resp := &http.Response{
+		Status:     "200 OK",
+		StatusCode: http.StatusOK,
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(strings.NewReader(responseBody)),
+		Request:    req,
+	}
+	var trace bytes.Buffer
+	if err := dumpHTTPReqTo(&trace, req, resp); err != nil {
+		t.Fatal(err)
+	}
+
+	for key, want := range map[string]string{
+		"api-key": strings.Repeat("*", len("second-secret")),
+		"api_key": strings.Repeat("*", len("underscore-secret")),
+	} {
+		values := req.URL.Query()[key]
+		if len(values) != 1 || values[0] != want {
+			t.Errorf("query parameter %q was not fully redacted: %q", key, values)
+		}
+	}
+	for _, secret := range []string{
+		"query-secret",
+		"second-secret",
+		"underscore-secret",
+		"auth-secret",
+		"license-header-secret",
+		"header-api-secret",
+		"response-api-secret",
+		"response-license-secret",
+	} {
+		if strings.Contains(trace.String(), secret) {
+			t.Errorf("HTTP trace contains secret %q: %s", secret, trace.String())
+		}
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(body); got != responseBody {
+		t.Fatalf("response body changed while tracing: got %q, want %q", got, responseBody)
+	}
+}
 
 func TestSubnetBaseURL(t *testing.T) {
 	sbu := SubnetBaseURL()
