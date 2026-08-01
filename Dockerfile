@@ -13,6 +13,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+# Development image by default. Formal releases use .github/goreleaser.yml;
+# without caller-supplied LDFLAGS this image reports DEVELOPMENT.GOGET metadata.
 ARG LDFLAGS=""
 RUN go build -trimpath -tags kqueue \
     -ldflags "${LDFLAGS}" \

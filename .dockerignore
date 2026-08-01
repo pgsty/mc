@@ -1,0 +1,15 @@
+# Keep in sync with Dockerfile.dockerignore, except for /mc and /mc.gz:
+# Dockerfile.dev copies the local ./mc binary built by the Makefile docker target.
+.git
+.github
+.idea
+.vscode
+.run*
+.DS_Store
+dist
+build
+release
+cover.out
+coverage.txt
+*.test
+*.tar.bz2
