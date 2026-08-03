@@ -4,15 +4,13 @@ platform: linux
 version: ${PKG_VERSION}
 version_schema: none
 release: ${NFPM_RELEASE}
-section: ""
+section: utils
 priority: optional
 maintainer: "Ruohang Feng (@Vonng) <rh@vonng.com>"
-description: |-
-  S3-Interface Libre Object Storage
-  A MinIO fork maintained by the Pigsty community.
+description: S3-Interface Libre Object Storage, Community-maintained MinIO client fork.
 vendor: PGSTY
 homepage: https://silo.pgsty.com
-license: AGPLv3
+license: AGPL-3.0-or-later
 
 contents:
   - src: ${NFPM_SOURCE}
@@ -30,4 +28,4 @@ rpm:
 deb:
   compression: gzip
   fields:
-    License: AGPLv3
+    License: AGPL-3.0-or-later

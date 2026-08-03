@@ -9,9 +9,13 @@ on:
       - "Dockerfile.goreleaser"
       - "buildscripts/package-release.sh"
       - "buildscripts/sign-release-rpms.sh"
+      - "buildscripts/verify-build-provenance.sh"
+      - "buildscripts/gen-ldflags.go"
       - ".github/workflows/docker-release.yml"
       - ".github/workflows/release.yml"
       - ".github/workflows/test-release.yml"
+      - ".gitignore"
+      - "Makefile"
 
 permissions:
   contents: read
@@ -21,12 +25,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: go.mod
           cache: true
@@ -47,13 +51,13 @@ jobs:
           echo "LDFLAGS: ${LDFLAGS}"
 
       - name: GoReleaser config check
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           version: v2.17.1
           args: check --config .github/goreleaser.yml
 
       - name: Build snapshot artifacts
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           version: v2.17.1
           args: release --snapshot --clean --skip=publish --config .github/goreleaser.yml
@@ -61,13 +65,18 @@ jobs:
           LDFLAGS: ${{ env.LDFLAGS }}
           PKG_VERSION: ${{ env.PKG_VERSION }}
 
+      - name: Verify binary provenance stamps
+        run: |
+          set -euo pipefail
+          buildscripts/verify-build-provenance.sh
+
       - name: Install package validation tools
         run: |
           set -euo pipefail
           go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
           echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
           sudo apt-get update
-          sudo apt-get install --yes cpio rpm
+          sudo apt-get install --yes rpm binutils
 
       - name: Package snapshot binaries with nFPM
         run: |
@@ -95,21 +104,45 @@ jobs:
           done
 
           test "$(find . -maxdepth 1 -type f \( -name '*.rpm' -o -name '*.deb' -o -name '*.apk' \) | wc -l)" -eq 6
-          test "$(rpm -qp --queryformat '%{VENDOR}' "mcli-${PKG_VERSION}-1.x86_64.rpm")" = "PGSTY"
-          test "$(rpm -qp --queryformat '%{PACKAGER}' "mcli-${PKG_VERSION}-1.x86_64.rpm")" = "Ruohang Feng (@Vonng) <rh@vonng.com>"
-          test "$(rpm -qp --queryformat '%{URL}' "mcli-${PKG_VERSION}-1.x86_64.rpm")" = "https://silo.pgsty.com"
-          test "$(rpm -qp --queryformat '%{GROUP}' "mcli-${PKG_VERSION}-1.x86_64.rpm")" = "Applications/File"
-          rpm -qpl "mcli-${PKG_VERSION}-1.x86_64.rpm" | grep -Fx '/usr/local/bin/mcli'
 
-          test "$(dpkg-deb --field "mcli_${PKG_VERSION}_amd64.deb" Maintainer)" = "Ruohang Feng (@Vonng) <rh@vonng.com>"
-          test "$(dpkg-deb --field "mcli_${PKG_VERSION}_amd64.deb" Version)" = "${PKG_VERSION}"
-          test "$(dpkg-deb --field "mcli_${PKG_VERSION}_amd64.deb" License)" = "AGPLv3"
-          test "$(dpkg-deb --field "mcli_${PKG_VERSION}_amd64.deb" Homepage)" = "https://silo.pgsty.com"
-          dpkg-deb --contents "mcli_${PKG_VERSION}_amd64.deb" | grep -E 'usr/local/bin/mcli$'
+          # sign-release-rpms.sh refuses to sign an RPM whose metadata does not
+          # match these values, and it runs on a maintainer laptop *after* the
+          # release workflow has already built and uploaded. Take its
+          # expectations as the single source of truth so nfpm.yml and the
+          # signing script cannot drift apart without failing here first.
+          eval "$(grep -E '^expected_(vendor|packager|url|summary|description|license|group)=' \
+            ../../buildscripts/sign-release-rpms.sh)"
+          for value in "${expected_vendor}" "${expected_packager}" "${expected_url}" \
+                       "${expected_summary}" "${expected_description}" \
+                       "${expected_license}" "${expected_group}"; do
+            test -n "${value}"
+          done
+
+          rpm_file="mcli-${PKG_VERSION}-1.x86_64.rpm"
+          test "$(rpm -qp --queryformat '%{VENDOR}' "${rpm_file}")" = "${expected_vendor}"
+          test "$(rpm -qp --queryformat '%{PACKAGER}' "${rpm_file}")" = "${expected_packager}"
+          test "$(rpm -qp --queryformat '%{URL}' "${rpm_file}")" = "${expected_url}"
+          test "$(rpm -qp --queryformat '%{SUMMARY}' "${rpm_file}")" = "${expected_summary}"
+          test "$(rpm -qp --queryformat '%{DESCRIPTION}' "${rpm_file}")" = "${expected_description}"
+          test "$(rpm -qp --queryformat '%{LICENSE}' "${rpm_file}")" = "${expected_license}"
+          test "$(rpm -qp --queryformat '%{GROUP}' "${rpm_file}")" = "${expected_group}"
+          rpm -qpl "${rpm_file}" | grep -Fx '/usr/local/bin/mcli'
+
+          deb_file="mcli_${PKG_VERSION}_amd64.deb"
+          test "$(dpkg-deb --field "${deb_file}" Maintainer)" = "${expected_packager}"
+          test "$(dpkg-deb --field "${deb_file}" Version)" = "${PKG_VERSION}"
+          test "$(dpkg-deb --field "${deb_file}" License)" = "${expected_license}"
+          test "$(dpkg-deb --field "${deb_file}" Section)" = "utils"
+          test "$(dpkg-deb --field "${deb_file}" Homepage)" = "${expected_url}"
+          test "$(dpkg-deb --field "${deb_file}" Description)" = "${expected_description}"
+          dpkg-deb --contents "${deb_file}" | grep -E 'usr/local/bin/mcli$'
 
           apk_info="$(tar -xOzf "mcli_${PKG_VERSION}_x86_64.apk" .PKGINFO)"
           grep -Fx "pkgver = ${PKG_VERSION}" <<< "${apk_info}"
-          grep -Fx 'url = https://silo.pgsty.com' <<< "${apk_info}"
+          grep -Fx "url = ${expected_url}" <<< "${apk_info}"
+          grep -Fx "maintainer = ${expected_packager}" <<< "${apk_info}"
+          grep -Fx "license = ${expected_license}" <<< "${apk_info}"
+          grep -Fx "pkgdesc = ${expected_description}" <<< "${apk_info}"
           tar -tzf "mcli_${PKG_VERSION}_x86_64.apk" | grep -Fx 'usr/local/bin/mcli'
 
           for arch in amd64 arm64; do
@@ -123,9 +156,21 @@ jobs:
               apk_arch=aarch64
             fi
 
+            test "$(rpm -qp --queryformat '%{ARCH}' "mcli-${PKG_VERSION}-1.${rpm_arch}.rpm")" = "${rpm_arch}"
+            test "$(dpkg-deb --field "mcli_${PKG_VERSION}_${deb_arch}.deb" Architecture)" = "${deb_arch}"
+            grep -Fx "arch = ${apk_arch}" <<< "$(tar -xOzf "mcli_${PKG_VERSION}_${apk_arch}.apk" .PKGINFO)"
+
             source_binary="$(find .. -maxdepth 2 -type f -path "../mcli_linux_${arch}*/mcli" | head -n 1)"
             source_sha="$(sha256sum "${source_binary}" | awk '{print $1}')"
-            rpm_sha="$(rpm2cpio "mcli-${PKG_VERSION}-1.${rpm_arch}.rpm" | cpio --quiet -i --to-stdout /usr/local/bin/mcli | sha256sum | awk '{print $1}')"
+
+            # Do not pipe rpm2cpio here: Debian's build exits non-zero even when
+            # it writes a correct payload, which trips `set -o pipefail` and made
+            # this whole step unrunnable on ubuntu-latest. Use rpm's own digests
+            # instead -- -K checks the payload against the header, and
+            # FILEDIGESTS is the sha256 rpm itself verifies on install.
+            rpm -K "mcli-${PKG_VERSION}-1.${rpm_arch}.rpm"
+            rpm_sha="$(rpm -qp --queryformat '[%{FILENAMES} %{FILEDIGESTS}\n]' \
+              "mcli-${PKG_VERSION}-1.${rpm_arch}.rpm" | awk '$1 == "/usr/local/bin/mcli" { print $2 }')"
             deb_sha="$(ar p "mcli_${PKG_VERSION}_${deb_arch}.deb" data.tar.gz | tar -xzOf - ./usr/local/bin/mcli | sha256sum | awk '{print $1}')"
             apk_sha="$(tar -xzOf "mcli_${PKG_VERSION}_${apk_arch}.apk" usr/local/bin/mcli | sha256sum | awk '{print $1}')"
 
@@ -134,8 +179,28 @@ jobs:
             test "${source_sha}" = "${apk_sha}"
           done
 
+      # docker-release.yml is workflow_dispatch only, so Dockerfile.goreleaser is
+      # otherwise never built until a real publish. Assemble the same context it
+      # builds and exercise the image here, without pushing anything.
+      - name: Build release container image (no push)
+        run: |
+          set -euo pipefail
+          context="$(mktemp -d)"
+          tar -xzf "dist/mcli_${PKG_VERSION}_linux_amd64.tar.gz" -C "${context}" mcli
+          mv "${context}/mcli" "${context}/mc"
+          cp Dockerfile.goreleaser LICENSE CREDITS "${context}/"
+          docker build --tag mcli-release-test:snapshot \
+            --file "${context}/Dockerfile.goreleaser" "${context}"
+          docker run --rm mcli-release-test:snapshot --version
+          docker image inspect mcli-release-test:snapshot \
+            --format '{{ index .Config.Labels "org.opencontainers.image.vendor" }}' | grep -Fx PGSTY
+
       - name: Validate release scripts
         run: |
           set -euo pipefail
           bash -n buildscripts/package-release.sh
           bash -n buildscripts/sign-release-rpms.sh
+          bash -n buildscripts/verify-build-provenance.sh
+          test -x buildscripts/package-release.sh
+          test -x buildscripts/sign-release-rpms.sh
+          test -x buildscripts/verify-build-provenance.sh
