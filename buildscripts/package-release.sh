@@ -45,16 +45,27 @@ sha256_file() {
 
 find_binary() {
   local goarch="$1"
-  local binary
+  local matches
+  local count
 
-  binary="$(find "${dist_dir}" -maxdepth 2 -type f \
-    -path "${dist_dir}/mcli_linux_${goarch}*/mcli" | sort | head -n 1)"
-  if [ -z "${binary}" ]; then
+  # Must resolve to exactly one binary. Picking the first of several build
+  # variants (extra goamd64/goarm64 levels, stale dist entries) would silently
+  # ship a package whose contents do not match its name.
+  matches="$(find "${dist_dir}" -maxdepth 2 -type f \
+    -path "${dist_dir}/mcli_linux_${goarch}*/mcli" | sort)"
+  count="$(printf '%s' "${matches}" | grep -c . || true)"
+
+  if [ "${count}" -eq 0 ]; then
     echo "Missing GoReleaser binary for linux/${goarch}" >&2
     exit 1
   fi
+  if [ "${count}" -ne 1 ]; then
+    echo "Expected exactly one GoReleaser binary for linux/${goarch}, found ${count}:" >&2
+    printf '%s\n' "${matches}" >&2
+    exit 1
+  fi
 
-  printf '%s\n' "${binary}"
+  printf '%s\n' "${matches}"
 }
 
 build_arch() {

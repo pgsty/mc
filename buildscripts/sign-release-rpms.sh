@@ -6,8 +6,10 @@ expected_fingerprint="9592A7BC7A682E7333376E09E7935D8DB9BD8B20"
 expected_vendor="PGSTY"
 expected_packager="Ruohang Feng (@Vonng) <rh@vonng.com>"
 expected_url="https://silo.pgsty.com"
-expected_summary="S3-Interface Libre Object Storage"
-expected_description=$'S3-Interface Libre Object Storage\nA MinIO fork maintained by the Pigsty community.'
+expected_summary="S3-Interface Libre Object Storage, Community-maintained MinIO client fork."
+expected_description="S3-Interface Libre Object Storage, Community-maintained MinIO client fork."
+expected_license="AGPL-3.0-or-later"
+expected_group="Applications/File"
 repository="${GH_REPO:-pgsty/mc}"
 container="${DNFUPDATE_CONTAINER:-dnfupdate}"
 upload=false
@@ -202,8 +204,8 @@ for rpm_file in "${rpm_files[@]}"; do
   assert_rpm_tag "${container_rpm}" VENDOR "${expected_vendor}"
   assert_rpm_tag "${container_rpm}" PACKAGER "${expected_packager}"
   assert_rpm_tag "${container_rpm}" URL "${expected_url}"
-  assert_rpm_tag "${container_rpm}" LICENSE AGPLv3
-  assert_rpm_tag "${container_rpm}" GROUP Applications/File
+  assert_rpm_tag "${container_rpm}" LICENSE "${expected_license}"
+  assert_rpm_tag "${container_rpm}" GROUP "${expected_group}"
   assert_rpm_tag "${container_rpm}" SUMMARY "${expected_summary}"
   assert_rpm_tag "${container_rpm}" DESCRIPTION "${expected_description}"
 

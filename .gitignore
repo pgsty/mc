@@ -17,3 +17,4 @@ mc.gz
 .vscode/
 .bin/
 .release-sign/
+dist/
