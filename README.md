@@ -6,11 +6,13 @@
 </p>
 
 <p align="center">
-  <a href="README_zh_CN.md">中文</a> ·
-  <a href="https://silo.pigsty.io">Documentation</a> ·
+  <a href="https://silo.pgsty.com/">Website</a> ·
+  <a href="https://silo.pgsty.com/reference/minio-mc/">Documentation</a> ·
+  <a href="https://silo.pgsty.com/download/#client">Download</a> ·
+  <a href="https://silo.pgsty.com/blog/">Blog</a> ·
   <a href="https://github.com/pgsty/mc/releases">Releases</a> ·
-  <a href="https://hub.docker.com/r/pgsty/mc">Container Images</a> ·
-  <a href="https://pigsty.io/docs/repo/infra/list/#object-storage">Linux Packages</a>
+  <a href="https://silo.pgsty.com/about/security/">Security</a> ·
+  <a href="README_zh_CN.md">中文</a>
 </p>
 
 <p align="center">
@@ -27,7 +29,22 @@
 
 `pgsty/mc` maintains one downstream release line based on the archived upstream MinIO Client branch at [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88). It provides maintained client builds after the upstream repository was archived.
 
-This fork exists so [Silo](https://github.com/pgsty/minio) and Pigsty deployments have a compatible CLI that can be built, patched, tested, and released through the same maintained supply chain. It also remains a general-purpose client for filesystems and Amazon S3-compatible object stores.
+This fork exists so [Silo](https://silo.pgsty.com/) and Pigsty deployments have a compatible CLI that can be built, patched, tested, and released through the same maintained supply chain. It also remains a general-purpose client for filesystems and Amazon S3-compatible object stores.
+
+The official project portal is [silo.pgsty.com](https://silo.pgsty.com/). It brings the client reference, downloads, release and security notes, and project legal information together. English is served at the site root; Chinese is available under [/zh/](https://silo.pgsty.com/zh/).
+
+## Find the Right Resource
+
+| Looking for | Canonical location |
+| :-- | :-- |
+| Project overview and navigation | [Silo Website](https://silo.pgsty.com/) ([中文](https://silo.pgsty.com/zh/)) |
+| `mcli` installation methods and downloads | [Download & Install](https://silo.pgsty.com/download/#client) ([中文](https://silo.pgsty.com/zh/download/#client)) |
+| Client and administration command reference | [`mcli` reference](https://silo.pgsty.com/reference/minio-mc/) and [`mcli admin` reference](https://silo.pgsty.com/reference/minio-mc-admin/) ([中文](https://silo.pgsty.com/zh/reference/minio-mc/)) |
+| Project news, release notes, and security notes | [Blog](https://silo.pgsty.com/blog/), including [releases](https://silo.pgsty.com/blog/release/) and [security](https://silo.pgsty.com/blog/security/) |
+| Versioned archives, packages, checksums, and source | [GitHub Releases](https://github.com/pgsty/mc/releases) |
+| Bug reports and feature discussions | [GitHub Issues](https://github.com/pgsty/mc/issues) |
+| Vulnerability reporting | [Security Policy](https://silo.pgsty.com/about/security/) |
+| License, attribution, and trademark information | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), [`CREDITS`](CREDITS), and the portal's [License](https://silo.pgsty.com/about/license/), [Attribution](https://silo.pgsty.com/about/attribution/), and [Trademark](https://silo.pgsty.com/about/trademark/) pages |
 
 ## Maintenance Policy
 
@@ -62,7 +79,9 @@ The `mc update` command is intentionally disabled. Upgrade through the [Pigsty p
 
 Compatibility is a goal, not a guarantee. Server-specific administration commands may vary across versions. Pin releases, review the release notes, keep a rollback path, and test the client against the target service before production use.
 
-## Release Artifacts
+## Downloads and Release Artifacts
+
+Use [Download & Install](https://silo.pgsty.com/download/#client) to choose a client installation method. GitHub Releases remains the source for versioned archives, packages, checksums, and source archives.
 
 | Artifact | Location |
 | :-- | :-- |
@@ -71,7 +90,7 @@ Compatibility is a goal, not a guarantee. Server-specific administration command
 | Linux packages | RPM, DEB, and APK for `x86_64`/`aarch64`, also distributed through the [Pigsty repository](https://pigsty.io/docs/repo/infra/list/#object-storage) |
 | Container image | [`pgsty/mc`](https://hub.docker.com/r/pgsty/mc), multi-arch for `linux/amd64` and `linux/arm64`, with `mc` as the entrypoint |
 | Silo bundle | [`pgsty/minio`](https://hub.docker.com/r/pgsty/minio) includes the client as `mcli` with an `mc` compatibility alias |
-| Documentation | [Silo documentation](https://silo.pigsty.io) and the [MinIO Client reference](https://docs.min.io/community/minio-object-store/reference/minio-mc.html) |
+| Documentation | [Client command reference](https://silo.pgsty.com/reference/minio-mc/) and [administration command reference](https://silo.pgsty.com/reference/minio-mc-admin/) |
 
 ## Quick Start
 
@@ -117,7 +136,7 @@ make build
 | `replicate` | Configure bucket replication |
 | `admin` | Operate compatible MinIO/Silo servers |
 
-Run `mcli --help`, `mcli <command> --help`, or consult the [client reference](https://docs.min.io/community/minio-object-store/reference/minio-mc.html) for the complete command set.
+Run `mcli --help`, `mcli <command> --help`, or consult the [client reference](https://silo.pgsty.com/reference/minio-mc/) for the complete command set.
 
 ## Contributing
 
@@ -133,12 +152,14 @@ The broader upstream changes, alternatives considered, and early fork maintenanc
 
 | Essay | Subject |
 | :-- | :-- |
-| [MinIO Is Dead](https://blog.vonng.com/en/db/minio-is-dead/) | Changes to the upstream project and distribution model |
-| [MinIO Is Dead, Long Live MinIO](https://blog.vonng.com/en/db/minio-resurrect/) | Establishing the server and client release pipeline |
-| [Two months into maintaining a MinIO fork](https://blog.vonng.com/en/db/minio-promise-kept/) | Initial security and maintenance work |
+| [MinIO Is Dead](https://silo.pgsty.com/blog/post/minio-is-dead/) | Changes to the upstream project and distribution model |
+| [MinIO Is Dead, Long Live MinIO](https://silo.pgsty.com/blog/post/minio-resurrect/) | Establishing the server and client release pipeline |
+| [Two months into maintaining a MinIO fork](https://silo.pgsty.com/blog/post/minio-promise-kept/) | Initial security and maintenance work |
 
-## License and Trademark
+## License, Attribution, and Trademark
 
-The client remains licensed under the [GNU Affero General Public License v3.0](LICENSE). See [`CREDITS`](CREDITS) for upstream authorship and attribution.
+The client source is distributed under the [GNU Affero General Public License v3.0 or later](LICENSE). This fork derives from [`minio/mc`](https://github.com/minio/mc): [`NOTICE`](NOTICE) retains the upstream product notice, [`CREDITS`](CREDITS) records licenses and notices for included third-party components, and the Git history records downstream modifications.
 
-MinIO is a trademark of MinIO, Inc. Pigsty, Silo, `pgsty/mc`, and `mcli` are independent community efforts and are not affiliated with or endorsed by MinIO, Inc.
+MinIO is a trademark of MinIO, Inc. The name is used here only to identify the upstream project and compatibility lineage. Pigsty, Silo, `pgsty/mc`, and `mcli` are independent community efforts and are not affiliated with, endorsed by, or sponsored by MinIO, Inc.
+
+The portal separately publishes the project [license summary](https://silo.pgsty.com/about/license/), [documentation attribution](https://silo.pgsty.com/about/attribution/), and [trademark notice](https://silo.pgsty.com/about/trademark/).

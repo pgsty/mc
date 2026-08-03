@@ -1,0 +1,151 @@
+name: Publish Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Published RELEASE.* tag to package as pgsty/mc"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate published release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          TAG="${INPUT_TAG}"
+          VERSION_HYPHEN="${TAG#RELEASE.}"
+          PKG_VERSION="$(echo "${VERSION_HYPHEN}" | sed -E 's/^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2})-([0-9]{2})-([0-9]{2})Z$/\1\2\3\4\5\6.0.0/')"
+          if [ "${PKG_VERSION}" = "${VERSION_HYPHEN}" ]; then
+            echo "Invalid release tag: ${TAG}"
+            exit 1
+          fi
+
+          IS_DRAFT="$(gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json isDraft --jq .isDraft)"
+          IS_PRERELEASE="$(gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json isPrerelease --jq .isPrerelease)"
+          PUBLISHED_AT="$(gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" --json publishedAt --jq .publishedAt)"
+          LATEST_TAG="$(gh release view --repo "${GITHUB_REPOSITORY}" --json tagName --jq .tagName)"
+
+          if [ "${IS_DRAFT}" != false ] || [ "${IS_PRERELEASE}" != false ] || [ -z "${PUBLISHED_AT}" ]; then
+            echo "${TAG} must be a published, non-prerelease GitHub Release"
+            exit 1
+          fi
+          if [ "${TAG}" != "${LATEST_TAG}" ]; then
+            echo "Refusing to replace Docker latest with non-latest release ${TAG} (latest is ${LATEST_TAG})"
+            exit 1
+          fi
+
+          {
+            echo "RELEASE_TAG=${TAG}"
+            echo "PKG_VERSION=${PKG_VERSION}"
+            echo "PUBLISHED_AT=${PUBLISHED_AT}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Prepare verified Docker contexts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          assets_dir="docker-release/assets"
+          mkdir -p "${assets_dir}"
+
+          amd64_archive="mcli_${PKG_VERSION}_linux_amd64.tar.gz"
+          arm64_archive="mcli_${PKG_VERSION}_linux_arm64.tar.gz"
+          checksums="mcli_${PKG_VERSION}_checksums.txt"
+          gh release download "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" \
+            --dir "${assets_dir}" \
+            --pattern "${amd64_archive}" \
+            --pattern "${arm64_archive}" \
+            --pattern "${checksums}"
+
+          cd "${assets_dir}"
+          grep -F "  ${amd64_archive}" "${checksums}" | sha256sum --check
+          grep -F "  ${arm64_archive}" "${checksums}" | sha256sum --check
+          cd "${GITHUB_WORKSPACE}"
+
+          for arch in amd64 arm64; do
+            context="docker-release/${arch}"
+            archive="${assets_dir}/mcli_${PKG_VERSION}_linux_${arch}.tar.gz"
+            mkdir -p "${context}"
+            tar -xzf "${archive}" -C "${context}" mcli
+            mv "${context}/mcli" "${context}/mc"
+            cp Dockerfile.goreleaser LICENSE CREDITS "${context}/"
+          done
+
+          echo "RELEASE_REVISION=$(git rev-parse HEAD)" >> "${GITHUB_ENV}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push amd64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker-release/amd64
+          file: docker-release/amd64/Dockerfile.goreleaser
+          platforms: linux/amd64
+          push: true
+          tags: |
+            pgsty/mc:${{ env.RELEASE_TAG }}-amd64
+            pgsty/mc:latest-amd64
+          labels: |
+            org.opencontainers.image.version=${{ env.RELEASE_TAG }}
+            org.opencontainers.image.created=${{ env.PUBLISHED_AT }}
+            org.opencontainers.image.revision=${{ env.RELEASE_REVISION }}
+
+      - name: Build and push arm64 image
+        uses: docker/build-push-action@v6
+        with:
+          context: docker-release/arm64
+          file: docker-release/arm64/Dockerfile.goreleaser
+          platforms: linux/arm64
+          push: true
+          tags: |
+            pgsty/mc:${{ env.RELEASE_TAG }}-arm64
+            pgsty/mc:latest-arm64
+          labels: |
+            org.opencontainers.image.version=${{ env.RELEASE_TAG }}
+            org.opencontainers.image.created=${{ env.PUBLISHED_AT }}
+            org.opencontainers.image.revision=${{ env.RELEASE_REVISION }}
+
+      - name: Publish multi-architecture manifests
+        run: |
+          set -euo pipefail
+          docker buildx imagetools create \
+            --tag "pgsty/mc:${RELEASE_TAG}" \
+            "pgsty/mc:${RELEASE_TAG}-amd64" \
+            "pgsty/mc:${RELEASE_TAG}-arm64"
+          docker buildx imagetools create \
+            --tag "pgsty/mc:latest" \
+            "pgsty/mc:latest-amd64" \
+            "pgsty/mc:latest-arm64"
+          docker buildx imagetools inspect "pgsty/mc:${RELEASE_TAG}"
+          docker buildx imagetools inspect "pgsty/mc:latest"

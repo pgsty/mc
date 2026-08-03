@@ -1,0 +1,33 @@
+name: mcli
+arch: ${NFPM_ARCH}
+platform: linux
+version: ${PKG_VERSION}
+version_schema: none
+release: ${NFPM_RELEASE}
+section: ""
+priority: optional
+maintainer: "Ruohang Feng (@Vonng) <rh@vonng.com>"
+description: |-
+  S3-Interface Libre Object Storage
+  A MinIO fork maintained by the Pigsty community.
+vendor: PGSTY
+homepage: https://silo.pgsty.com
+license: AGPLv3
+
+contents:
+  - src: ${NFPM_SOURCE}
+    dst: /usr/local/bin/mcli
+    expand: true
+    file_info:
+      mode: 0755
+      owner: root
+      group: root
+
+rpm:
+  group: Applications/File
+  compression: gzip:9
+
+deb:
+  compression: gzip
+  fields:
+    License: AGPLv3

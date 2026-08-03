@@ -16,3 +16,4 @@ mc.gz
 .DS_Store
 .vscode/
 .bin/
+.release-sign/

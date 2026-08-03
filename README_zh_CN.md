@@ -6,11 +6,13 @@
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> ·
-  <a href="https://silo.pigsty.cc">文档</a> ·
+  <a href="https://silo.pgsty.com/zh/">官网</a> ·
+  <a href="https://silo.pgsty.com/zh/reference/minio-mc/">文档</a> ·
+  <a href="https://silo.pgsty.com/zh/download/#client">下载</a> ·
+  <a href="https://silo.pgsty.com/zh/blog/">博客</a> ·
   <a href="https://github.com/pgsty/mc/releases">版本发布</a> ·
-  <a href="https://hub.docker.com/r/pgsty/mc">容器镜像</a> ·
-  <a href="https://pigsty.cc/docs/repo/infra/list/#object-storage">Linux 软件包</a>
+  <a href="https://silo.pgsty.com/zh/about/security/">安全策略</a> ·
+  <a href="README.md">English</a>
 </p>
 
 <p align="center">
@@ -27,7 +29,22 @@
 
 `pgsty/mc` 维护一条基于上游 MinIO Client 归档分支 [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88) 的下游版本线，在上游仓库归档后继续提供可维护的客户端构建。
 
-本分支的存在，是为了让 [Silo](https://github.com/pgsty/minio) 与 Pigsty 部署拥有可通过同一供应链构建、修补、测试和发布的兼容命令行客户端。它同时也是面向文件系统与 Amazon S3 兼容对象存储的通用客户端。
+本分支的存在，是为了让 [Silo](https://silo.pgsty.com/zh/) 与 Pigsty 部署拥有可通过同一供应链构建、修补、测试和发布的兼容命令行客户端。它同时也是面向文件系统与 Amazon S3 兼容对象存储的通用客户端。
+
+项目统一门户为 [silo.pgsty.com](https://silo.pgsty.com/zh/)，集中提供客户端命令参考、下载安装、版本与安全动态，以及项目法律信息。中文内容位于 `/zh/`，英文内容位于站点根路径。
+
+## 按需求选择入口
+
+| 需求 | 权威入口 |
+| :-- | :-- |
+| 项目概览与全站导航 | [Silo 中文门户](https://silo.pgsty.com/zh/)（[English](https://silo.pgsty.com/)） |
+| `mcli` 安装方式与软件下载 | [下载与安装](https://silo.pgsty.com/zh/download/#client)（[English](https://silo.pgsty.com/download/#client)） |
+| 客户端与管理命令参考 | [`mcli` 命令参考](https://silo.pgsty.com/zh/reference/minio-mc/)与 [`mcli admin` 命令参考](https://silo.pgsty.com/zh/reference/minio-mc-admin/)（[English](https://silo.pgsty.com/reference/minio-mc/)） |
+| 项目动态、版本说明与安全通告 | [博客](https://silo.pgsty.com/zh/blog/)，包括[版本发布](https://silo.pgsty.com/zh/blog/release/)与[安全通告](https://silo.pgsty.com/zh/blog/security/) |
+| 带版本的归档包、软件包、校验和与源码 | [GitHub Releases](https://github.com/pgsty/mc/releases) |
+| 缺陷报告与功能讨论 | [GitHub Issues](https://github.com/pgsty/mc/issues) |
+| 私密漏洞报告 | [安全策略](https://silo.pgsty.com/zh/about/security/) |
+| 许可证、署名与商标信息 | [`LICENSE`](LICENSE)、[`NOTICE`](NOTICE)、[`CREDITS`](CREDITS)，以及门户的[许可证](https://silo.pgsty.com/zh/about/license/)、[署名归属](https://silo.pgsty.com/zh/about/attribution/)与[商标政策](https://silo.pgsty.com/zh/about/trademark/)页面 |
 
 ## 维护政策
 
@@ -62,7 +79,9 @@
 
 兼容是目标，而非保证。服务端专用管理命令可能随版本变化。请锁定版本、阅读版本说明、保留回滚路径，并在生产使用前针对目标服务完成测试。
 
-## 发行产物
+## 下载与发行产物
+
+请先在[下载与安装](https://silo.pgsty.com/zh/download/#client)页面选择合适的客户端安装方式；GitHub Releases 仍是带版本归档包、软件包、校验和与源码归档的获取位置。
 
 | 产物 | 位置 |
 | :-- | :-- |
@@ -71,7 +90,7 @@
 | Linux 软件包 | 面向 `x86_64`/`aarch64` 的 RPM、DEB 与 APK，同时通过 [Pigsty 软件仓库](https://pigsty.cc/docs/repo/infra/list/#object-storage) 分发 |
 | 容器镜像 | [`pgsty/mc`](https://hub.docker.com/r/pgsty/mc)，支持 `linux/amd64` 与 `linux/arm64` 多架构清单，以 `mc` 作为入口 |
 | Silo 内置客户端 | [`pgsty/minio`](https://hub.docker.com/r/pgsty/minio) 以 `mcli` 提供本客户端，并保留 `mc` 兼容别名 |
-| 文档 | [Silo 中文文档](https://silo.pigsty.cc) 与 [MinIO Client 命令参考](https://docs.min.io/community/minio-object-store/reference/minio-mc.html) |
+| 文档 | [客户端命令参考](https://silo.pgsty.com/zh/reference/minio-mc/)与[管理命令参考](https://silo.pgsty.com/zh/reference/minio-mc-admin/) |
 
 ## 快速开始
 
@@ -117,7 +136,7 @@ make build
 | `replicate` | 配置存储桶复制 |
 | `admin` | 运维兼容的 MinIO/Silo 服务端 |
 
-运行 `mcli --help`、`mcli <command> --help`，或查阅[客户端命令参考](https://docs.min.io/community/minio-object-store/reference/minio-mc.html)了解完整命令集。
+运行 `mcli --help`、`mcli <command> --help`，或查阅[客户端命令参考](https://silo.pgsty.com/zh/reference/minio-mc/)了解完整命令集。
 
 ## 参与贡献
 
@@ -133,13 +152,15 @@ Issue 与 Pull Request 应说明受影响的客户端与服务端版本、复现
 
 | 文章 | 主题 |
 | :-- | :-- |
-| [MinIO已死](https://vonng.com/db/minio-is-dead/) | 上游项目与发行模式的变化 |
-| [MinIO已死，谁能接盘？](https://vonng.com/db/minio-alternative/) | 可选替代方案评估 |
-| [MinIO 已死，MinIO 复生](https://vonng.com/db/minio-resurrect/) | 建立服务端与客户端发行流水线 |
-| [续命 MinIO：承诺兑现](https://vonng.com/db/minio-promise-kept/) | 初期安全与维护工作 |
+| [MinIO已死](https://silo.pgsty.com/zh/blog/post/minio-is-dead/) | 上游项目与发行模式的变化 |
+| [MinIO已死，谁能接盘？](https://silo.pgsty.com/zh/blog/post/minio-alternative/) | 可选替代方案评估 |
+| [MinIO 已死，MinIO 复生](https://silo.pgsty.com/zh/blog/post/minio-resurrect/) | 建立服务端与客户端发行流水线 |
+| [续命 MinIO：承诺兑现](https://silo.pgsty.com/zh/blog/post/minio-promise-kept/) | 初期安全与维护工作 |
 
-## 许可证与商标
+## 许可证、署名与商标
 
-客户端继续采用 [GNU Affero General Public License v3.0](LICENSE) 发布。上游作者与署名信息见 [`CREDITS`](CREDITS)。
+客户端源码依据 [GNU Affero 通用公共许可证第 3 版或任何后续版本](LICENSE)分发。本分支衍生自 [`minio/mc`](https://github.com/minio/mc)：[`NOTICE`](NOTICE) 保留上游产品声明，[`CREDITS`](CREDITS) 记录所含第三方组件的许可证与声明，Git 历史记录下游修改。
 
-MinIO 是 MinIO, Inc. 的商标。Pigsty、Silo、`pgsty/mc` 与 `mcli` 均为独立社区项目，与 MinIO, Inc. 不存在隶属或背书关系。
+MinIO 是 MinIO, Inc. 的商标；本文仅为标识上游项目与兼容谱系而使用该名称。Pigsty、Silo、`pgsty/mc` 与 `mcli` 均为独立社区项目，与 MinIO, Inc. 不存在隶属、背书或赞助关系。
+
+门户另行发布项目的[许可证摘要](https://silo.pgsty.com/zh/about/license/)、[文档署名归属](https://silo.pgsty.com/zh/about/attribution/)与[商标声明](https://silo.pgsty.com/zh/about/trademark/)。

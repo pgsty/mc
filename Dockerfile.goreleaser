@@ -7,8 +7,14 @@ RUN dnf -y install ca-certificates && \
 
 FROM registry.access.redhat.com/ubi9/ubi-micro:latest
 
-LABEL maintainer="pgsty <https://github.com/pgsty/mc>" \
-      description="MinIO client community fork, build by pgsty"
+LABEL maintainer="Ruohang Feng (@Vonng) <rh@vonng.com>" \
+      vendor="PGSTY" \
+      url="https://silo.pgsty.com" \
+      org.opencontainers.image.vendor="PGSTY" \
+      org.opencontainers.image.url="https://silo.pgsty.com" \
+      org.opencontainers.image.source="https://github.com/pgsty/mc" \
+      org.opencontainers.image.description="S3-Interface Libre Object Storage - A MinIO fork maintained by the Pigsty community." \
+      description="S3-Interface Libre Object Storage - A MinIO fork maintained by the Pigsty community."
 
 COPY --from=certs /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY mc /usr/bin/mc
