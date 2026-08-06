@@ -13,5 +13,5 @@ of the following licenses.
 This distribution (pgsty/mc, shipped as "mcli") is a community-maintained
 fork of the MinIO Client, modified by the Silo project
 (https://silo.pgsty.com/). It is not affiliated with, endorsed by, or
-sponsored by MinIO, Inc. Modifications are Copyright (c) 2026 Silo project
-contributors and are licensed under the GNU AGPL v3.0 or later.
+sponsored by MinIO, Inc. Modifications are Copyright (c) 2025-2026 PGSTY
+and are licensed under the GNU AGPL v3.0 or later.
