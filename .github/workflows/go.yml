@@ -3,7 +3,8 @@ name: Go
 on:
   pull_request:
     branches:
-      - master
+      - main
+  workflow_dispatch:
 
 # This ensures that previous jobs for the PR are canceled when the PR is
 # updated.
@@ -59,7 +60,7 @@ jobs:
           MINIO_ARCHIVE: minio_20260618000000.0.0_linux_amd64.tar.gz
           MINIO_ARCHIVE_SHA256: 0ba637b050be30d8c65142798c363cfb7392bf731d2f572aefd2e7bf1fd59a10
         run: |
-          curl -fsSLO "https://github.com/pgsty/minio/releases/download/${MINIO_RELEASE}/${MINIO_ARCHIVE}"
+          curl -fsSLO "https://github.com/pgsty/silo/releases/download/${MINIO_RELEASE}/${MINIO_ARCHIVE}"
           echo "${MINIO_ARCHIVE_SHA256}  ${MINIO_ARCHIVE}" | sha256sum --check --strict
           tar -xzf "${MINIO_ARCHIVE}"
           test -x minio
