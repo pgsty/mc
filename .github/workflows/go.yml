@@ -91,5 +91,11 @@ jobs:
           go mod tidy
           git diff --exit-code -- go.mod go.sum
 
+      # Brand policy gate: user-visible surfaces must keep the Silo identity
+      # and never reintroduce MinIO endpoints or commercial upsell, while
+      # protocol-compatibility identifiers stay untouched.
+      - name: Check branding policy
+        run: bash buildscripts/check-branding.sh
+
       - name: Test 386
         run: GOOS=linux GOARCH=386 go test -short ./...

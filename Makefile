@@ -23,7 +23,11 @@ getdeps:
 crosscompile:
 	@(env bash $(PWD)/buildscripts/cross-compile.sh)
 
-verifiers: getdeps vet lint
+verifiers: getdeps vet lint check-brand
+
+check-brand:
+	@echo "Running $@ check"
+	@(env bash $(PWD)/buildscripts/check-branding.sh)
 
 docker: build
 	@docker build -t $(TAG) . -f Dockerfile.dev
