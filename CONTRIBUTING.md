@@ -1,4 +1,4 @@
-### Setup your mc GitHub Repository
+### Set up your mc GitHub Repository
 Fork the [pgsty/mc](https://github.com/pgsty/mc/fork) repository to your own personal repository.
 ```
 $ git clone https://github.com/$USER_ID/mc
@@ -14,7 +14,7 @@ $ ./mc --help
 * Go ahead and fork the project and make your changes. We encourage pull requests to discuss code changes.
     - Fork it
     - Create your feature branch (git checkout -b my-new-feature)
-    - Commit your changes (git commit -am 'Add some feature')
+    - Commit your changes with a DCO sign-off (git commit -s -am 'Add some feature')
     - Push to the branch (git push origin my-new-feature)
     - Create new Pull Request against the `main` branch of [pgsty/mc](https://github.com/pgsty/mc)
 
