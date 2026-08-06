@@ -7,7 +7,7 @@ release: ${NFPM_RELEASE}
 section: utils
 priority: optional
 maintainer: "Ruohang Feng (@Vonng) <rh@vonng.com>"
-description: S3-Interface Libre Object Storage, Community-maintained MinIO client fork.
+description: Silo object storage client (mcli), a community-maintained fork of the MinIO Client.
 vendor: PGSTY
 homepage: https://silo.pgsty.com
 license: AGPL-3.0-or-later

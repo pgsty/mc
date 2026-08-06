@@ -89,7 +89,7 @@ Use [Download & Install](https://silo.pgsty.com/download/#client) to choose a cl
 | Standalone archives | [GitHub Releases](https://github.com/pgsty/mc/releases), providing `mcli` for Linux, macOS, and Windows on `amd64` and `arm64` |
 | Linux packages | RPM, DEB, and APK for `x86_64`/`aarch64`, also distributed through the [Pigsty repository](https://pigsty.io/docs/repo/infra/list/#object-storage) |
 | Container image | [`pgsty/mc`](https://hub.docker.com/r/pgsty/mc), multi-arch for `linux/amd64` and `linux/arm64`, with `mc` as the entrypoint |
-| Silo bundle | [`pgsty/minio`](https://hub.docker.com/r/pgsty/minio) includes the client as `mcli` with an `mc` compatibility alias |
+| Silo bundle | [`pgsty/silo`](https://hub.docker.com/r/pgsty/silo) includes the client as `mcli` with an `mc` compatibility alias |
 | Documentation | [Client command reference](https://silo.pgsty.com/reference/minio-mc/) and [administration command reference](https://silo.pgsty.com/reference/minio-mc-admin/) |
 
 ## Quick Start

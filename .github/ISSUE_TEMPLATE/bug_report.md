@@ -13,7 +13,7 @@ assignees: ''
 
 ## Steps to reproduce the behavior
 
-## mc --version
-- (paste output of `mc --version`)
+## mcli --version
+- (paste output of `mcli --version`)
 
 ## System information
