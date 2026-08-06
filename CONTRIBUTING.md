@@ -78,3 +78,10 @@ this fork does not try to.
 
 * **Squash merges** must keep the `Signed-off-by:` trailers in the resulting
   commit message.
+
+* **Authorship and tooling.** The human contributor is the author of the
+  commit and the sole signatory of its DCO sign-off. Attribution trailers for
+  assistive tooling (for example `Co-Authored-By:` naming an AI assistant) are
+  informational only: they record which tools were used, and do not create
+  authorship, co-authorship, or any copyright claim. Whoever signs off remains
+  responsible for the content of the commit, whatever produced it.

@@ -20,8 +20,8 @@ package cmd
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -133,10 +133,10 @@ func (i *SubnetFileUploader) subnetUploadReq() (*http.Request, error) {
 			errfn = sw.AddError
 			key := i.PubKey
 			if key == nil {
-				key, e = base64.StdEncoding.DecodeString(defaultPublicKey)
-				if e != nil {
-					return
-				}
+				// This build ships no vendor encryption key: without an
+				// explicit public key there is no recipient to encrypt to.
+				e = errors.New("no public encryption key configured")
+				return
 			}
 			pk, e := bytesToPublicKey(key)
 			if e != nil {

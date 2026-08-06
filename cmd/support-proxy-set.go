@@ -43,7 +43,7 @@ func (s supportProxySetMessage) JSON() string {
 
 var supportProxySetCmd = cli.Command{
 	Name:            "set",
-	Usage:           "configure proxy to given URL",
+	Usage:           "configure the SUBNET proxy URL (disabled in this build)",
 	Action:          mainSupportProxySet,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -58,9 +58,14 @@ USAGE:
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
-EXAMPLES:
-  1. Set the proxy to http://my.proxy for cluster with alias 'mysilo'
-     {{.Prompt}} {{.HelpName}} mysilo http://my.proxy
+DESCRIPTION:
+  This setting configures the outbound path a server uses to reach MinIO
+  SUBNET. Since this Silo build disables SUBNET entirely, the command is
+  retained for CLI compatibility and always exits with an error. Use
+  '{{.HelpName}} ..' -> 'remove' to clear an existing proxy setting.
+
+EXIT STATUS:
+  1 - SUBNET services are disabled
 `,
 }
 
@@ -72,6 +77,11 @@ func checkSupportProxySetSyntax(ctx *cli.Context) {
 
 // mainSupportProxySet is the handle for "mc support proxy set" command.
 func mainSupportProxySet(ctx *cli.Context) error {
+	if !subnetServicesEnabled() {
+		// Setting a proxy configures the server's outbound path to SUBNET.
+		// Removal stays available so operators can clear a legacy setting.
+		return subnetDisabledExit()
+	}
 	// Check for command syntax
 	checkSupportProxySetSyntax(ctx)
 	setSuccessMessageColor()

@@ -83,7 +83,7 @@ EXAMPLES:
 	 {{.Prompt}} {{.HelpName}} mysilo/ --temp-only
 
   4. Get list of access keys associated with internal name 'openidinternalname'
-  	 {{.Prompt}} {{.HelpName}} mysilo/ openidinternalname
+   {{.Prompt}} {{.HelpName}} mysilo/ openidinternalname
 
   5. Get list of access keys associated with ID claim 'openidsub' (default claim is sub)
 	 {{.Prompt}} {{.HelpName}} mysilo/ openidsub

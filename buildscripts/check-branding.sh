@@ -52,6 +52,14 @@ if ! grep -q 'func subnetServicesEnabled() bool { return false }' cmd/subnet-uti
 	err "subnetServicesEnabled() is no longer hard-disabled"
 fi
 
+# 6. No vendor encryption key may ship in the binary. Diagnostic output has to
+#    stay decryptable by the operator who produced it, so encryption must use
+#    an operator-supplied key or a server-generated one - never a key whose
+#    private half belongs to a third party.
+if git grep -nE 'MII[A-Za-z0-9+/]{64,}' -- 'cmd/*.go' ':!cmd/*_test.go'; then
+	err "embedded public key found in cmd/; diagnostics must not encrypt to a vendor key"
+fi
+
 if [ "${fail}" -ne 0 ]; then
 	echo "check-branding: FAILED - review docs/rebranding policy before changing brand surfaces" >&2
 	exit 1
