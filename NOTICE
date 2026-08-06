@@ -7,3 +7,11 @@ The MinIO project contains unmodified/modified subcomponents too with
 separate copyright notices and license terms. Your use of the source
 code for the these subcomponents is subject to the terms and conditions
 of the following licenses.
+
+===
+
+This distribution (pgsty/mc, shipped as "mcli") is a community-maintained
+fork of the MinIO Client, modified by the Silo project
+(https://silo.pgsty.com/). It is not affiliated with, endorsed by, or
+sponsored by MinIO, Inc. Modifications are Copyright (c) 2026 Silo project
+contributors and are licensed under the GNU AGPL v3.0 or later.

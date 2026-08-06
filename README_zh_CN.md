@@ -89,7 +89,7 @@
 | 独立归档包 | [GitHub Releases](https://github.com/pgsty/mc/releases)，提供 Linux、macOS、Windows 的 `amd64` 与 `arm64` 版本，命令名为 `mcli` |
 | Linux 软件包 | 面向 `x86_64`/`aarch64` 的 RPM、DEB 与 APK，同时通过 [Pigsty 软件仓库](https://pigsty.cc/docs/repo/infra/list/#object-storage) 分发 |
 | 容器镜像 | [`pgsty/mc`](https://hub.docker.com/r/pgsty/mc)，支持 `linux/amd64` 与 `linux/arm64` 多架构清单，以 `mc` 作为入口 |
-| Silo 内置客户端 | [`pgsty/minio`](https://hub.docker.com/r/pgsty/minio) 以 `mcli` 提供本客户端，并保留 `mc` 兼容别名 |
+| Silo 内置客户端 | [`pgsty/silo`](https://hub.docker.com/r/pgsty/silo) 以 `mcli` 提供本客户端，并保留 `mc` 兼容别名 |
 | 文档 | [客户端命令参考](https://silo.pgsty.com/zh/reference/minio-mc/)与[管理命令参考](https://silo.pgsty.com/zh/reference/minio-mc-admin/) |
 
 ## 快速开始

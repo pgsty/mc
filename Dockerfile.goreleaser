@@ -13,9 +13,9 @@ LABEL maintainer="Ruohang Feng (@Vonng) <rh@vonng.com>" \
       org.opencontainers.image.vendor="PGSTY" \
       org.opencontainers.image.url="https://silo.pgsty.com" \
       org.opencontainers.image.source="https://github.com/pgsty/mc" \
-      org.opencontainers.image.description="S3-Interface Libre Object Storage, Community-maintained MinIO client fork." \
+      org.opencontainers.image.description="Silo object storage client (mcli), a community-maintained fork of the MinIO Client." \
       org.opencontainers.image.licenses="AGPL-3.0-or-later" \
-      description="S3-Interface Libre Object Storage, Community-maintained MinIO client fork."
+      description="Silo object storage client (mcli), a community-maintained fork of the MinIO Client."
 
 COPY --from=certs /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY mc /usr/bin/mc
