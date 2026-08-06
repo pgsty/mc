@@ -144,6 +144,8 @@ make build
 
 Issue 与 Pull Request 应说明受影响的客户端与服务端版本、复现步骤、影响、预期行为、测试与兼容性说明。大型改动请先提交 Issue 讨论。
 
+本项目不要求签署 CLA：贡献按项目许可证（AGPL-3.0-or-later，inbound=outbound）接收，贡献者保留自己的版权。每个提交都必须按照 [DCO](https://developercertificate.org/) 签署（`git commit -s`），详见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+
 ## 背景
 
 上游 [`minio/mc`](https://github.com/minio/mc) 仓库在 2025 年最后一条开发线后归档。Pigsty 维护此分支，是因为 Silo 需要可复现的配套客户端发布渠道，而不能继续依赖已经归档的上游项目。
