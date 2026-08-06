@@ -69,7 +69,7 @@ var supportDiagFlags = append([]cli.Flag{
 var supportDiagCmd = cli.Command{
 	Name:         "diag",
 	Aliases:      []string{"diagnostics"},
-	Usage:        "upload health data for diagnostics",
+	Usage:        "generate a health report for diagnostics",
 	OnUsageError: onUsageError,
 	Action:       mainSupportDiag,
 	Before:       setGlobalsFromContext,
@@ -84,14 +84,11 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Upload MinIO diagnostics report for cluster with alias 'myminio' to SUBNET
-     {{.Prompt}} {{.HelpName}} myminio
+  1. Generate a diagnostics report for cluster with alias 'mysilo' and save it locally
+     {{.Prompt}} {{.HelpName}} mysilo
 
-  2. Generate MinIO diagnostics report for cluster with alias 'myminio', save and upload to SUBNET manually
-     {{.Prompt}} {{.HelpName}} myminio --airgap
-
-  3. Upload MinIO diagnostics report for cluster with alias 'myminio' to SUBNET, with strict anonymization
-     {{.Prompt}} {{.HelpName}} myminio --anonymize=strict
+  2. Generate a diagnostics report for cluster with alias 'mysilo' with strict anonymization
+     {{.Prompt}} {{.HelpName}} mysilo --anonymize=strict
 `,
 }
 
@@ -143,7 +140,7 @@ func tarGZ(healthInfo any, version, filename string) error {
 		warningMsgHeader := infoText(warningMsgBoundary)
 		warningMsgTrailer := infoText(warningMsgBoundary)
 		console.Printf("%s\n%s\n%s\n%s\n", warningMsgHeader, warning, warningContents, warningMsgTrailer)
-		console.Infoln("MinIO diagnostics report saved at ", filename)
+		console.Infoln("Diagnostics report saved at ", filename)
 	}
 
 	return nil
@@ -191,6 +188,11 @@ func warnText(s string) string {
 }
 
 func mainSupportDiag(ctx *cli.Context) error {
+	if !subnetServicesEnabled() {
+		// SUBNET uploads are disabled in this build; always operate in
+		// local (airgap) mode so the report is saved to disk.
+		globalAirgapped = true
+	}
 	checkSupportDiagSyntax(ctx)
 
 	// Get the alias parameter from cli
@@ -239,7 +241,7 @@ func execSupportDiag(ctx *cli.Context, client *madmin.AdminClient, alias, apiKey
 	}
 
 	e = tarGZ(healthInfo, version, filename)
-	fatalIf(probe.NewError(e), "Unable to save MinIO diagnostics report")
+	fatalIf(probe.NewError(e), "Unable to save diagnostics report")
 
 	if !globalAirgapped {
 		_, e = (&SubnetFileUploader{

@@ -31,7 +31,7 @@ const licUnregisterMsgTag = "licenseUnregisterMessage"
 
 var licenseUnregisterCmd = cli.Command{
 	Name:         "unregister",
-	Usage:        "unregister from MinIO Subscription Network",
+	Usage:        "remove SUBNET registration credentials from the cluster",
 	OnUsageError: onUsageError,
 	Action:       mainLicenseUnregister,
 	Before:       setGlobalsFromContext,
@@ -46,9 +46,13 @@ USAGE:
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
+DESCRIPTION:
+  This Silo build of mc never contacts MinIO SUBNET; unregister only removes
+  SUBNET credentials stored in the cluster configuration.
+
 EXAMPLES:
-  1. Unregister MinIO cluster at alias 'myminio' from SUBNET
-     {{.Prompt}} {{.HelpName}} myminio
+  1. Remove SUBNET registration credentials from cluster at alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 
@@ -79,6 +83,11 @@ func checkLicenseUnregisterSyntax(ctx *cli.Context) {
 }
 
 func mainLicenseUnregister(ctx *cli.Context) error {
+	if !subnetServicesEnabled() {
+		// Offline behavior: scrub SUBNET credentials from the cluster
+		// configuration without contacting SUBNET.
+		globalAirgapped = true
+	}
 	console.SetColor(licUnregisterMsgTag, color.New(color.FgGreen, color.Bold))
 	checkLicenseUnregisterSyntax(ctx)
 

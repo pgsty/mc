@@ -81,7 +81,7 @@ func (s supportProfileMessage) JSON() string {
 
 var supportProfileCmd = cli.Command{
 	Name:            "profile",
-	Usage:           "upload profile data for debugging",
+	Usage:           "generate profile data for debugging",
 	Action:          mainSupportProfile,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -97,17 +97,14 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Profile CPU for 10 seconds on cluster with alias 'myminio' and upload results to SUBNET
-     {{.Prompt}} {{.HelpName}} --type cpu myminio
+  1. Profile CPU for 10 seconds on cluster with alias 'mysilo' and save the results locally
+     {{.Prompt}} {{.HelpName}} --type cpu mysilo
 
-  2. Profile CPU, Memory, Goroutines for 10 seconds on cluster with alias 'myminio' and upload results to SUBNET
-     {{.Prompt}} {{.HelpName}} --type cpu,mem,goroutines myminio
+  2. Profile CPU, Memory, Goroutines for 10 seconds on cluster with alias 'mysilo' and save the results locally
+     {{.Prompt}} {{.HelpName}} --type cpu,mem,goroutines mysilo
 
-  3. Profile CPU, Memory, Goroutines for 10 minutes on cluster with alias 'myminio' and upload results to SUBNET
-     {{.Prompt}} {{.HelpName}} --type cpu,mem,goroutines --duration 600 myminio
-
-  4. Profile CPU for 10 seconds on cluster with alias 'myminio', save and upload to SUBNET manually
-     {{.Prompt}} {{.HelpName}} --type cpu --airgap myminio
+  3. Profile CPU, Memory, Goroutines for 10 minutes on cluster with alias 'mysilo' and save the results locally
+     {{.Prompt}} {{.HelpName}} --type cpu,mem,goroutines --duration 600 mysilo
 `,
 }
 
@@ -197,6 +194,11 @@ func saveProfileFile(data io.ReadCloser) {
 
 // mainSupportProfile is the handle for "mc support profile" command.
 func mainSupportProfile(ctx *cli.Context) error {
+	if !subnetServicesEnabled() {
+		// SUBNET uploads are disabled in this build; always operate in
+		// local (airgap) mode so profile data is saved to disk.
+		globalAirgapped = true
+	}
 	// Check for command syntax
 	checkAdminProfileSyntax(ctx)
 

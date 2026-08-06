@@ -45,10 +45,26 @@ import (
 
 const (
 	subnetRespBodyLimit     = 1 << 20 // 1 MiB
-	minioSubscriptionURL    = "https://min.io/subscription"
 	subnetPublicKeyPath     = "/downloads/license-pubkey.pem"
 	minioDeploymentIDHeader = "x-minio-deployment-id"
+
+	// subnetDisabledMessage is the stable error returned by every code path
+	// that would otherwise contact MinIO SUBNET. Command names and flags are
+	// retained for CLI compatibility; only the connectivity is removed.
+	subnetDisabledMessage = "MinIO SUBNET services (registration, licensing, uploads) are disabled in this Silo build of mc; diagnostics remain available locally. See https://github.com/pgsty/mc"
 )
+
+// subnetServicesEnabled reports whether this build may talk to MinIO SUBNET.
+// The Silo fork ships permanently offline; re-enabling requires a fork-level
+// decision, not a runtime switch.
+func subnetServicesEnabled() bool { return false }
+
+// subnetDisabledExit prints the stable SUBNET-disabled error and returns the
+// standard error exit status, mirroring the disabled self-update command.
+func subnetDisabledExit() error {
+	printMsg(disabledUpdateMessage{Status: "error", Message: subnetDisabledMessage})
+	return exitStatus(globalErrorExitStatus)
+}
 
 var subnetCommonFlags = append(supportGlobalFlags, cli.StringFlag{
 	Name:   "api-key",
@@ -239,6 +255,9 @@ func dumpHTTPReqTo(out io.Writer, req *http.Request, resp *http.Response) error 
 }
 
 func subnetReqDo(r *http.Request, headers map[string]string) (string, error) {
+	if !subnetServicesEnabled() {
+		return "", errors.New(subnetDisabledMessage)
+	}
 	for k, v := range headers {
 		r.Header.Add(k, v)
 	}
@@ -393,7 +412,7 @@ func mcConfig() *configV10 {
 
 func minioConfigSupportsSubSys(client *madmin.AdminClient, subSys string) bool {
 	help, e := client.HelpConfigKV(globalContext, "", "", false)
-	fatalIf(probe.NewError(e), "Unable to get minio config keys")
+	fatalIf(probe.NewError(e), "Unable to get server config keys")
 
 	for _, h := range help.KeysHelp {
 		if h.Key == subSys {
@@ -427,7 +446,7 @@ func setSubnetConfig(alias, subKey, cfgVal string) {
 
 	cfgKey := "subnet " + subKey
 	_, e := client.SetConfigKV(globalContext, cfgKey+"="+cfgVal)
-	fatalIf(probe.NewError(e), "Unable to set "+cfgKey+" config on MinIO")
+	fatalIf(probe.NewError(e), "Unable to set "+cfgKey+" config on Silo/MinIO")
 }
 
 func setSubnetAPIKey(alias, apiKey string) {
@@ -523,7 +542,7 @@ func subnetLogin() (string, error) {
 	username = strings.TrimSpace(username)
 
 	if len(username) == 0 {
-		return "", errors.New("Username cannot be empty. If you don't have one, please create one from here: " + minioSubscriptionURL)
+		return "", errors.New("Username cannot be empty")
 	}
 
 	fmt.Print("Password: ")

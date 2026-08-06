@@ -42,7 +42,7 @@ var supportGlobalFlags = append(globalFlags,
 	},
 	cli.BoolFlag{
 		Name:  "airgap",
-		Usage: "use in environments without network access to SUBNET (e.g. airgapped, firewalled, etc.)",
+		Usage: "operate offline (accepted for compatibility; this build always runs without SUBNET access)",
 	},
 )
 
@@ -117,6 +117,11 @@ func validateClusterRegistered(alias string, cmdTalksToSubnet bool) string {
 	if cmdTalksToSubnet {
 		requireRegistration = !GlobalDevMode || !globalAirgapped
 	}
+	if !subnetServicesEnabled() {
+		// SUBNET registration cannot be a prerequisite when SUBNET support
+		// is disabled; commands proceed with local-only behavior.
+		requireRegistration = false
+	}
 
 	apiKey, e := getSubnetAPIKey(alias)
 	if requireRegistration {
@@ -126,7 +131,7 @@ func validateClusterRegistered(alias string, cmdTalksToSubnet bool) string {
 	return apiKey
 }
 
-// isFeatureEnabled - checks if a feature is enabled in MinIO config
+// isFeatureEnabled - checks if a feature is enabled in Silo/MinIO config
 // To be used with configs that can be switched on/off using the `enable` key
 // e.g. subSys = logger_webhook, target = logger_webhook:subnet
 // Returns true if any of the following is true

@@ -115,7 +115,7 @@ func IsSourceBuild() bool {
 	return err != nil
 }
 
-// DownloadReleaseData is retained for source compatibility. The Pigsty fork
+// DownloadReleaseData is retained for source compatibility. The Silo fork
 // does not contact a release feed or download self-update metadata.
 func DownloadReleaseData(_ string, _ time.Duration) (data string, err *probe.Error) {
 	return "", probe.NewError(errors.New(selfUpdateDisabledMessage))
