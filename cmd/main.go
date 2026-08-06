@@ -71,7 +71,8 @@ TIP:
   Use '{{.Name}} --autocompletion' to enable shell autocompletion
 
 COPYRIGHT:
-  Copyright (c) 2015-` + CopyrightYear + ` MinIO, Inc.
+  Copyright (c) 2015-2025 MinIO, Inc.
+  Copyright (c) 2025-` + CopyrightYear + ` PGSTY
 
 LICENSE:
   GNU AGPLv3 <https://www.gnu.org/licenses/agpl-3.0.html>
@@ -444,7 +445,8 @@ func printMCVersion(c *cli.Context) {
 	fmt.Fprintf(c.App.Writer, "%s version %s (commit-id=%s)\n", c.App.Name, c.App.Version, CommitID)
 	fmt.Fprintf(c.App.Writer, "Silo object storage client, based on MinIO technology\n")
 	fmt.Fprintf(c.App.Writer, "Runtime: %s %s/%s\n", runtime.Version(), runtime.GOOS, runtime.GOARCH)
-	fmt.Fprintf(c.App.Writer, "Copyright (c) 2015-%s MinIO, Inc.\n", CopyrightYear)
+	fmt.Fprintf(c.App.Writer, "Copyright (c) 2015-2025 MinIO, Inc.\n")
+	fmt.Fprintf(c.App.Writer, "Copyright (c) 2025-%s PGSTY\n", CopyrightYear)
 	fmt.Fprintf(c.App.Writer, "License GNU AGPLv3 <https://www.gnu.org/licenses/agpl-3.0.html>\n")
 }
 
