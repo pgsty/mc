@@ -1,21 +1,28 @@
+<p align="center">
+  <a href="https://silo.pgsty.com/zh/">
+    <img src=".github/silo.svg" alt="Silo 圆形标志" width="112"><br>
+    <img src=".github/silo-word.svg" alt="SILO" height="40">
+  </a>
+</p>
+
 <h1 align="center">mcli</h1>
 
 <p align="center">
-  <strong>审慎维护的 MinIO Client 社区分支</strong><br>
-  为 Silo、Pigsty 与 S3 兼容对象存储提供带版本的客户端构建与兼容管理工具。
+  <strong>Silo 命令行客户端 —— 由 PIGSTY 维护的 MinIO 兼容客户端分支</strong>
 </p>
 
 <p align="center">
   <a href="https://silo.pgsty.com/zh/">官网</a> ·
   <a href="https://silo.pgsty.com/zh/reference/minio-mc/">文档</a> ·
   <a href="https://silo.pgsty.com/zh/download/#client">下载</a> ·
-  <a href="https://silo.pgsty.com/zh/blog/">博客</a> ·
-  <a href="https://github.com/pgsty/mc/releases">版本发布</a> ·
+  <a href="https://silo.pgsty.com/zh/tags/mcli/">版本说明</a> ·
+  <a href="https://silo.pgsty.com/zh/compatibility/mcli/">兼容性</a> ·
   <a href="https://silo.pgsty.com/zh/about/security/">安全策略</a> ·
   <a href="README.md">English</a>
 </p>
 
 <p align="center">
+  <a href="https://silo.pgsty.com/zh/"><img alt="中文官网" src="https://img.shields.io/badge/%E5%AE%98%E7%BD%91-silo.pgsty.com%2Fzh-1d588c"></a>
   <a href="https://github.com/pgsty/mc/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/pgsty/mc?include_prereleases&label=release&logo=github"></a>
   <a href="https://hub.docker.com/r/pgsty/mc"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/pgsty/mc?logo=docker"></a>
   <a href="go.mod"><img alt="Go Version" src="https://img.shields.io/github/go-mod/go-version/pgsty/mc?logo=go"></a>
@@ -27,24 +34,26 @@
 
 ## 概述
 
-`pgsty/mc` 维护一条基于上游 MinIO Client 归档分支 [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88) 的下游版本线，在上游仓库归档后继续提供可维护的客户端构建。
+`pgsty/mc` 维护一条基于上游 MinIO Client 最后一个提交 [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88) 的下游版本线。在上游仓库归档后，本分支让客户端与 [Silo](https://silo.pgsty.com/zh/) 对象存储服务器共用同一条受维护的供应链完成构建、修补、测试和发布，同时仍是面向文件系统与 Amazon S3 兼容对象存储的通用客户端。
 
-本分支的存在，是为了让 [Silo](https://silo.pgsty.com/zh/) 与 Pigsty 部署拥有可通过同一供应链构建、修补、测试和发布的兼容命令行客户端。它同时也是面向文件系统与 Amazon S3 兼容对象存储的通用客户端。
+本分支遵循一条原则：**改名的是发行产物与分发渠道，不是你使用的工具。** 独立归档包与 Linux 软件包以 `mcli` 命名，而命令、参数、配置与协议行为与上游保持一致。完整的差异清单随版本更新，见[兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/)。
 
-项目统一门户为 [silo.pgsty.com](https://silo.pgsty.com/zh/)，集中提供客户端命令参考、下载安装、版本与安全动态，以及项目法律信息。中文内容位于 `/zh/`，英文内容位于站点根路径。
+项目统一门户为 [silo.pgsty.com](https://silo.pgsty.com/zh/)，集中提供命令参考、下载安装、版本与安全动态，以及项目法律信息。
 
 ## 按需求选择入口
 
 | 需求 | 权威入口 |
 | :-- | :-- |
-| 项目概览与全站导航 | [Silo 中文门户](https://silo.pgsty.com/zh/)（[English](https://silo.pgsty.com/)） |
-| `mcli` 安装方式与软件下载 | [下载与安装](https://silo.pgsty.com/zh/download/#client)（[English](https://silo.pgsty.com/download/#client)） |
-| 客户端与管理命令参考 | [`mcli` 命令参考](https://silo.pgsty.com/zh/reference/minio-mc/)与 [`mcli admin` 命令参考](https://silo.pgsty.com/zh/reference/minio-mc-admin/)（[English](https://silo.pgsty.com/reference/minio-mc/)） |
-| 项目动态、版本说明与安全通告 | [博客](https://silo.pgsty.com/zh/blog/)，包括[版本发布](https://silo.pgsty.com/zh/blog/release/)与[安全通告](https://silo.pgsty.com/zh/blog/security/) |
+| 项目概览与全站导航 | [Silo 官网](https://silo.pgsty.com/zh/) |
+| `mcli` 安装方式与软件下载 | [下载与安装](https://silo.pgsty.com/zh/download/#client) |
+| 客户端与管理命令参考 | [`mcli` 命令参考](https://silo.pgsty.com/zh/reference/minio-mc/) · [`mcli admin` 命令参考](https://silo.pgsty.com/zh/reference/minio-mc-admin/) |
+| 本客户端的版本说明 | [`mcli` 版本说明](https://silo.pgsty.com/zh/tags/mcli/) |
+| 与上游 `mc` 的差异 | [`mcli` 兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/) |
+| 项目动态与安全通告 | [博客](https://silo.pgsty.com/zh/blog/) · [版本发布](https://silo.pgsty.com/zh/blog/release/)与[安全通告](https://silo.pgsty.com/zh/blog/security/) |
 | 带版本的归档包、软件包、校验和与源码 | [GitHub Releases](https://github.com/pgsty/mc/releases) |
 | 缺陷报告与功能讨论 | [GitHub Issues](https://github.com/pgsty/mc/issues) |
 | 私密漏洞报告 | [安全策略](https://silo.pgsty.com/zh/about/security/) |
-| 许可证、署名与商标信息 | [`LICENSE`](LICENSE)、[`NOTICE`](NOTICE)、[`CREDITS`](CREDITS)，以及门户的[许可证](https://silo.pgsty.com/zh/about/license/)、[署名归属](https://silo.pgsty.com/zh/about/attribution/)与[商标政策](https://silo.pgsty.com/zh/about/trademark/)页面 |
+| 许可证、署名与商标信息 | [`LICENSE`](LICENSE) · [`NOTICE`](NOTICE) · [`CREDITS`](CREDITS) · 门户的[许可证](https://silo.pgsty.com/zh/about/license/)、[署名归属](https://silo.pgsty.com/zh/about/attribution/)与[商标政策](https://silo.pgsty.com/zh/about/trademark/)页面 |
 
 ## 相关项目
 
@@ -76,6 +85,10 @@
 - 商业支持、SLA、7×24 服务或 SUBNET 服务；
 - 对所有 S3 实现或 MinIO 未来私有 API 的兼容保证。
 
+## 治理
+
+本客户端与 [Silo 服务器](https://github.com/pgsty/silo)在同一套发布流程下共同维护：提交必须签署 DCO、Pull Request 经过评审、以 `RELEASE.YYYY-MM-DDTHH-MM-SSZ` 标签发布带校验和的产物。每个版本都会在门户发布[版本说明](https://silo.pgsty.com/zh/tags/mcli/)；安全问题遵循[安全策略](https://silo.pgsty.com/zh/about/security/)处理。上游版权、许可证与第三方声明完整保留于 [`LICENSE`](LICENSE)、[`NOTICE`](NOTICE) 与 [`CREDITS`](CREDITS)。
+
 ## 兼容策略
 
 本分支尽量保留：
@@ -85,9 +98,9 @@
 - `RELEASE.YYYY-MM-DDTHH-MM-SSZ` 标签与容器的 `mc` 入口；
 - 源码构建使用 `mc`，独立归档包与 Linux 软件包使用 `mcli`；Silo 镜像同时提供两个命令名。
 
-`mc update` 已被有意禁用。请通过 [Pigsty 软件仓库](https://pigsty.cc/docs/repo/infra/list/#object-storage) 或 [GitHub Releases](https://github.com/pgsty/mc/releases) 升级。
+所有连往 MinIO 运营服务的通道 —— 更新源、SUBNET、遥测与预置的 `play` 别名 —— 均已切断；受影响的命令为脚本兼容而保留，并以稳定错误退出。其中 `mc update` 已被有意禁用：请通过 [Pigsty 软件仓库](https://pigsty.cc/docs/repo/infra/list/#object-storage) 或 [GitHub Releases](https://github.com/pgsty/mc/releases) 升级。
 
-兼容是目标，而非保证。服务端专用管理命令可能随版本变化。请锁定版本、阅读版本说明、保留回滚路径，并在生产使用前针对目标服务完成测试。
+兼容是目标，而非保证。服务端专用管理命令可能随版本变化。请锁定版本、阅读[版本说明](https://silo.pgsty.com/zh/tags/mcli/)与[兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/)、保留回滚路径，并在生产使用前针对目标服务完成测试。
 
 ## 下载与发行产物
 
@@ -100,7 +113,6 @@
 | Linux 软件包 | 面向 `x86_64`/`aarch64` 的 RPM、DEB 与 APK，同时通过 [Pigsty 软件仓库](https://pigsty.cc/docs/repo/infra/list/#object-storage) 分发 |
 | 容器镜像 | [`pgsty/mc`](https://hub.docker.com/r/pgsty/mc)，支持 `linux/amd64` 与 `linux/arm64` 多架构清单，以 `mc` 作为入口 |
 | Silo 内置客户端 | [`pgsty/silo`](https://hub.docker.com/r/pgsty/silo) 以 `mcli` 提供本客户端，并保留 `mc` 兼容别名 |
-| 文档 | [客户端命令参考](https://silo.pgsty.com/zh/reference/minio-mc/)与[管理命令参考](https://silo.pgsty.com/zh/reference/minio-mc-admin/) |
 
 ## 快速开始
 

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1624" height="570" viewBox="0 0 1994 700"
+     preserveAspectRatio="xMidYMid meet"
+     role="img" aria-labelledby="title desc"
+     shape-rendering="geometricPrecision">
+  <title id="title">SILO wordmark</title>
+  <desc id="desc">The SILO wordmark set in Chakra Petch Bold, outlined, with the blue-to-copper brand gradient.</desc>
+
+  <defs>
+    <linearGradient id="silo-wordmark-color" x1="44.0" y1="-94.4" x2="1950.0" y2="794.4" gradientUnits="userSpaceOnUse">
+      <stop class="wm-a" offset="0.06" stop-color="#1d588c"/>
+      <stop class="wm-b" offset="0.94" stop-color="#b4762e"/>
+    </linearGradient>
+    <style>
+      /* Light theme values of --pg-strong / --copper; dark theme swaps in its own pair. */
+      @media (prefers-color-scheme: dark) {
+        .wm-a { stop-color: #7fb8e8; }
+        .wm-b { stop-color: #e0a35c; }
+      }
+    </style>
+  </defs>
+
+  <g fill="url(#silo-wordmark-color)" fill-rule="nonzero">
+    <path id="silo-s" d="M0 592V492H134V551L167 584H374L408 550V434L375 401H110L2 293V108L110 0H426L534 108V209H400V149L367 116H169L136 149V252L169 285H434L542 393V590L432 700H108Z"/>
+    <path id="silo-i" d="M637 0H773V700H637Z"/>
+    <path id="silo-l" d="M888 0H1024V585H1374V700H888Z"/>
+    <path id="silo-o" d="M1404 585V115L1519 0H1879L1994 115V585L1879 700H1519ZM1807 584 1858 533V167L1807 116H1591L1540 167V533L1591 584Z"/>
+  </g>
+</svg>
