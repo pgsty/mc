@@ -5,7 +5,7 @@ All community contributions in this pull request are licensed under the
 license of this project, and every commit must carry a DCO `Signed-off-by`
 trailer (`git commit -s`) certifying the
 [Developer Certificate of Origin](https://developercertificate.org/) —
-see [CONTRIBUTING.md](../CONTRIBUTING.md).
+see [CONTRIBUTING.md](https://github.com/pgsty/mc/blob/main/CONTRIBUTING.md).
 
 ## Description
 

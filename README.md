@@ -46,6 +46,16 @@ The official project portal is [silo.pgsty.com](https://silo.pgsty.com/). It bri
 | Vulnerability reporting | [Security Policy](https://silo.pgsty.com/about/security/) |
 | License, attribution, and trademark information | [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), [`CREDITS`](CREDITS), and the portal's [License](https://silo.pgsty.com/about/license/), [Attribution](https://silo.pgsty.com/about/attribution/), and [Trademark](https://silo.pgsty.com/about/trademark/) pages |
 
+## Related Projects
+
+| Repository | Description |
+| :-- | :-- |
+| [`pgsty/silo`](https://github.com/pgsty/silo) | Silo object storage server — the S3-compatible MinIO fork this client accompanies |
+| [`pgsty/mc`](https://github.com/pgsty/mc) | This repository — the Silo client, shipped as `mcli` with the `mc` command name |
+| [`pgsty/silo-console`](https://github.com/pgsty/silo-console) | Admin web console for the Silo server |
+| [`pgsty/silo-pkg`](https://github.com/pgsty/silo-pkg) | Shared Go packages maintained for the Silo forks |
+| [`pgsty/pigsty`](https://github.com/pgsty/pigsty) | Pigsty — the PostgreSQL distribution that ships Silo as its object storage |
+
 ## Maintenance Policy
 
 The active `main` release line covers:
@@ -107,7 +117,7 @@ The container retains the familiar `mc` entrypoint:
 
 ```bash
 docker run --rm pgsty/mc:latest --version
-docker run --rm pgsty/mc:latest ls play
+docker run --rm pgsty/mc:latest alias ls
 ```
 
 > [!WARNING]

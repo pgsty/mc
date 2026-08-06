@@ -46,6 +46,16 @@
 | 私密漏洞报告 | [安全策略](https://silo.pgsty.com/zh/about/security/) |
 | 许可证、署名与商标信息 | [`LICENSE`](LICENSE)、[`NOTICE`](NOTICE)、[`CREDITS`](CREDITS)，以及门户的[许可证](https://silo.pgsty.com/zh/about/license/)、[署名归属](https://silo.pgsty.com/zh/about/attribution/)与[商标政策](https://silo.pgsty.com/zh/about/trademark/)页面 |
 
+## 相关项目
+
+| 仓库 | 说明 |
+| :-- | :-- |
+| [`pgsty/silo`](https://github.com/pgsty/silo) | Silo 对象存储服务器 —— 本客户端配套的 S3 兼容 MinIO fork |
+| [`pgsty/mc`](https://github.com/pgsty/mc) | 本仓库 —— Silo 客户端，以 `mcli` 发行、保留 `mc` 命令名 |
+| [`pgsty/silo-console`](https://github.com/pgsty/silo-console) | Silo 服务器的 Web 管理控制台 |
+| [`pgsty/silo-pkg`](https://github.com/pgsty/silo-pkg) | 为 Silo 系 fork 维护的共享 Go 包 |
+| [`pgsty/pigsty`](https://github.com/pgsty/pigsty) | Pigsty —— 内置 Silo 作为对象存储的 PostgreSQL 发行版 |
+
 ## 维护政策
 
 活跃的 `main` 版本线覆盖：
@@ -107,7 +117,7 @@ mcli ls local/demo
 
 ```bash
 docker run --rm pgsty/mc:latest --version
-docker run --rm pgsty/mc:latest ls play
+docker run --rm pgsty/mc:latest alias ls
 ```
 
 > [!WARNING]
