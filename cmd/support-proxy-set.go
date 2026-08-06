@@ -61,8 +61,8 @@ FLAGS:
 DESCRIPTION:
   This setting configures the outbound path a server uses to reach MinIO
   SUBNET. Since this Silo build disables SUBNET entirely, the command is
-  retained for CLI compatibility and always exits with an error. Use
-  '{{.HelpName}} ..' -> 'remove' to clear an existing proxy setting.
+  retained for CLI compatibility and always exits with an error. Run
+  'mc support proxy remove ALIAS' to clear an existing proxy setting.
 
 EXIT STATUS:
   1 - SUBNET services are disabled
