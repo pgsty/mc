@@ -190,7 +190,7 @@ func traceCallsHelp() string {
 
 var adminTraceCmd = cli.Command{
 	Name:            "trace",
-	Usage:           "Show HTTP call trace for all incoming and internode on MinIO",
+	Usage:           "Show HTTP call trace for all incoming and internode on Silo/MinIO",
 	Action:          mainAdminTrace,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -216,29 +216,29 @@ UNITS
   also accepted. Without suffixes the unit is bytes.
 
 EXAMPLES:
-  1. Show verbose console trace for MinIO server
-     {{.Prompt}} {{.HelpName}} -v -a myminio
+  1. Show verbose console trace for Silo/MinIO server
+     {{.Prompt}} {{.HelpName}} -v -a mysilo
 
-  2. Show trace only for failed requests for MinIO server
-    {{.Prompt}} {{.HelpName}} -v -e myminio
+  2. Show trace only for failed requests for Silo/MinIO server
+    {{.Prompt}} {{.HelpName}} -v -e mysilo
 
   3. Show verbose console trace for requests with '503' status code
-    {{.Prompt}} {{.HelpName}} -v --status-code 503 myminio
+    {{.Prompt}} {{.HelpName}} -v --status-code 503 mysilo
 
   4. Show console trace for a specific path
-    {{.Prompt}} {{.HelpName}} --path my-bucket/my-prefix/* myminio
+    {{.Prompt}} {{.HelpName}} --path my-bucket/my-prefix/* mysilo
 
   5. Show console trace for requests with '404' and '503' status code
-    {{.Prompt}} {{.HelpName}} --status-code 404 --status-code 503 myminio
+    {{.Prompt}} {{.HelpName}} --status-code 404 --status-code 503 mysilo
   
   6. Show trace only for requests bytes greater than 1MB
-    {{.Prompt}} {{.HelpName}} --filter-request --filter-size 1MB myminio
+    {{.Prompt}} {{.HelpName}} --filter-request --filter-size 1MB mysilo
 
   7. Show trace only for response bytes greater than 1MB
-    {{.Prompt}} {{.HelpName}} --filter-response --filter-size 1MB myminio
+    {{.Prompt}} {{.HelpName}} --filter-response --filter-size 1MB mysilo
   
   8. Show trace only for requests operations duration greater than 5ms
-     {{.Prompt}} {{.HelpName}} --response-duration 5ms myminio
+     {{.Prompt}} {{.HelpName}} --response-duration 5ms mysilo
 `,
 }
 

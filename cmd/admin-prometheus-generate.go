@@ -65,59 +65,59 @@ FLAGS:
   {{end}}
 EXAMPLES (v3):
   1. Generate a default prometheus config.
-     {{.Prompt}} {{.HelpName}} play --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo --api-version v3
 
   2. Generate prometheus config for api metrics.
-     {{.Prompt}} {{.HelpName}} play api --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo api --api-version v3
 
   3. Generate prometheus config for api metrics of bucket 'mybucket'.
-     {{.Prompt}} {{.HelpName}} play api --bucket mybucket --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo api --bucket mybucket --api-version v3
 
   4. Generate prometheus config for system metrics.
-     {{.Prompt}} {{.HelpName}} play system --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo system --api-version v3
 
   5. Generate prometheus config for debug metrics.
-     {{.Prompt}} {{.HelpName}} play debug --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo debug --api-version v3
 
   6. Generate prometheus config for cluster metrics.
-     {{.Prompt}} {{.HelpName}} play cluster --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo cluster --api-version v3
 
   7. Generate prometheus config for ilm metrics.
-     {{.Prompt}} {{.HelpName}} play ilm --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo ilm --api-version v3
 
   8. Generate prometheus config for audit metrics.
-     {{.Prompt}} {{.HelpName}} play audit --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo audit --api-version v3
 
   9. Generate prometheus config for logger metrics.
-     {{.Prompt}} {{.HelpName}} play logger --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo logger --api-version v3
 
   10. Generate prometheus config for replication metrics.
-     {{.Prompt}} {{.HelpName}} play replication --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo replication --api-version v3
 
   11. Generate prometheus config for replication metrics of bucket 'mybucket'.
-     {{.Prompt}} {{.HelpName}} play replication --bucket mybucket --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo replication --bucket mybucket --api-version v3
 
   12. Generate prometheus config for notification metrics.
-     {{.Prompt}} {{.HelpName}} play notification --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo notification --api-version v3
 
   13. Generate prometheus config for scanner metrics.
-     {{.Prompt}} {{.HelpName}} play scanner --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo scanner --api-version v3
 
 EXAMPLES (v2):
   1. Generate a default prometheus config.
-     {{.Prompt}} {{.HelpName}} play
+     {{.Prompt}} {{.HelpName}} mysilo
 
   2. Generate prometheus config for node metrics.
-     {{.Prompt}} {{.HelpName}} play node
+     {{.Prompt}} {{.HelpName}} mysilo node
 
   3. Generate prometheus config for bucket metrics.
-     {{.Prompt}} {{.HelpName}} play bucket
+     {{.Prompt}} {{.HelpName}} mysilo bucket
 
   4. Generate prometheus config for resource metrics.
-     {{.Prompt}} {{.HelpName}} play resource
+     {{.Prompt}} {{.HelpName}} mysilo resource
 
   5. Generate prometheus config for cluster metrics.
-     {{.Prompt}} {{.HelpName}} play cluster
+     {{.Prompt}} {{.HelpName}} mysilo cluster
 `,
 }
 

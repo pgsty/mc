@@ -185,7 +185,7 @@ func newConfigV7() *configV7 {
 }
 
 func (c *configV7) loadDefaults() {
-	// MinIO server running locally.
+	// Silo/MinIO server running locally.
 	c.setHost("local", hostConfigV7{
 		URL:       "http://localhost:9000",
 		AccessKey: "",
@@ -273,7 +273,7 @@ func (c *configV8) setHost(alias string, cfg hostConfigV8) {
 
 // load default values for missing entries.
 func (c *configV8) loadDefaults() {
-	// MinIO server running locally.
+	// Silo/MinIO server running locally.
 	c.setHost("local", hostConfigV8{
 		URL:       "http://localhost:9000",
 		AccessKey: "",

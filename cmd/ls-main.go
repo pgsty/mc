@@ -58,7 +58,7 @@ var (
 		},
 		cli.BoolFlag{
 			Name:  "zip",
-			Usage: "list files inside zip archive (MinIO servers only)",
+			Usage: "list files inside zip archive (Silo/MinIO servers only)",
 		},
 	}
 )

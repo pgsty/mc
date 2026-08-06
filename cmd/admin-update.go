@@ -42,7 +42,7 @@ var adminUpdateFlags = []cli.Flag{
 
 var adminServerUpdateCmd = cli.Command{
 	Name:         "update",
-	Usage:        "update all MinIO servers",
+	Usage:        "update all Silo/MinIO servers",
 	Action:       mainAdminServerUpdate,
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
@@ -57,10 +57,10 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Update MinIO server represented by its alias 'play'.
-     {{.Prompt}} {{.HelpName}} play/
+  1. Update Silo/MinIO server represented by its alias 'mysilo'.
+     {{.Prompt}} {{.HelpName}} mysilo/
 
-  2. Update all MinIO servers in a distributed setup, represented by its alias 'mydist'.
+  2. Update all Silo/MinIO servers in a distributed setup, represented by its alias 'mydist'.
      {{.Prompt}} {{.HelpName}} mydist/
 `,
 }
@@ -134,7 +134,7 @@ func mainAdminServerUpdate(ctx *cli.Context) error {
 	autoConfirm := ctx.Bool("yes")
 
 	if isTerminal() && !autoConfirm {
-		fmt.Printf("You are about to upgrade *MinIO Server*, please confirm [y/N]: ")
+		fmt.Printf("You are about to upgrade *Silo/MinIO Server*, please confirm [y/N]: ")
 		answer, e := bufio.NewReader(os.Stdin).ReadString('\n')
 		fatalIf(probe.NewError(e), "Unable to parse user input.")
 		answer = strings.TrimSpace(answer)
@@ -144,7 +144,7 @@ func mainAdminServerUpdate(ctx *cli.Context) error {
 		}
 	}
 
-	// Update the specified MinIO server, optionally also
+	// Update the specified Silo/MinIO server, optionally also
 	// with the provided update URL.
 	us, e := client.ServerUpdateV2(globalContext, madmin.ServerUpdateOpts{
 		DryRun:    ctx.Bool("dry-run"),

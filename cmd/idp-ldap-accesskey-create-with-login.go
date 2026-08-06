@@ -62,8 +62,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Create a new access key pair for https://minio.example.com by logging in with LDAP credentials
-     {{.Prompt}} {{.HelpName}} https://minio.example.com
+  1. Create a new access key pair for https://silo.example.com by logging in with LDAP credentials
+     {{.Prompt}} {{.HelpName}} https://silo.example.com
 
   2. Create a new access key pair for http://localhost:9000 via login with custom access key and secret key 
      {{.Prompt}} {{.HelpName}} http://localhost:9000 --access-key myaccesskey --secret-key mysecretkey

@@ -42,7 +42,7 @@ var adminTopAPIFlags = []cli.Flag{
 
 var adminTopAPICmd = cli.Command{
 	Name:            "api",
-	Usage:           "summarize API events on MinIO server in real-time",
+	Usage:           "summarize API events on Silo/MinIO server in real-time",
 	Action:          mainAdminTopAPI,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,

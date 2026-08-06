@@ -47,11 +47,11 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Add users 'fivecent' and 'tencent' to the group 'allcents':
-     {{.Prompt}} {{.HelpName}} myminio allcents fivecent tencent
+     {{.Prompt}} {{.HelpName}} mysilo allcents fivecent tencent
 
   2. Add user "james" to group "staff", then add the "readwrite" policy to the group "staff".
-     {{.Prompt}} {{.HelpName}} myminio staff james
-     {{.Prompt}} mc admin policy attach myminio readwrite --group staff
+     {{.Prompt}} {{.HelpName}} mysilo staff james
+     {{.Prompt}} mc admin policy attach mysilo readwrite --group staff
 `,
 }
 

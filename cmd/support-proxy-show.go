@@ -40,8 +40,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Show the proxy configured for cluster with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} myminio
+  1. Show the proxy configured for cluster with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 
@@ -88,7 +88,7 @@ func mainSupportProxyShow(ctx *cli.Context) error {
 	// get the subnet proxy config from MinIO if available
 	proxy, supported := getKeyFromSubnetConfig(alias, "proxy")
 	if !supported {
-		fatal(errDummy().Trace(), "Proxy configuration not supported in this version of MinIO.")
+		fatal(errDummy().Trace(), "Proxy configuration not supported in this version of the Silo/MinIO server.")
 	}
 
 	printMsg(supportProxyShowMessage{Proxy: proxy})

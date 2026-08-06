@@ -74,7 +74,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Display information for the temporary account 'J123C4ZXEQN8RK6ND35I'
-     {{.Prompt}} {{.HelpName}} myminio/ J123C4ZXEQN8RK6ND35I
+     {{.Prompt}} {{.HelpName}} mysilo/ J123C4ZXEQN8RK6ND35I
 `,
 }
 

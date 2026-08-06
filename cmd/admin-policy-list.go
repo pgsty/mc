@@ -42,8 +42,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. List all policies on MinIO server.
-     {{.Prompt}} {{.HelpName}} myminio
+  1. List all policies on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 

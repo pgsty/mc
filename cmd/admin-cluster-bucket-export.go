@@ -52,7 +52,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Save metadata of all buckets to a zip file.
-     {{.Prompt}} {{.HelpName}} myminio
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 

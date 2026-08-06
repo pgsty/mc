@@ -46,8 +46,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Enable SSE-KMS auto encryption with KMS key on bucket "mybucket" for alias "myminio".
-     {{.Prompt}} {{.HelpName}} sse-kms my-minio-key myminio/mybucket
+  1. Enable SSE-KMS auto encryption with KMS key on bucket "mybucket" for alias "mysilo".
+     {{.Prompt}} {{.HelpName}} sse-kms my-silo-key mysilo/mybucket
 
   2. Enable SSE-KMS auto encryption with KMS key on bucket "mybucket" for alias "s3".
      {{.Prompt}} {{.HelpName}} sse-kms arn:aws:kms:us-east-1:xxx:key/xxx s3/mybucket  

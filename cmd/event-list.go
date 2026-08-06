@@ -49,7 +49,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. List notification configurations associated to a specific arn
-    {{.Prompt}} {{.HelpName}} myminio/mybucket arn:aws:sqs:us-west-2:444455556666:your-queue
+    {{.Prompt}} {{.HelpName}} mysilo/mybucket arn:aws:sqs:us-west-2:444455556666:your-queue
 
   2. List all notification configurations
     {{.Prompt}} {{.HelpName}} s3/mybucket

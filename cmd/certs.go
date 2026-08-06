@@ -96,7 +96,7 @@ func createCAsDir() *probe.Error {
 	return nil
 }
 
-// loadRootCAs fetches CA files provided in MinIO config and adds them to globalRootCAs
+// loadRootCAs fetches CA files provided in Silo/MinIO config and adds them to globalRootCAs
 // Currently under Windows, there is no way to load system + user CAs at the same time
 func loadRootCAs() {
 	var e error

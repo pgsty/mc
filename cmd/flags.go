@@ -66,7 +66,7 @@ var globalFlags = []cli.Flag{
 	},
 	cli.StringSliceFlag{
 		Name:   "resolve",
-		Usage:  "resolves HOST[:PORT] to an IP address. Example: minio.local:9000=10.10.75.1",
+		Usage:  "resolves HOST[:PORT] to an IP address. Example: silo.local:9000=10.10.75.1",
 		EnvVar: envPrefix + "RESOLVE",
 	},
 	cli.BoolFlag{

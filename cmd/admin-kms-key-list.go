@@ -47,8 +47,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Get list of master keys from a MinIO server/cluster.
-     $ {{.HelpName}} play
+  1. Get list of master keys from a Silo/MinIO server/cluster.
+     $ {{.HelpName}} mysilo
 `,
 }
 

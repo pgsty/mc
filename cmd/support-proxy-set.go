@@ -59,8 +59,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Set the proxy to http://my.proxy for cluster with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} myminio http://my.proxy
+  1. Set the proxy to http://my.proxy for cluster with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} mysilo http://my.proxy
 `,
 }
 

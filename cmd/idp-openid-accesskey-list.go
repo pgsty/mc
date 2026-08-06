@@ -79,14 +79,14 @@ EXAMPLES:
   2. Get list of OpenID users in local server (if admin)
  	 {{.Prompt}} {{.HelpName}} local/ --users-only
 
-  3. Get list of all users and associated temporary access keys in play server (if admin)
-	 {{.Prompt}} {{.HelpName}} play/ --temp-only
+  3. Get list of all users and associated temporary access keys in mysilo server (if admin)
+	 {{.Prompt}} {{.HelpName}} mysilo/ --temp-only
 
   4. Get list of access keys associated with internal name 'openidinternalname'
-  	 {{.Prompt}} {{.HelpName}} play/ openidinternalname
+  	 {{.Prompt}} {{.HelpName}} mysilo/ openidinternalname
 
   5. Get list of access keys associated with ID claim 'openidsub' (default claim is sub)
-	 {{.Prompt}} {{.HelpName}} play/ openidsub
+	 {{.Prompt}} {{.HelpName}} mysilo/ openidsub
 
   7. Get authenticated user and associated access keys in local server (if not admin)
 	 {{.Prompt}} {{.HelpName}} local/

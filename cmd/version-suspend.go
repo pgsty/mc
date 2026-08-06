@@ -45,8 +45,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Suspend versioning on bucket "mybucket" for alias "myminio".
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. Suspend versioning on bucket "mybucket" for alias "mysilo".
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 `,
 }
 

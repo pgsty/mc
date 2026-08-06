@@ -57,7 +57,7 @@ func (t treeMessage) String() string {
 // JSON'ified message for scripting.
 // Does No-op. JSON requests are redirected to `ls -r --json`
 func (t treeMessage) JSON() string {
-	fatalIf(probe.NewError(errors.New("JSON() should never be called here")), "Unable to list in tree format. Please report this issue at https://github.com/minio/mc/issues")
+	fatalIf(probe.NewError(errors.New("JSON() should never be called here")), "Unable to list in tree format. Please report this issue at https://github.com/pgsty/mc/issues")
 	return ""
 }
 
@@ -95,20 +95,20 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-   1. List all buckets and directories on MinIO object storage server in tree format.
-      {{.Prompt}} {{.HelpName}} myminio
+   1. List all buckets and directories on Silo/MinIO object storage server in tree format.
+      {{.Prompt}} {{.HelpName}} mysilo
 
-   2. List all directories in "mybucket" on MinIO object storage server in tree format.
-      {{.Prompt}} {{.HelpName}} myminio/mybucket/
+   2. List all directories in "mybucket" on Silo/MinIO object storage server in tree format.
+      {{.Prompt}} {{.HelpName}} mysilo/mybucket/
 
-   3. List all directories in "mybucket" on MinIO object storage server hosted on Microsoft Windows in tree format.
-      {{.Prompt}} {{.HelpName}} myminio\mybucket\
+   3. List all directories in "mybucket" on Silo/MinIO object storage server hosted on Microsoft Windows in tree format.
+      {{.Prompt}} {{.HelpName}} mysilo\mybucket\
 
-   4. List all directories and objects in "mybucket" on MinIO object storage server in tree format.
-      {{.Prompt}} {{.HelpName}} --files myminio/mybucket/
+   4. List all directories and objects in "mybucket" on Silo/MinIO object storage server in tree format.
+      {{.Prompt}} {{.HelpName}} --files mysilo/mybucket/
 
    5. List all directories upto depth level '2' in tree format.
-      {{.Prompt}} {{.HelpName}} --depth 2 myminio/mybucket/
+      {{.Prompt}} {{.HelpName}} --depth 2 mysilo/mybucket/
 `,
 }
 

@@ -61,11 +61,11 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Remove replication configuration rule on bucket "mybucket" for alias "myminio" with rule id "bsib5mgt874bi56l0fmg".
-     {{.Prompt}} {{.HelpName}} --id "bsib5mgt874bi56l0fmg" myminio/mybucket
+  1. Remove replication configuration rule on bucket "mybucket" for alias "mysilo" with rule id "bsib5mgt874bi56l0fmg".
+     {{.Prompt}} {{.HelpName}} --id "bsib5mgt874bi56l0fmg" mysilo/mybucket
 
-  2. Remove all the replication configuration rules on bucket "mybucket" for alias "myminio". --force flag is required.
-     {{.Prompt}} {{.HelpName}} --all --force myminio/mybucket
+  2. Remove all the replication configuration rules on bucket "mybucket" for alias "mysilo". --force flag is required.
+     {{.Prompt}} {{.HelpName}} --all --force mysilo/mybucket
 `,
 }
 

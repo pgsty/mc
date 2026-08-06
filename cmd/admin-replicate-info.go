@@ -50,7 +50,7 @@ FLAGS:
 
 EXAMPLES:
   1. Get Site Replication information:
-     {{.Prompt}} {{.HelpName}} minio1
+     {{.Prompt}} {{.HelpName}} silo1
 `,
 }
 

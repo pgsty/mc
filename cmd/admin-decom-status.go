@@ -48,9 +48,9 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Show current decommissioning status.
-     {{.Prompt}} {{.HelpName}} myminio/ http://server{5...8}/disk{1...4}
+     {{.Prompt}} {{.HelpName}} mysilo/ http://server{5...8}/disk{1...4}
   2. List all current decommissioning status of all pools.
-     {{.Prompt}} {{.HelpName}} myminio/
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 

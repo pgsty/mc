@@ -107,16 +107,16 @@ FLAGS:
 
 EXAMPLES:
     1. Display overall site replication status:
-       {{.Prompt}} {{.HelpName}} minio1
+       {{.Prompt}} {{.HelpName}} silo1
 
     2. Display site replication status of buckets across sites
-       {{.Prompt}} {{.HelpName}} minio1 --buckets
+       {{.Prompt}} {{.HelpName}} silo1 --buckets
 
     3. Drill down and view site replication status of bucket "bucket"
-       {{.Prompt}} {{.HelpName}} minio1 --bucket bucket
+       {{.Prompt}} {{.HelpName}} silo1 --bucket bucket
 
     4. Drill down and view site replication status of user "foo"
-       {{.Prompt}} {{.HelpName}} minio1 --user foo
+       {{.Prompt}} {{.HelpName}} silo1 --user foo
 `,
 }
 

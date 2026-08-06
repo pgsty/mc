@@ -57,15 +57,15 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Enable versioning on bucket "mybucket" for alias "myminio".
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. Enable versioning on bucket "mybucket" for alias "mysilo".
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 
   2. Enable versioning on bucket "mybucket" while excluding versioning on a few select prefixes.
-     {{.Prompt}} {{.HelpName}} myminio/mybucket --excluded-prefixes "app1/*/_temporary/,app2/*/_staging/"
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket --excluded-prefixes "app1/*/_temporary/,app2/*/_staging/"
 
   3. Enable versioning on bucket "mybucket" while excluding versioning on a few select prefixes and all folders.
      Note: this is useful on buckets used with Spark/Hadoop workloads.
-     {{.Prompt}} {{.HelpName}} myminio/mybucket --excluded-prefixes "app1/*/_temporary/,app2/*/_staging/" --exclude-folders
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket --excluded-prefixes "app1/*/_temporary/,app2/*/_staging/" --exclude-folders
 `,
 }
 

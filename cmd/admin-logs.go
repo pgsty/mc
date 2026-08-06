@@ -48,7 +48,7 @@ var logsShowFlags = []cli.Flag{
 
 var adminLogsCmd = cli.Command{
 	Name:            "logs",
-	Usage:           "show MinIO logs",
+	Usage:           "show Silo/MinIO logs",
 	OnUsageError:    onUsageError,
 	Action:          mainAdminLogs,
 	Before:          setGlobalsFromContext,
@@ -62,12 +62,12 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Show logs for a MinIO server with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} myminio
-  2. Show last 5 log entries for node 'node1' for a MinIO server with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} --last 5 myminio node1
-  3. Show application errors in logs for a MinIO server with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} --type application myminio
+  1. Show logs for a Silo/MinIO server with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} mysilo
+  2. Show last 5 log entries for node 'node1' for a Silo/MinIO server with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} --last 5 mysilo node1
+  3. Show application errors in logs for a Silo/MinIO server with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} --type application mysilo
 `,
 }
 

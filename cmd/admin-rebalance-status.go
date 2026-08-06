@@ -47,8 +47,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Summarize ongoing rebalance on a MinIO deployment with alias myminio
-     {{.Prompt}} {{.HelpName}} myminio
+  1. Summarize ongoing rebalance on a Silo/MinIO deployment with alias mysilo
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 

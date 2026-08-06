@@ -96,7 +96,7 @@ var (
 		},
 		cli.BoolFlag{
 			Name:  "zip",
-			Usage: "Extract from remote zip file (MinIO server source only)",
+			Usage: "Extract from remote zip file (Silo/MinIO server source only)",
 		},
 		cli.IntFlag{
 			Name:  "max-workers",
@@ -141,59 +141,59 @@ EXAMPLES:
   01. Copy a list of objects from local file system to Amazon S3 cloud storage.
       {{.Prompt}} {{.HelpName}} Music/*.ogg s3/jukebox/
 
-  02. Copy a folder recursively from MinIO cloud storage to Amazon S3 cloud storage.
-      {{.Prompt}} {{.HelpName}} --recursive play/mybucket/myfolder/ s3/mybucket/
+  02. Copy a folder recursively from Silo/MinIO cloud storage to Amazon S3 cloud storage.
+      {{.Prompt}} {{.HelpName}} --recursive mysilo/mybucket/myfolder/ s3/mybucket/
 
-  03. Copy multiple local folders recursively to MinIO cloud storage.
-      {{.Prompt}} {{.HelpName}} --recursive backup/2014/ backup/2015/ play/archive/
+  03. Copy multiple local folders recursively to Silo/MinIO cloud storage.
+      {{.Prompt}} {{.HelpName}} --recursive backup/2014/ backup/2015/ mysilo/archive/
 
   04. Copy a bucket recursively from aliased Amazon S3 cloud storage to local filesystem on Windows.
       {{.Prompt}} {{.HelpName}} --recursive s3\documents\2014\ C:\Backups\2014
 
-  05. Copy files older than 7 days and 10 hours from MinIO cloud storage to Amazon S3 cloud storage.
-      {{.Prompt}} {{.HelpName}} --older-than 7d10h play/mybucket/myfolder/ s3/mybucket/
+  05. Copy files older than 7 days and 10 hours from Silo/MinIO cloud storage to Amazon S3 cloud storage.
+      {{.Prompt}} {{.HelpName}} --older-than 7d10h mysilo/mybucket/myfolder/ s3/mybucket/
 
-  06. Copy files newer than 7 days and 10 hours from MinIO cloud storage to a local path.
-      {{.Prompt}} {{.HelpName}} --newer-than 7d10h play/mybucket/myfolder/ ~/latest/
+  06. Copy files newer than 7 days and 10 hours from Silo/MinIO cloud storage to a local path.
+      {{.Prompt}} {{.HelpName}} --newer-than 7d10h mysilo/mybucket/myfolder/ ~/latest/
 
   07. Copy an object with name containing unicode characters to Amazon S3 cloud storage.
       {{.Prompt}} {{.HelpName}} 本語 s3/andoria/
 
   08. Copy a local folder with space separated characters to Amazon S3 cloud storage.
-      {{.Prompt}} {{.HelpName}} --recursive 'workdir/documents/May 2014/' s3/miniocloud
+      {{.Prompt}} {{.HelpName}} --recursive 'workdir/documents/May 2014/' s3/mycloud
 
-  09. Copy a folder with encrypted objects recursively from Amazon S3 to MinIO cloud storage using s3 encryption.
-      {{.Prompt}} {{.HelpName}} --recursive --enc-s3 "s3/documents" --enc-s3 "myminio/documents" s3/documents/ myminio/documents/
+  09. Copy a folder with encrypted objects recursively from Amazon S3 to Silo/MinIO cloud storage using s3 encryption.
+      {{.Prompt}} {{.HelpName}} --recursive --enc-s3 "s3/documents" --enc-s3 "mysilo/documents" s3/documents/ mysilo/documents/
 
-  10. Copy a folder with encrypted objects recursively from Amazon S3 to MinIO cloud storage.
-      {{.Prompt}} {{.HelpName}} --recursive --enc-c "s3/documents/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" --enc-c "myminio/documents/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5BBB" s3/documents/ myminio/documents/
+  10. Copy a folder with encrypted objects recursively from Amazon S3 to Silo/MinIO cloud storage.
+      {{.Prompt}} {{.HelpName}} --recursive --enc-c "s3/documents/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" --enc-c "mysilo/documents/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5BBB" s3/documents/ mysilo/documents/
 
-  11. Copy a list of objects from local file system to MinIO cloud storage with specified metadata, separated by ";"
-      {{.Prompt}} {{.HelpName}} --attr "key1=value1;key2=value2" Music/*.mp4 play/mybucket/
+  11. Copy a list of objects from local file system to Silo/MinIO cloud storage with specified metadata, separated by ";"
+      {{.Prompt}} {{.HelpName}} --attr "key1=value1;key2=value2" Music/*.mp4 mysilo/mybucket/
 
-  12. Copy a folder recursively from MinIO cloud storage to Amazon S3 cloud storage with Cache-Control and custom metadata, separated by ";".
-      {{.Prompt}} {{.HelpName}} --attr "Cache-Control=max-age=90000,min-fresh=9000;key1=value1;key2=value2" --recursive play/mybucket/myfolder/ s3/mybucket/
+  12. Copy a folder recursively from Silo/MinIO cloud storage to Amazon S3 cloud storage with Cache-Control and custom metadata, separated by ";".
+      {{.Prompt}} {{.HelpName}} --attr "Cache-Control=max-age=90000,min-fresh=9000;key1=value1;key2=value2" --recursive mysilo/mybucket/myfolder/ s3/mybucket/
 
   13. Copy a text file to an object storage and assign REDUCED_REDUNDANCY storage-class to the uploaded object.
-      {{.Prompt}} {{.HelpName}} --storage-class REDUCED_REDUNDANCY myobject.txt play/mybucket
+      {{.Prompt}} {{.HelpName}} --storage-class REDUCED_REDUNDANCY myobject.txt mysilo/mybucket
 
   14. Copy a text file to an object storage and preserve the file system attribute as metadata.
-      {{.Prompt}} {{.HelpName}} -a myobject.txt play/mybucket
+      {{.Prompt}} {{.HelpName}} -a myobject.txt mysilo/mybucket
 
   15. Copy a text file to an object storage with object lock mode set to 'GOVERNANCE' with retention duration 1 day.
-      {{.Prompt}} {{.HelpName}} --retention-mode governance --retention-duration 1d locked.txt play/locked-bucket/
+      {{.Prompt}} {{.HelpName}} --retention-mode governance --retention-duration 1d locked.txt mysilo/locked-bucket/
 
   16. Copy a text file to an object storage with legal-hold enabled.
-      {{.Prompt}} {{.HelpName}} --legal-hold on locked.txt play/locked-bucket/
+      {{.Prompt}} {{.HelpName}} --legal-hold on locked.txt mysilo/locked-bucket/
 
   17. Copy a text file to an object storage and disable multipart upload feature.
-      {{.Prompt}} {{.HelpName}} --disable-multipart myobject.txt play/mybucket
+      {{.Prompt}} {{.HelpName}} --disable-multipart myobject.txt mysilo/mybucket
 
   18. Roll back 10 days in the past to copy the content of 'mybucket'
-      {{.Prompt}} {{.HelpName}} --rewind 10d -r play/mybucket/ /tmp/dest/
+      {{.Prompt}} {{.HelpName}} --rewind 10d -r mysilo/mybucket/ /tmp/dest/
 
   19. Set tags to the uploaded objects
-      {{.Prompt}} {{.HelpName}} -r --tags "category=prod&type=backup" ./data/ play/another-bucket/
+      {{.Prompt}} {{.HelpName}} -r --tags "category=prod&type=backup" ./data/ mysilo/another-bucket/
 
 `,
 }

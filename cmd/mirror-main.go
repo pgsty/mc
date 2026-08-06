@@ -176,8 +176,8 @@ ENVIRONMENT VARIABLES:
   MC_ENC_S3: S3 encryption key in the form of (alias/prefix=key).
 
 EXAMPLES:
-  01. Mirror a bucket recursively from MinIO cloud storage to a bucket on Amazon S3 cloud storage.
-      {{.Prompt}} {{.HelpName}} play/photos/2014 s3/backup-photos
+  01. Mirror a bucket recursively from Silo/MinIO cloud storage to a bucket on Amazon S3 cloud storage.
+      {{.Prompt}} {{.HelpName}} mysilo/photos/2014 s3/backup-photos
 
   02. Mirror a local folder recursively to Amazon S3 cloud storage.
       {{.Prompt}} {{.HelpName}} backup/ s3/archive
@@ -189,15 +189,15 @@ EXAMPLES:
       {{.Prompt}} {{.HelpName}} s3\documents\2014\ C:\backup\2014
 
   05. Mirror a bucket from aliased Amazon S3 cloud storage to a local folder use '--overwrite' to overwrite destination.
-      {{.Prompt}} {{.HelpName}} --overwrite s3/miniocloud miniocloud-backup
+      {{.Prompt}} {{.HelpName}} --overwrite s3/mycloud mycloud-backup
 
-  06. Mirror a bucket from MinIO cloud storage to a bucket on Amazon S3 cloud storage and remove any extraneous
+  06. Mirror a bucket from Silo/MinIO cloud storage to a bucket on Amazon S3 cloud storage and remove any extraneous
       files on Amazon S3 cloud storage.
-      {{.Prompt}} {{.HelpName}} --remove play/photos/2014 s3/backup-photos/2014
+      {{.Prompt}} {{.HelpName}} --remove mysilo/photos/2014 s3/backup-photos/2014
 
-  07. Continuously mirror a local folder recursively to MinIO cloud storage. '--watch' continuously watches for
+  07. Continuously mirror a local folder recursively to Silo/MinIO cloud storage. '--watch' continuously watches for
       new objects, uploads and removes extraneous files on Amazon S3 cloud storage.
-      {{.Prompt}} {{.HelpName}} --remove --watch /var/lib/backups play/backups
+      {{.Prompt}} {{.HelpName}} --remove --watch /var/lib/backups mysilo/backups
 
   08. Continuously mirror all buckets and objects from site 1 to site 2, removed buckets and objects will be reflected as well.
       {{.Prompt}} {{.HelpName}} --remove --watch site1-alias/ site2-alias/
@@ -217,10 +217,10 @@ EXAMPLES:
       {{.Prompt}} {{.HelpName}} --older-than 30d s3/test ~/test
 
   13. Mirror server encrypted objects from Amazon S3 cloud storage to a bucket on Amazon S3 cloud storage
-      {{.Prompt}} {{.HelpName}} --enc-c "minio/archive=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" --enc-c "s3/archive=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5BBB" s3/archive/ minio/archive/ 
+      {{.Prompt}} {{.HelpName}} --enc-c "mysilo/archive=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" --enc-c "s3/archive=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5BBB" s3/archive/ mysilo/archive/ 
 
   14. Update 'Cache-Control' header on all existing objects recursively.
-      {{.Prompt}} {{.HelpName}} --attr "Cache-Control=max-age=90000,min-fresh=9000" myminio/video-files myminio/video-files
+      {{.Prompt}} {{.HelpName}} --attr "Cache-Control=max-age=90000,min-fresh=9000" mysilo/video-files mysilo/video-files
 
   15. Mirror a local folder recursively to Amazon S3 cloud storage and preserve all local file attributes.
       {{.Prompt}} {{.HelpName}} -a backup/ s3/archive

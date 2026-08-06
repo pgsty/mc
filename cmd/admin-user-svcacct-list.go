@@ -39,14 +39,14 @@ USAGE:
   {{.HelpName}} ALIAS TARGET-ACCOUNT
 
 TARGET-ACCOUNT:
-  Is either a MinIO user, LDAP account.
+  Is either a Silo/MinIO user, LDAP account.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
   1. List all service accounts for user 'foobar'.
-     {{.Prompt}} {{.HelpName}} myminio/ foobar
+     {{.Prompt}} {{.HelpName}} mysilo/ foobar
 `,
 }
 

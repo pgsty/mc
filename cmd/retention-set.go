@@ -77,19 +77,19 @@ VALIDITY:
 
 EXAMPLES:
   1. Set object retention for a specific object
-     $ {{.HelpName}} compliance 30d myminio/mybucket/prefix/obj.csv
+     $ {{.HelpName}} compliance 30d mysilo/mybucket/prefix/obj.csv
 
   2. Set object retention for recursively for all objects at a given prefix
-     $ {{.HelpName}} governance 30d myminio/mybucket/prefix --recursive
+     $ {{.HelpName}} governance 30d mysilo/mybucket/prefix --recursive
 
   3. Set object retention to a specific version of a specific object
-     $ {{.HelpName}} governance 30d myminio/mybucket/prefix/obj.csv --version-id "3Jr2x6fqlBUsVzbvPihBO3HgNpgZgAnp"
+     $ {{.HelpName}} governance 30d mysilo/mybucket/prefix/obj.csv --version-id "3Jr2x6fqlBUsVzbvPihBO3HgNpgZgAnp"
 
   4. Set object retention for recursively for all versions of all objects
-     $ {{.HelpName}} governance 30d myminio/mybucket/prefix --recursive --versions
+     $ {{.HelpName}} governance 30d mysilo/mybucket/prefix --recursive --versions
 
   5. Set default lock retention configuration for a bucket
-     $ {{.HelpName}} --default governance 30d myminio/mybucket/
+     $ {{.HelpName}} --default governance 30d mysilo/mybucket/
 `,
 }
 

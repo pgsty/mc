@@ -55,10 +55,10 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. List all current batch jobs:
-     {{.Prompt}} {{.HelpName}} myminio
+     {{.Prompt}} {{.HelpName}} mysilo
 
   2. List all current batch jobs of type 'replicate':
-     {{.Prompt}} {{.HelpName}} myminio/ --type "replicate"
+     {{.Prompt}} {{.HelpName}} mysilo/ --type "replicate"
 `,
 }
 

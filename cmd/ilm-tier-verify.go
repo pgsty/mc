@@ -44,7 +44,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Verify if a tier config is valid.
-     {{.Prompt}} {{.HelpName}} myminio WARM-TIER
+     {{.Prompt}} {{.HelpName}} mysilo WARM-TIER
 `,
 }
 

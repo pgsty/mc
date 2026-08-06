@@ -45,11 +45,11 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Print replication configuration on bucket "mybucket" for alias "myminio" to STDOUT.
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. Print replication configuration on bucket "mybucket" for alias "mysilo" to STDOUT.
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 
-  2. Export replication configuration on bucket "mybucket" for alias "myminio" to '/data/replicate/config'.
-     {{.Prompt}} {{.HelpName}} myminio/mybucket > /data/replicate/config
+  2. Export replication configuration on bucket "mybucket" for alias "mysilo" to '/data/replicate/config'.
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket > /data/replicate/config
 `,
 }
 

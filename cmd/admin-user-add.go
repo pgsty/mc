@@ -54,24 +54,24 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Add a new user 'foobar' to MinIO server.
+  1. Add a new user 'foobar' to Silo/MinIO server.
      {{.DisableHistory}}
-     {{.Prompt}} {{.HelpName}} myminio foobar foo12345
+     {{.Prompt}} {{.HelpName}} mysilo foobar foo12345
      {{.EnableHistory}}
 
-  2. Add a new user 'foobar' to MinIO server, prompting for keys.
-     {{.Prompt}} {{.HelpName}} myminio
+  2. Add a new user 'foobar' to Silo/MinIO server, prompting for keys.
+     {{.Prompt}} {{.HelpName}} mysilo
      Enter Access Key: foobar
      Enter Secret Key: foobar12345
 
-  3. Add a new user 'foobar' to MinIO server using piped keys.
+  3. Add a new user 'foobar' to Silo/MinIO server using piped keys.
      {{.DisableHistory}}
-     {{.Prompt}} echo -e "foobar\nfoobar12345" | {{.HelpName}} myminio
+     {{.Prompt}} echo -e "foobar\nfoobar12345" | {{.HelpName}} mysilo
      {{.EnableHistory}}
 
-  4. Add a new user 'foobar' to MinIO server, then attach IAM policy "writeonly".
-     {{.Prompt}} {{.HelpName}} myminio foobar foo12345 
-     {{.Prompt}} mc admin policy attach myminio writeonly --user foobar
+  4. Add a new user 'foobar' to Silo/MinIO server, then attach IAM policy "writeonly".
+     {{.Prompt}} {{.HelpName}} mysilo foobar foo12345 
+     {{.Prompt}} mc admin policy attach mysilo writeonly --user foobar
 `,
 }
 

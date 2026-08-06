@@ -49,7 +49,7 @@ var headFlags = []cli.Flag{
 	},
 	cli.BoolFlag{
 		Name:  "zip",
-		Usage: "extract from remote zip file (MinIO server source only)",
+		Usage: "extract from remote zip file (Silo/MinIO server source only)",
 	},
 }
 

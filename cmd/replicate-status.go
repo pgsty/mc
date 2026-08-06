@@ -66,11 +66,11 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Get server side replication metrics for bucket "mybucket" for alias "myminio".
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. Get server side replication metrics for bucket "mybucket" for alias "mysilo".
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 
-  2. Get replication speed across nodes for bucket "mybucket" for alias "myminio".
-     {{.Prompt}} {{.HelpName}} --nodes  myminio/mybucket
+  2. Get replication speed across nodes for bucket "mybucket" for alias "mysilo".
+     {{.Prompt}} {{.HelpName}} --nodes  mysilo/mybucket
 `,
 }
 

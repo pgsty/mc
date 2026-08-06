@@ -26,7 +26,7 @@ var adminClusterIAMSubcommands = []cli.Command{
 
 var adminClusterIAMCmd = cli.Command{
 	Name:            "iam",
-	Usage:           "manage IAM info on MinIO cluster",
+	Usage:           "manage IAM info on Silo/MinIO cluster",
 	Action:          mainadminClusterIAM,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

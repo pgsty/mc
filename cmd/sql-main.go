@@ -92,34 +92,34 @@ FLAGS:
   {{end}}{{end}}
 
 SERIALIZATION OPTIONS:
-  For query serialization options, refer to https://docs.min.io/community/minio-object-store/reference/minio-mc/mc-sql.html
+  For query serialization options, refer to https://silo.pgsty.com/reference/minio-mc/
 
 EXAMPLES:
   1. Run a query on a set of objects recursively on AWS S3.
      {{.Prompt}} {{.HelpName}} --recursive --query "select * from S3Object" s3/personalbucket/my-large-csvs/
 
-  2. Run a query on an object on MinIO.
-     {{.Prompt}} {{.HelpName}} --query "select count(s.power) from S3Object s" myminio/iot-devices/power-ratio.csv
+  2. Run a query on an object on Silo/MinIO.
+     {{.Prompt}} {{.HelpName}} --query "select count(s.power) from S3Object s" mysilo/iot-devices/power-ratio.csv
 
   3. Run a query on an encrypted object with customer provided keys.
-     {{.Prompt}} {{.HelpName}} --enc-c "myminio/iot-devices=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" \
-         --query "select count(s.power) from S3Object s" myminio/iot-devices/power-ratio-encrypted.csv
+     {{.Prompt}} {{.HelpName}} --enc-c "mysilo/iot-devices=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" \
+         --query "select count(s.power) from S3Object s" mysilo/iot-devices/power-ratio-encrypted.csv
 
-  4. Run a query on an object on MinIO in gzip format using ; as field delimiter,
+  4. Run a query on an object on Silo/MinIO in gzip format using ; as field delimiter,
      newline as record delimiter and file header to be used
      {{.Prompt}} {{.HelpName}} --compression GZIP --csv-input "rd=\n,fh=USE,fd=;" \
-         --query "select count(s.power) from S3Object s" myminio/iot-devices/power-ratio.csv.gz
+         --query "select count(s.power) from S3Object s" mysilo/iot-devices/power-ratio.csv.gz
 
-  5. Run a query on an object on MinIO in gzip format using ; as field delimiter,
+  5. Run a query on an object on Silo/MinIO in gzip format using ; as field delimiter,
      newline as record delimiter and file header to be used
      {{.Prompt}} {{.HelpName}} --compression GZIP --csv-input "rd=\n,fh=USE,fd=;" \
-         --json-output "rd=\n\n" --query "select * from S3Object" myminio/iot-devices/data.csv
+         --json-output "rd=\n\n" --query "select * from S3Object" mysilo/iot-devices/data.csv
 
   6. Run same query as in 5., but specify csv output headers. If --csv-output-headers is
      specified as "", first row of csv is interpreted as header
      {{.Prompt}} {{.HelpName}} --compression GZIP --csv-input "rd=\n,fh=USE,fd=;" \
          --csv-output "rd=\n" --csv-output-header "device_id,uptime,lat,lon" \
-         --query "select * from S3Object" myminio/iot-devices/data.csv
+         --query "select * from S3Object" mysilo/iot-devices/data.csv
 `,
 }
 

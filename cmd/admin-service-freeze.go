@@ -27,7 +27,7 @@ import (
 
 var adminServiceFreezeCmd = cli.Command{
 	Name:         "freeze",
-	Usage:        "freeze S3 API calls on MinIO cluster",
+	Usage:        "freeze S3 API calls on Silo/MinIO cluster",
 	Action:       mainAdminServiceFreeze,
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
@@ -43,8 +43,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Freeze all S3 API calls on MinIO server at 'myminio/'.
-     {{.Prompt}} {{.HelpName}} myminio/
+  1. Freeze all S3 API calls on Silo/MinIO server at 'mysilo/'.
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -89,7 +89,7 @@ func mainAdminServiceFreeze(ctx *cli.Context) error {
 	client, err := newAdminClient(aliasedURL)
 	fatalIf(err, "Unable to initialize admin connection.")
 
-	// Freeze the specified MinIO server
+	// Freeze the specified Silo/MinIO server
 	fatalIf(probe.NewError(client.ServiceFreezeV2(globalContext)), "Unable to freeze the server.")
 
 	// Success..

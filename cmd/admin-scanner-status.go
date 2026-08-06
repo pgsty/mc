@@ -78,7 +78,7 @@ var adminScannerInfo = cli.Command{
 	Name:            "status",
 	Aliases:         []string{"info"},
 	HiddenAliases:   true,
-	Usage:           "summarize scanner events on MinIO server in real-time",
+	Usage:           "summarize scanner events on Silo/MinIO server in real-time",
 	Action:          mainAdminScannerInfo,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -95,7 +95,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
    1. Display current in-progress all scanner operations.
-      {{.Prompt}} {{.HelpName}} myminio/
+      {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 

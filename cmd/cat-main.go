@@ -45,7 +45,7 @@ var catFlags = []cli.Flag{
 	},
 	cli.BoolFlag{
 		Name:  "zip",
-		Usage: "extract from remote zip file (MinIO server source only)",
+		Usage: "extract from remote zip file (Silo/MinIO server source only)",
 	},
 	cli.Int64Flag{
 		Name:  "offset",
@@ -90,17 +90,17 @@ EXAMPLES:
      {{.Prompt}} {{.HelpName}} part.* > complete.img
 
   4. Save an encrypted object from Amazon S3 cloud storage to a local file.
-     {{.Prompt}} {{.HelpName}} --enc-c "play/my-bucket/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" s3/mysql-backups/backups-201810.gz > /mnt/data/recent.gz
+     {{.Prompt}} {{.HelpName}} --enc-c "mysilo/my-bucket/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" s3/mysql-backups/backups-201810.gz > /mnt/data/recent.gz
 
   5. Display the content of encrypted object. In case the encryption key contains non-printable character like tab, pass the
      base64 encoded string as key.
-     {{.Prompt}} {{.HelpName}} --enc-c "play/my-bucket/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" play/my-bucket/my-object
+     {{.Prompt}} {{.HelpName}} --enc-c "mysilo/my-bucket/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" mysilo/my-bucket/my-object
 
   6. Display the content of an object 10 days earlier
-     {{.Prompt}} {{.HelpName}} --rewind 10d play/my-bucket/my-object
+     {{.Prompt}} {{.HelpName}} --rewind 10d mysilo/my-bucket/my-object
 
   7. Display the content of a particular object version
-     {{.Prompt}} {{.HelpName}} --vid "3ddac055-89a7-40fa-8cd3-530a5581b6b8" play/my-bucket/my-object
+     {{.Prompt}} {{.HelpName}} --vid "3ddac055-89a7-40fa-8cd3-530a5581b6b8" mysilo/my-bucket/my-object
 `,
 }
 

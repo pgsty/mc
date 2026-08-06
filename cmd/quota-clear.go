@@ -42,8 +42,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Clear bucket quota configured for bucket "mybucket" on MinIO.
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. Clear bucket quota configured for bucket "mybucket" on Silo/MinIO.
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 `,
 }
 

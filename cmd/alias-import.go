@@ -55,11 +55,11 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Import the provided credentials.json file as 'myminio' to the config:
-     {{ .Prompt }} {{ .HelpName }} myminio/ ./credentials.json
+  1. Import the provided credentials.json file as 'mysilo' to the config:
+     {{ .Prompt }} {{ .HelpName }} mysilo/ ./credentials.json
 
-  2. Import the credentials through standard input as 'myminio' to the config:
-     {{ .Prompt }} cat credentials.json | {{ .HelpName }} myminio/
+  2. Import the credentials through standard input as 'mysilo' to the config:
+     {{ .Prompt }} cat credentials.json | {{ .HelpName }} mysilo/
 `,
 }
 

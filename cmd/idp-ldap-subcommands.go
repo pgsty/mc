@@ -44,13 +44,13 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Create LDAP IDentity Provider configuration.
-     {{.Prompt}} {{.HelpName}} myminio/ \
+     {{.Prompt}} {{.HelpName}} mysilo/ \
           server_addr=myldapserver:636 \
-          lookup_bind_dn=cn=admin,dc=min,dc=io \
+          lookup_bind_dn=cn=admin,dc=example,dc=com \
           lookup_bind_password=somesecret \
-          user_dn_search_base_dn=dc=min,dc=io \
+          user_dn_search_base_dn=dc=example,dc=com \
           user_dn_search_filter="(uid=%s)" \
-          group_search_base_dn=ou=swengg,dc=min,dc=io \
+          group_search_base_dn=ou=swengg,dc=example,dc=com \
           group_search_filter="(&(objectclass=groupofnames)(member=%d))"
 `,
 }
@@ -112,8 +112,8 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Update the LDAP IDP configuration.
-     {{.Prompt}} {{.HelpName}} play/ \
-          lookup_bind_dn=cn=admin,dc=min,dc=io \
+     {{.Prompt}} {{.HelpName}} mysilo/ \
+          lookup_bind_dn=cn=admin,dc=example,dc=com \
           lookup_bind_password=somesecret
 `,
 }
@@ -176,7 +176,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Remove the default LDAP IDP configuration.
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -208,7 +208,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. List configurations for LDAP IDP.
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -238,7 +238,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Get configuration info on the LDAP IDP configuration.
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -269,7 +269,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Enable the LDAP IDP configuration.
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -300,7 +300,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Disable the default LDAP IDP configuration.
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 

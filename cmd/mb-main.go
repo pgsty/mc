@@ -69,7 +69,7 @@ EXAMPLES:
      {{.Prompt}} {{.HelpName}} s3/mynewbucket
 
   2. Create a new bucket on Google Cloud Storage.
-     {{.Prompt}} {{.HelpName}} gcs/miniocloud
+     {{.Prompt}} {{.HelpName}} gcs/mycloud
 
   3. Create a new bucket on Amazon S3 cloud storage in region 'us-west-2'.
      {{.Prompt}} {{.HelpName}} --region=us-west-2 s3/myregionbucket
@@ -81,13 +81,13 @@ EXAMPLES:
      {{.Prompt}} {{.HelpName}} /mnt/sdb/mydisk /mnt/sdc/mydisk /mnt/sdd/mydisk
 
   6. Ignore if bucket/directory already exists.
-     {{.Prompt}} {{.HelpName}} --ignore-existing myminio/mynewbucket
+     {{.Prompt}} {{.HelpName}} --ignore-existing mysilo/mynewbucket
 
   7. Create a new bucket on Amazon S3 cloud storage in region 'us-west-2' with object lock enabled.
      {{.Prompt}} {{.HelpName}} --with-lock --region=us-west-2 s3/myregionbucket
 
-  8. Create a new bucket on MinIO with versioning enabled.
-     {{.Prompt}} {{.HelpName}} --with-versioning myminio/myversionedbucket
+  8. Create a new bucket on Silo/MinIO with versioning enabled.
+     {{.Prompt}} {{.HelpName}} --with-versioning mysilo/myversionedbucket
 `,
 }
 

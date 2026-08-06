@@ -61,10 +61,10 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Download all IAM metadata for cluster into zip file.
-     {{.Prompt}} {{.HelpName}} myminio
+     {{.Prompt}} {{.HelpName}} mysilo
 
   2. Download all IAM metadata to a custom file.
-     {{.Prompt}} {{.HelpName}} myminio --output /tmp/myminio-iam.zip
+     {{.Prompt}} {{.HelpName}} mysilo --output /tmp/mysilo-iam.zip
 `,
 }
 

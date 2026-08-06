@@ -53,7 +53,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Cancel ongoing batch job:
-     {{.Prompt}} {{.HelpName}} myminio <job-id>
+     {{.Prompt}} {{.HelpName}} mysilo <job-id>
 `,
 }
 

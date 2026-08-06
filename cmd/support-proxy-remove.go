@@ -56,8 +56,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Remove the proxy configured for cluster with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} myminio
+  1. Remove the proxy configured for cluster with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 

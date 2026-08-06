@@ -51,16 +51,16 @@ FLAGS:
 EXAMPLES:
   The output includes environment variables set on the server. These cannot be overridden from the client.
 
-  1. Get the current region setting on MinIO server.
-     {{.Prompt}} {{.HelpName}} play/ region
+  1. Get the current region setting on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo/ region
      region name=us-east-1
 
-  2. Get the current notification settings for Webhook target on MinIO server
-     {{.Prompt}} {{.HelpName}} myminio/ notify_webhook
+  2. Get the current notification settings for Webhook target on Silo/MinIO server
+     {{.Prompt}} {{.HelpName}} mysilo/ notify_webhook
      notify_webhook endpoint="http://localhost:8080" auth_token= queue_limit=10000 queue_dir="/home/events"
 
-  3. Get the current compression settings on MinIO server
-     {{.Prompt}} {{.HelpName}} myminio/ compression
+  3. Get the current compression settings on Silo/MinIO server
+     {{.Prompt}} {{.HelpName}} mysilo/ compression
      compression extensions=".txt,.csv" mime_types="text/*"
 `,
 }

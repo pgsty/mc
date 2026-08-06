@@ -35,7 +35,7 @@ var adminPolicySubcommands = []cli.Command{
 
 var adminPolicyCmd = cli.Command{
 	Name:            "policy",
-	Usage:           "manage policies defined in the MinIO server",
+	Usage:           "manage policies defined in the Silo/MinIO server",
 	Action:          mainAdminPolicy,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

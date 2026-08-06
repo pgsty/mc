@@ -29,7 +29,7 @@ import (
 
 var adminServiceUnfreezeCmd = cli.Command{
 	Name:         "unfreeze",
-	Usage:        "unfreeze S3 API calls on MinIO cluster",
+	Usage:        "unfreeze S3 API calls on Silo/MinIO cluster",
 	Action:       mainAdminServiceUnfreeze,
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
@@ -44,8 +44,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Unfreeze all S3 API calls on MinIO server at 'myminio/'.
-     {{.Prompt}} {{.HelpName}} myminio/
+  1. Unfreeze all S3 API calls on Silo/MinIO server at 'mysilo/'.
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -93,7 +93,7 @@ func mainAdminServiceUnfreeze(ctx *cli.Context) error {
 	ctxt, cancel := context.WithCancel(globalContext)
 	defer cancel()
 
-	// Unfreeze the specified MinIO server
+	// Unfreeze the specified Silo/MinIO server
 	e := client.ServiceUnfreezeV2(ctxt)
 	if e != nil {
 		// Attempt an older API server might be old
@@ -101,7 +101,7 @@ func mainAdminServiceUnfreeze(ctx *cli.Context) error {
 		// we need this fallback
 		e = client.ServiceUnfreeze(ctxt)
 	}
-	// Unfreeze the specified MinIO server
+	// Unfreeze the specified Silo/MinIO server
 	fatalIf(probe.NewError(e), "Unable to unfreeze the server.")
 
 	// Success..

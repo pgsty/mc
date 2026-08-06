@@ -58,7 +58,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Remove an empty tier by name 'WARM-TIER':
-     {{.Prompt}} {{.HelpName}} myminio WARM-TIER
+     {{.Prompt}} {{.HelpName}} mysilo WARM-TIER
 `,
 }
 

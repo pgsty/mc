@@ -44,8 +44,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 xEXAMPLES:
-  1. Start rebalance on a MinIO deployment with alias myminio
-     {{.Prompt}} {{.HelpName}} myminio
+  1. Start rebalance on a Silo/MinIO deployment with alias mysilo
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 

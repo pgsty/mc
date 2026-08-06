@@ -39,7 +39,7 @@ var adminConsoleFlags = []cli.Flag{
 
 var adminConsoleCmd = cli.Command{
 	Name:               "console",
-	Usage:              "show MinIO logs",
+	Usage:              "show Silo/MinIO logs",
 	Action:             mainAdminConsole,
 	OnUsageError:       onUsageError,
 	Before:             setGlobalsFromContext,

@@ -63,13 +63,13 @@ FLAGS:
   {{end}}{{end}}
 EXAMPLES:
   1. Check if the cluster is ready or not
-     {{.Prompt}} {{.HelpName}} myminio
+     {{.Prompt}} {{.HelpName}} mysilo
 
   2. Check if the cluster has enough read quorum
-     {{.Prompt}} {{.HelpName}} myminio --cluster-read
+     {{.Prompt}} {{.HelpName}} mysilo --cluster-read
 
   3. Check if the cluster is taken down for maintenance
-     {{.Prompt}} {{.HelpName}} myminio --maintenance
+     {{.Prompt}} {{.HelpName}} mysilo --maintenance
 `,
 }
 

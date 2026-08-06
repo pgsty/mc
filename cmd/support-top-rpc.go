@@ -80,7 +80,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
    1. Display net metrics
-      {{.Prompt}} {{.HelpName}} myminio/
+      {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 

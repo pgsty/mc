@@ -41,7 +41,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Remove the CORS configuration for the bucket 'mybucket':
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
  `,
 }
 

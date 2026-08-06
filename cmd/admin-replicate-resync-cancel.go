@@ -47,8 +47,8 @@ FLAGS:
   {{end}}
 
 EXAMPLES:
-  1. Cancel ongoing resync of bucket data from minio1 to minio2
-     {{.Prompt}} {{.HelpName}} minio1 minio2
+  1. Cancel ongoing resync of bucket data from silo1 to silo2
+     {{.Prompt}} {{.HelpName}} silo1 silo2
 `,
 }
 

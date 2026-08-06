@@ -21,7 +21,7 @@ import "github.com/minio/cli"
 
 var adminIDPCmd = cli.Command{
 	Name:            "idp",
-	Usage:           "manage MinIO IDentity Provider server configuration",
+	Usage:           "manage Silo/MinIO IDentity Provider server configuration",
 	Action:          mainAdminIDP,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

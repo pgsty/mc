@@ -139,21 +139,21 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Configure a new remote tier which transitions objects to a bucket in a MinIO deployment:
-     {{.Prompt}} {{.HelpName}} minio myminio WARM-MINIO-TIER --endpoint https://warm-minio.com \
+  1. Configure a new remote tier which transitions objects to a bucket in a Silo/MinIO deployment:
+     {{.Prompt}} {{.HelpName}} minio mysilo WARM-SILO-TIER --endpoint https://warm-silo.com \
         --access-key ACCESSKEY --secret-key SECRETKEY --bucket mybucket --prefix myprefix/
 
   2. Configure a new remote tier which transitions objects to a bucket in Azure Blob Storage:
-     {{.Prompt}} {{.HelpName}} azure myminio AZTIER --account-name ACCOUNT-NAME --account-key ACCOUNT-KEY \
+     {{.Prompt}} {{.HelpName}} azure mysilo AZTIER --account-name ACCOUNT-NAME --account-key ACCOUNT-KEY \
         --bucket myazurebucket --prefix myazureprefix/
 
   3. Configure a new remote tier which transitions objects to a bucket in AWS S3 with STANDARD storage class:
-     {{.Prompt}} {{.HelpName}} s3 myminio S3TIER --endpoint https://s3.amazonaws.com \
+     {{.Prompt}} {{.HelpName}} s3 mysilo S3TIER --endpoint https://s3.amazonaws.com \
         --access-key ACCESSKEY --secret-key SECRETKEY --bucket mys3bucket --prefix mys3prefix/ \
         --storage-class "STANDARD" --region us-west-2
 
   4. Configure a new remote tier which transitions objects to a bucket in Google Cloud Storage:
-     {{.Prompt}} {{.HelpName}} gcs myminio GCSTIER --credentials-file /path/to/credentials.json \
+     {{.Prompt}} {{.HelpName}} gcs mysilo GCSTIER --credentials-file /path/to/credentials.json \
         --bucket mygcsbucket  --prefix mygcsprefix/
 `,
 }

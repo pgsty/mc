@@ -79,12 +79,12 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Show most recent replication failures on "myminio" alias for objects in bucket "mybucket"
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. Show most recent replication failures on "mysilo" alias for objects in bucket "mybucket"
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 
-  2. Show all unreplicated objects on "myminio" alias for objects in prefix "path/to/prefix" of "mybucket" for all targets.
+  2. Show all unreplicated objects on "mysilo" alias for objects in prefix "path/to/prefix" of "mybucket" for all targets.
      This will perform full listing of all objects in the prefix to find unreplicated objects.
-     {{.Prompt}} {{.HelpName}} myminio/mybucket/path/to/prefix --full
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket/path/to/prefix --full
 `,
 }
 

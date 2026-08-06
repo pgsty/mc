@@ -48,7 +48,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Start a new batch 'replication' job:
-     {{.Prompt}} {{.HelpName}} myminio ./replication.yaml
+     {{.Prompt}} {{.HelpName}} mysilo ./replication.yaml
 `,
 }
 

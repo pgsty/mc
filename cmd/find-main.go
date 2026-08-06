@@ -87,11 +87,11 @@ var (
 		},
 		cli.StringSliceFlag{
 			Name:  "metadata",
-			Usage: "match metadata with RE2 regex pattern. Specify each with key=regex. MinIO server only.",
+			Usage: "match metadata with RE2 regex pattern. Specify each with key=regex. Silo/MinIO server only.",
 		},
 		cli.StringSliceFlag{
 			Name:  "tags",
-			Usage: "match tags with RE2 regex pattern. Specify each with key=regex. MinIO server only.",
+			Usage: "match tags with RE2 regex pattern. Specify each with key=regex. Silo/MinIO server only.",
 		},
 	}
 )
@@ -153,8 +153,8 @@ EXAMPLES:
   05. Find all images with ".jpg", ".png", and ".gif" extensions, using regex under "s3/photos".
       {{.Prompt}} {{.HelpName}} s3/photos --regex "(?i)\.(jpg|png|gif)$"
 
-  06. Find all images with ".jpg" extension under "s3/bucket" and copy to "play/bucket" *continuously*.
-      {{.Prompt}} {{.HelpName}} s3/bucket --name "*.jpg" --watch --exec "mc cp {} play/bucket"
+  06. Find all images with ".jpg" extension under "s3/bucket" and copy to "mysilo/bucket" *continuously*.
+      {{.Prompt}} {{.HelpName}} s3/bucket --name "*.jpg" --watch --exec "mc cp {} mysilo/bucket"
 
   07. Find and generate public URLs valid for 7 days, for all objects between 64 MB, and 1 GB in size under "s3" account.
       {{.Prompt}} {{.HelpName}} s3 --larger 64MB --smaller 1GB --print {url}
@@ -193,7 +193,7 @@ func checkFindSyntax(ctx context.Context, cliCtx *cli.Context, encKeyDB map[stri
 	for _, url := range args {
 		_, _, err := url2Stat(ctx, url2StatOptions{urlStr: url, versionID: "", fileAttr: false, encKeyDB: encKeyDB, timeRef: time.Time{}, isZip: false, ignoreBucketExistsCheck: false})
 		if err != nil {
-			// Bucket name empty is a valid error for 'find myminio' unless we are using watch, treat it as such.
+			// Bucket name empty is a valid error for 'find mysilo' unless we are using watch, treat it as such.
 			if _, ok := err.ToGoError().(BucketNameEmpty); ok && !cliCtx.Bool("watch") {
 				continue
 			}

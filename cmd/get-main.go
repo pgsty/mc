@@ -54,11 +54,11 @@ FLAGS:
   {{end}}
 
 EXAMPLES:
-  1. Get an object from MinIO storage to local file system
-     {{.Prompt}} {{.HelpName}} play/mybucket/object path-to/object
+  1. Get an object from Silo/MinIO storage to local file system
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket/object path-to/object
 
-  2. Get an object from MinIO storage using encryption
-     {{.Prompt}} {{.HelpName}} --enc-c "play/mybucket/object=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" play/mybucket/object path-to/object
+  2. Get an object from Silo/MinIO storage using encryption
+     {{.Prompt}} {{.HelpName}} --enc-c "mysilo/mybucket/object=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" mysilo/mybucket/object path-to/object
 `,
 }
 

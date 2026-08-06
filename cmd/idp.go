@@ -26,7 +26,7 @@ var idpSubcommands = []cli.Command{
 
 var idpCmd = cli.Command{
 	Name:            "idp",
-	Usage:           "manage MinIO IDentity Provider server configuration",
+	Usage:           "manage Silo/MinIO IDentity Provider server configuration",
 	Action:          mainIDP,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

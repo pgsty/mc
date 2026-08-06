@@ -39,14 +39,14 @@ USAGE:
   {{.HelpName}} TARGET POLICYNAME
 
 POLICYNAME:
-  Name of the canned policy on MinIO server.
+  Name of the canned policy on Silo/MinIO server.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Remove 'writeonly' policy on MinIO server.
-     {{.Prompt}} {{.HelpName}} myminio writeonly
+  1. Remove 'writeonly' policy on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo writeonly
 `,
 }
 

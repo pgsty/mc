@@ -43,7 +43,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Describe current batch job definition:
-     {{.Prompt}} {{.HelpName}} myminio KwSysDpxcBU9FNhGkn2dCf
+     {{.Prompt}} {{.HelpName}} mysilo KwSysDpxcBU9FNhGkn2dCf
 `,
 }
 

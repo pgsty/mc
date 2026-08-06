@@ -63,53 +63,53 @@ FLAGS:
   {{end}}
 EXAMPLES (v3):
   1. API metrics
-     {{.Prompt}} {{.HelpName}} play api --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo api --api-version v3
 
   2. API metrics for the bucket 'mybucket'
-     {{.Prompt}} {{.HelpName}} play api --bucket mybucket --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo api --bucket mybucket --api-version v3
 
   3. System metrics
-     {{.Prompt}} {{.HelpName}} play system --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo system --api-version v3
 
   4. Debug metrics
-     {{.Prompt}} {{.HelpName}} play debug --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo debug --api-version v3
 
   5. Cluster metrics
-     {{.Prompt}} {{.HelpName}} play cluster --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo cluster --api-version v3
 
   6. ILM metrics
-     {{.Prompt}} {{.HelpName}} play ilm --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo ilm --api-version v3
 
   7. Audit metrics
-     {{.Prompt}} {{.HelpName}} play audit --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo audit --api-version v3
 
   8. Logger metrics
-     {{.Prompt}} {{.HelpName}} play logger --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo logger --api-version v3
 
   9. Replication metrics
-     {{.Prompt}} {{.HelpName}} play replication --api-version v3
+     {{.Prompt}} {{.HelpName}} mysilo replication --api-version v3
 
   10. Replication metrics for the bucket 'mybucket'
-      {{.Prompt}} {{.HelpName}} play replication --bucket mybucket --api-version v3
+      {{.Prompt}} {{.HelpName}} mysilo replication --bucket mybucket --api-version v3
 
   11. Notification metrics
-      {{.Prompt}} {{.HelpName}} play notification --api-version v3
+      {{.Prompt}} {{.HelpName}} mysilo notification --api-version v3
 
   12. Scanner metrics
-      {{.Prompt}} {{.HelpName}} play scanner --api-version v3
+      {{.Prompt}} {{.HelpName}} mysilo scanner --api-version v3
 
 EXAMPLES (v2):
   1. Metrics reported cluster wide.
-     {{.Prompt}} {{.HelpName}} play
+     {{.Prompt}} {{.HelpName}} mysilo
 
   2. Metrics reported at node level.
-     {{.Prompt}} {{.HelpName}} play node
+     {{.Prompt}} {{.HelpName}} mysilo node
 
   3. Metrics reported at bucket level.
-     {{.Prompt}} {{.HelpName}} play bucket
+     {{.Prompt}} {{.HelpName}} mysilo bucket
 
   4. Resource metrics.
-     {{.Prompt}} {{.HelpName}} play resource
+     {{.Prompt}} {{.HelpName}} mysilo resource
 `,
 }
 

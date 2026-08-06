@@ -70,11 +70,11 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Change the secret key of the service account 'J123C4ZXEQN8RK6ND35I' in MinIO server.
-     {{.Prompt}} {{.HelpName}} myminio/ 'J123C4ZXEQN8RK6ND35I' --secret-key 'xxxxxxx'
+  1. Change the secret key of the service account 'J123C4ZXEQN8RK6ND35I' in Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo/ 'J123C4ZXEQN8RK6ND35I' --secret-key 'xxxxxxx'
 
-  2. Change the expiry of the service account 'J123C4ZXEQN8RK6ND35I' in MinIO server.
-     {{.Prompt}} {{.HelpName}} myminio/ 'J123C4ZXEQN8RK6ND35I' --expiry 2023-06-24T10:00:00-07:00
+  2. Change the expiry of the service account 'J123C4ZXEQN8RK6ND35I' in Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo/ 'J123C4ZXEQN8RK6ND35I' --expiry 2023-06-24T10:00:00-07:00
 `,
 }
 

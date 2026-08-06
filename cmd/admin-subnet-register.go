@@ -23,7 +23,7 @@ import (
 
 var adminSubnetRegisterCmd = cli.Command{
 	Name:               "register",
-	Usage:              "Register the MinIO Cluster with SUBNET",
+	Usage:              "Register the Silo/MinIO Cluster with SUBNET",
 	OnUsageError:       onUsageError,
 	Action:             mainAdminRegister,
 	Before:             setGlobalsFromContext,
