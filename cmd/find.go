@@ -108,7 +108,7 @@ func patternMatch(pattern, match string) bool {
 // supports  '*' and '?' wildcards in the pattern string.
 // unlike path.Match(), considers a path as a flat name space
 // while matching the pattern. The difference is illustrated in
-// the example here https://mysilo.golang.org/p/Ega9qgD4Qz .
+// the example here https://play.golang.org/p/Ega9qgD4Qz .
 func pathMatch(pattern, path string) bool {
 	return wildcard.Match(pattern, path)
 }
