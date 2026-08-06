@@ -48,7 +48,7 @@ The official project portal is [silo.pgsty.com](https://silo.pgsty.com/). It bri
 
 ## Maintenance Policy
 
-The active `master` release line covers:
+The active `main` release line covers:
 
 - build, toolchain, and dependency maintenance;
 - applicable security fixes and sensitive-output hardening;
