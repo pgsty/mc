@@ -1,4 +1,4 @@
-## Community Contribution License
+## Contribution Licensing (no CLA, inbound=outbound, DCO required)
 This project does not use a CLA; contributions are accepted inbound=outbound.
 All community contributions in this pull request are licensed under the
 [GNU AGPL v3.0 or later](https://www.gnu.org/licenses/agpl-3.0.html), the

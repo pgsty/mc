@@ -77,13 +77,13 @@ EXAMPLES:
 	 {{.Prompt}} {{.HelpName}} mysilo/ --temp-only
 
   4. Get list of access keys associated with user 'bobfisher'
-  	 {{.Prompt}} {{.HelpName}} mysilo/ uid=bobfisher,dc=example,dc=com
+   {{.Prompt}} {{.HelpName}} mysilo/ uid=bobfisher,dc=example,dc=com
 
   5. Get list of access keys associated with user 'bobfisher' (alt)
 	 {{.Prompt}} {{.HelpName}} mysilo/ bobfisher
 
   6. Get list of access keys associated with users 'bobfisher' and 'cody3'
-  	 {{.Prompt}} {{.HelpName}} mysilo/ uid=bobfisher,dc=example,dc=com uid=cody3,dc=example,dc=com
+   {{.Prompt}} {{.HelpName}} mysilo/ uid=bobfisher,dc=example,dc=com uid=cody3,dc=example,dc=com
 
   7. Get authenticated user and associated access keys in local server (if not admin)
 	 {{.Prompt}} {{.HelpName}} local/

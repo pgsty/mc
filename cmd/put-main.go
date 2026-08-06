@@ -91,7 +91,7 @@ EXAMPLES:
      {{.Prompt}} {{.HelpName}} path-to/object mysilo/mybucket/object-prefix/
 
   4. Put an object to Silo/MinIO storage using sse-c encryption
-     {{.Prompt}} {{.HelpName}} --enc-c "mysilo/mybucket/object=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" path-to/object mysilo/mybucket/object 
+     {{.Prompt}} {{.HelpName}} --enc-c "mysilo/mybucket/object=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" path-to/object mysilo/mybucket/object
 
   5. Put an object to Silo/MinIO storage using sse-kms encryption
      {{.Prompt}} {{.HelpName}} --enc-kms path-to/object mysilo/mybucket/object

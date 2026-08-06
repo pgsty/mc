@@ -17,6 +17,8 @@
 
 package cmd
 
+import "strconv"
+
 var (
 	// Version - version time.RFC3339.
 	Version = "DEVELOPMENT.GOGET"
@@ -29,3 +31,13 @@ var (
 	// CopyrightYear - dynamic value of the copyright end year
 	CopyrightYear = "0000"
 )
+
+// copyrightEndYear returns the end year shown in copyright notices. Release
+// builds inject CopyrightYear through ldflags; source builds keep the "0000"
+// placeholder, for which the current year is used instead.
+func copyrightEndYear() string {
+	if CopyrightYear == "" || CopyrightYear == "0000" {
+		return strconv.Itoa(UTCNow().Year())
+	}
+	return CopyrightYear
+}

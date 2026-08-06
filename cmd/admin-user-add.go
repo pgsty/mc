@@ -70,7 +70,7 @@ EXAMPLES:
      {{.EnableHistory}}
 
   4. Add a new user 'foobar' to Silo/MinIO server, then attach IAM policy "writeonly".
-     {{.Prompt}} {{.HelpName}} mysilo foobar foo12345 
+     {{.Prompt}} {{.HelpName}} mysilo foobar foo12345
      {{.Prompt}} mc admin policy attach mysilo writeonly --user foobar
 `,
 }

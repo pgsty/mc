@@ -19,6 +19,7 @@
 package cmd
 
 import (
+	"io"
 	"strings"
 	"testing"
 )
@@ -64,6 +65,20 @@ func TestFreshConfigHasNoThirdPartyDemoAlias(t *testing.T) {
 		if strings.Contains(cfgV10.URL, "min.io") {
 			t.Fatalf("fresh config alias %q points at %s; MinIO-operated endpoints are not allowed in new configs", alias, cfgV10.URL)
 		}
+	}
+}
+
+func TestEncryptedUploadRequiresAnExplicitKey(t *testing.T) {
+	// Encryption must never fall back to a vendor key: data the operator
+	// cannot decrypt is not a local artifact. With no PubKey configured the
+	// encrypted path has no recipient and must fail closed.
+	up := &SubnetFileUploader{AutoEncrypt: true, FilePath: "testdata/undelivered.txt"}
+	req, e := up.subnetUploadReq()
+	if e != nil {
+		t.Fatalf("subnetUploadReq() = %v, want a request whose body fails closed", e)
+	}
+	if _, e = io.ReadAll(req.Body); e == nil {
+		t.Fatal("encrypted upload body succeeded without a public key; it must fail closed")
 	}
 }
 

@@ -21,7 +21,8 @@ jobs:
       # Every non-merge commit in the pull request must carry a Signed-off-by
       # trailer matching the commit author's email, certifying the Developer
       # Certificate of Origin 1.1 (https://developercertificate.org/).
-      # Bot-authored commits (dependabot etc.) are exempt.
+      # Only commits authored from a GitHub-issued bot address are exempt; a
+      # display name is attacker-controlled and must never grant the exemption.
       - name: Check Signed-off-by trailers
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -31,8 +32,8 @@ jobs:
           while read -r sha; do
             author_name="$(git log -1 --format='%an' "${sha}")"
             author_email="$(git log -1 --format='%ae' "${sha}")"
-            case "${author_name}" in
-              *"[bot]"*) continue ;;
+            case "${author_email}" in
+              *"[bot]@users.noreply.github.com") continue ;;
             esac
             if ! git log -1 --format='%(trailers:key=Signed-off-by,valueonly)' "${sha}" |
               grep -qiF "<${author_email}>"; then
