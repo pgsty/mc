@@ -56,9 +56,9 @@ jobs:
           MC_TEST_ENABLE_HTTPS: true
           MC_TEST_SKIP_INSECURE: true
           MC_TEST_SKIP_BUILD: true
-          MINIO_RELEASE: RELEASE.2026-06-18T00-00-00Z
-          MINIO_ARCHIVE: minio_20260618000000.0.0_linux_amd64.tar.gz
-          MINIO_ARCHIVE_SHA256: 0ba637b050be30d8c65142798c363cfb7392bf731d2f572aefd2e7bf1fd59a10
+          MINIO_RELEASE: RELEASE.2026-08-04T00-00-00Z
+          MINIO_ARCHIVE: minio_20260804000000.0.0_linux_amd64.tar.gz
+          MINIO_ARCHIVE_SHA256: 3c1d229209db049618cb9c6d4132fa2882b15cdded337511486e811c187eec08
         run: |
           curl -fsSLO "https://github.com/pgsty/silo/releases/download/${MINIO_RELEASE}/${MINIO_ARCHIVE}"
           echo "${MINIO_ARCHIVE_SHA256}  ${MINIO_ARCHIVE}" | sha256sum --check --strict
