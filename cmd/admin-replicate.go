@@ -30,7 +30,7 @@ var adminReplicateSubcommands = []cli.Command{
 
 var adminReplicateCmd = cli.Command{
 	Name:            "replicate",
-	Usage:           "manage MinIO site replication",
+	Usage:           "manage Silo/MinIO site replication",
 	Action:          mainAdminReplicate,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

@@ -56,15 +56,15 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. List all entities associated with all policies
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
   2. List all entities associated with the policies 'finteam-policy' and 'mlteam-policy'
-     {{.Prompt}} {{.HelpName}} play/ --policy finteam-policy --policy mlteam-policy
+     {{.Prompt}} {{.HelpName}} mysilo/ --policy finteam-policy --policy mlteam-policy
   3. List all policies associated with a pair of user entities
-     {{.Prompt}} {{.HelpName}} play/ --user bob --user james
+     {{.Prompt}} {{.HelpName}} mysilo/ --user bob --user james
   4. List all policies associated with a pair of group entities
-     {{.Prompt}} {{.HelpName}} play/ --group auditors --group accounting
+     {{.Prompt}} {{.HelpName}} mysilo/ --group auditors --group accounting
   5. List all entities associated with a policy, group and user
-     {{.Prompt}} {{.HelpName}} play/ \
+     {{.Prompt}} {{.HelpName}} mysilo/ \
               --policy finteam-policy --user bobfisher --group consulting
 `,
 }

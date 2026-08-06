@@ -69,20 +69,20 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Watch new S3 operations on a MinIO server
-     {{.Prompt}} {{.HelpName}} play/testbucket
+  1. Watch new S3 operations on a Silo/MinIO server
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket
 
-  2. Watch new events for a specific prefix "output/"  on MinIO server.
-     {{.Prompt}} {{.HelpName}} --prefix "output/" play/testbucket
+  2. Watch new events for a specific prefix "output/"  on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} --prefix "output/" mysilo/testbucket
 
-  3. Watch new events for a specific suffix ".jpg" on MinIO server.
-     {{.Prompt}} {{.HelpName}} --suffix ".jpg" play/testbucket
+  3. Watch new events for a specific suffix ".jpg" on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} --suffix ".jpg" mysilo/testbucket
 
-  4. Watch new events on a specific prefix and suffix on MinIO server.
-     {{.Prompt}} {{.HelpName}} --suffix ".jpg" --prefix "photos/" play/testbucket
+  4. Watch new events on a specific prefix and suffix on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} --suffix ".jpg" --prefix "photos/" mysilo/testbucket
 
   5. Site level watch (except new buckets created after running this command)
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
 
   6. Watch for events on local directory.
      {{.Prompt}} {{.HelpName}} /usr/share

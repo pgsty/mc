@@ -54,16 +54,16 @@ USAGE:
   Exactly one of --user or --group is required.
 
 POLICY:
-  Name of the policy on the MinIO server.
+  Name of the policy on the Silo/MinIO server.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
   1. Attach the "readonly" policy to user "james".
-     {{.Prompt}} {{.HelpName}} myminio readonly --user james
+     {{.Prompt}} {{.HelpName}} mysilo readonly --user james
   2. Attach the "audit-policy" and "acct-policy" policies to group "legal".
-     {{.Prompt}} {{.HelpName}} myminio audit-policy acct-policy --group legal
+     {{.Prompt}} {{.HelpName}} mysilo audit-policy acct-policy --group legal
 `,
 }
 

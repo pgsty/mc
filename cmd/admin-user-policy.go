@@ -46,7 +46,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Display the policy document of a user "foobar" in JSON format.
-     {{.Prompt}} {{.HelpName}} myminio foobar
+     {{.Prompt}} {{.HelpName}} mysilo foobar
 `,
 }
 

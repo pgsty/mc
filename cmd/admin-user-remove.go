@@ -42,8 +42,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Remove a user 'foobar' on MinIO server.
-     {{.Prompt}} {{.HelpName}} myminio foobar
+  1. Remove a user 'foobar' on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo foobar
 `,
 }
 

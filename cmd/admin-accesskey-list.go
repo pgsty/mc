@@ -78,14 +78,14 @@ EXAMPLES:
   3. Get list of builtin users in local server
 	 {{.Prompt}} {{.HelpName}} local/ --all --users-only
 
-  4. Get list of all builtin users and associated temporary access keys in play server (if admin)
-	 {{.Prompt}} {{.HelpName}} play/ --temp-only
+  4. Get list of all builtin users and associated temporary access keys in mysilo server (if admin)
+	 {{.Prompt}} {{.HelpName}} mysilo/ --temp-only
 
   5. Get list of access keys associated with user 'foobar'
-	 {{.Prompt}} {{.HelpName}} play/ foobar
+	 {{.Prompt}} {{.HelpName}} mysilo/ foobar
 
   6. Get list of access keys associated with users 'foobar' and 'tester'
-	 {{.Prompt}} {{.HelpName}} play/ foobar tester
+	 {{.Prompt}} {{.HelpName}} mysilo/ foobar tester
 
   7. Get all users and access keys if admin, else get authenticated user and associated access keys
 	 {{.Prompt}} {{.HelpName}} local/

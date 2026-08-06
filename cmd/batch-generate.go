@@ -50,9 +50,9 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Generate a new batch 'replication' job definition:
-     {{.Prompt}} {{.HelpName}} myminio replicate > replication.yaml
+     {{.Prompt}} {{.HelpName}} mysilo replicate > replication.yaml
   2. List all supported job types:
-     {{.Prompt}} {{.HelpName}} myminio list
+     {{.Prompt}} {{.HelpName}} mysilo list
 `,
 }
 

@@ -45,7 +45,7 @@ var adminInfoFlags = []cli.Flag{
 
 var adminInfoCmd = cli.Command{
 	Name:         "info",
-	Usage:        "display MinIO server information",
+	Usage:        "display Silo/MinIO server information",
 	Action:       mainAdminInfo,
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
@@ -60,8 +60,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Get server information of the 'play' MinIO server.
-     {{.Prompt}} {{.HelpName}} play/
+  1. Get server information of the 'mysilo' Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -173,7 +173,7 @@ func (u clusterStruct) String() (msg string) {
 
 	// Loop through each server and put together info for each one
 	for _, srv := range u.Info.Servers {
-		// Check if MinIO server is not online ("Mode" field),
+		// Check if Silo/MinIO server is not online ("Mode" field),
 		if srv.State != string(madmin.ItemOnline) {
 			totalOfflineNodes++
 			// "PrintB" is color blue in console library package

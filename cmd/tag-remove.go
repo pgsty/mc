@@ -69,22 +69,22 @@ DESCRIPTION:
 
 EXAMPLES:
   1. Remove the tags assigned to an object.
-     {{.Prompt}} {{.HelpName}} myminio/testbucket/testobject
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket/testobject
 
   2. Remove the tags assigned to a particular version of an object.
-     {{.Prompt}} {{.HelpName}} --version-id "ieQq7aXsyhlhDt47YURGlrucYY3GxWHa" myminio/testbucket/testobject
+     {{.Prompt}} {{.HelpName}} --version-id "ieQq7aXsyhlhDt47YURGlrucYY3GxWHa" mysilo/testbucket/testobject
 
   3. Remove the tags assigned to an object versions that are older than one week
-     {{.Prompt}} {{.HelpName}} --versions --rewind 7d myminio/testbucket/testobject
+     {{.Prompt}} {{.HelpName}} --versions --rewind 7d mysilo/testbucket/testobject
 
   4. Remove the tags assigned to a bucket.
-     {{.Prompt}} {{.HelpName}} play/testbucket
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket
 
   5. Remove the tags recursively for all the objects of subdirs of bucket.
-     {{.Prompt}} {{.HelpName}} --recursive myminio/testbucket
+     {{.Prompt}} {{.HelpName}} --recursive mysilo/testbucket
 
   6. Remove the tags recursively for all versions of all objects of subdirs of bucket.
-     {{.Prompt}} {{.HelpName}} --recursive --versions myminio/testbucket
+     {{.Prompt}} {{.HelpName}} --recursive --versions mysilo/testbucket
 `,
 }
 

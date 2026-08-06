@@ -42,7 +42,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Get info on group 'allcents'.
-     {{.Prompt}} {{.HelpName}} myminio allcents
+     {{.Prompt}} {{.HelpName}} mysilo allcents
 `,
 }
 

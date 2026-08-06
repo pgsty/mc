@@ -56,7 +56,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
    1. Display drive metrics
-      {{.Prompt}} {{.HelpName}} myminio/
+      {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 

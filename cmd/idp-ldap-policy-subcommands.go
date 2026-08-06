@@ -58,16 +58,16 @@ USAGE:
   Exactly one "--user" or "--group" flag is required.
 
 POLICY:
-  Name of a policy on the MinIO server.
+  Name of a policy on the Silo/MinIO server.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
   1. Attach policy "mypolicy" to a user
-     {{.Prompt}} {{.HelpName}} play/ mypolicy --user='uid=bobfisher,ou=people,ou=hwengg,dc=min,dc=io'
+     {{.Prompt}} {{.HelpName}} mysilo/ mypolicy --user='uid=bobfisher,ou=people,ou=hwengg,dc=example,dc=com'
   2. Attach policies "policy1" and "policy2" to a group
-     {{.Prompt}} {{.HelpName}} play/ policy1 policy2 --group='cn=projectb,ou=groups,ou=swengg,dc=min,dc=io'
+     {{.Prompt}} {{.HelpName}} mysilo/ policy1 policy2 --group='cn=projectb,ou=groups,ou=swengg,dc=example,dc=com'
 `,
 }
 
@@ -184,16 +184,16 @@ USAGE:
   Exactly one of "--user" or "--group" is required.
 
 POLICY:
-  Name of a policy on the MinIO server.
+  Name of a policy on the Silo/MinIO server.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
   1. Detach policy "mypolicy" from a user
-     {{.Prompt}} {{.HelpName}} play/ mypolicy --user='uid=bobfisher,ou=people,ou=hwengg,dc=min,dc=io'
+     {{.Prompt}} {{.HelpName}} mysilo/ mypolicy --user='uid=bobfisher,ou=people,ou=hwengg,dc=example,dc=com'
   2. Detach policies "policy1" and "policy2" from a group
-     {{.Prompt}} {{.HelpName}} play/ policy1 policy2 --group='cn=projectb,ou=groups,ou=swengg,dc=min,dc=io'
+     {{.Prompt}} {{.HelpName}} mysilo/ policy1 policy2 --group='cn=projectb,ou=groups,ou=swengg,dc=example,dc=com'
 `,
 }
 
@@ -280,22 +280,22 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. List all LDAP entities associated with all policies
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
   2. List all LDAP entities associated with the policies 'finteam-policy' and 'mlteam-policy'
-     {{.Prompt}} {{.HelpName}} play/ --policy finteam-policy --policy mlteam-policy
+     {{.Prompt}} {{.HelpName}} mysilo/ --policy finteam-policy --policy mlteam-policy
   3. List all policies associated with a pair of User LDAP entities
-     {{.Prompt}} {{.HelpName}} play/ \
-              --user 'uid=bobfisher,ou=people,ou=hwengg,dc=min,dc=io' \
-              --user 'uid=fahim,ou=people,ou=swengg,dc=min,dc=io'
+     {{.Prompt}} {{.HelpName}} mysilo/ \
+              --user 'uid=bobfisher,ou=people,ou=hwengg,dc=example,dc=com' \
+              --user 'uid=fahim,ou=people,ou=swengg,dc=example,dc=com'
   4. List all policies associated with a pair of Group LDAP entities
-     {{.Prompt}} {{.HelpName}} play/ \
-              --group 'cn=projecta,ou=groups,ou=swengg,dc=min,dc=io' \
-              --group 'cn=projectb,ou=groups,ou=swengg,dc=min,dc=io'
+     {{.Prompt}} {{.HelpName}} mysilo/ \
+              --group 'cn=projecta,ou=groups,ou=swengg,dc=example,dc=com' \
+              --group 'cn=projectb,ou=groups,ou=swengg,dc=example,dc=com'
   5. List all entities associated with a policy, group and user
-     {{.Prompt}} {{.HelpName}} play/ \
+     {{.Prompt}} {{.HelpName}} mysilo/ \
               --policy finteam-policy
-              --user 'uid=bobfisher,ou=people,ou=hwengg,dc=min,dc=io' \
-              --group 'cn=projectb,ou=groups,ou=swengg,dc=min,dc=io'
+              --user 'uid=bobfisher,ou=people,ou=hwengg,dc=example,dc=com' \
+              --group 'cn=projectb,ou=groups,ou=swengg,dc=example,dc=com'
 `,
 }
 

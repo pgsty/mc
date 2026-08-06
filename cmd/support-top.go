@@ -29,7 +29,7 @@ var supportTopSubcommands = []cli.Command{
 
 var supportTopCmd = cli.Command{
 	Name:            "top",
-	Usage:           "provide top like statistics for MinIO",
+	Usage:           "provide top like statistics for Silo/MinIO",
 	Action:          mainSupportTop,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

@@ -48,17 +48,17 @@ USAGE:
   {{.HelpName}} TARGET POLICYNAME [OPTIONS...]
 
 POLICYNAME:
-  Name of the policy on the MinIO server.
+  Name of the policy on the Silo/MinIO server.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
   1. Show information on a given policy.
-     {{.Prompt}} {{.HelpName}} myminio writeonly
+     {{.Prompt}} {{.HelpName}} mysilo writeonly
 
   2. Show information on a given policy and write the policy JSON content to /tmp/policy.json.
-     {{.Prompt}} {{.HelpName}} myminio writeonly --policy-file /tmp/policy.json
+     {{.Prompt}} {{.HelpName}} mysilo writeonly --policy-file /tmp/policy.json
 `,
 }
 

@@ -36,7 +36,7 @@ var topLocksFlag = []cli.Flag{
 
 var adminTopLocksCmd = cli.Command{
 	Name:         "locks",
-	Usage:        "get a list of the 10 oldest locks on a MinIO cluster.",
+	Usage:        "get a list of the 10 oldest locks on a Silo/MinIO cluster.",
 	Before:       setGlobalsFromContext,
 	Action:       mainAdminTopLocks,
 	OnUsageError: onUsageError,

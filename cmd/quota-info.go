@@ -41,8 +41,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Display bucket quota configured for "mybucket" on MinIO.
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. Display bucket quota configured for "mybucket" on Silo/MinIO.
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 `,
 }
 

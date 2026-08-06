@@ -61,7 +61,7 @@ var adminCmdSubcommands = []cli.Command{
 
 var adminCmd = cli.Command{
 	Name:            "admin",
-	Usage:           "manage MinIO servers",
+	Usage:           "manage Silo/MinIO servers",
 	Action:          mainAdmin,
 	Subcommands:     adminCmdSubcommands,
 	HideHelpCommand: true,

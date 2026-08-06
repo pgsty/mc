@@ -87,16 +87,16 @@ FLAGS:
   {{end}}{{end}}
 EXAMPLES:
   1. Return Latency and liveness probe.
-     {{.Prompt}} {{.HelpName}} myminio
+     {{.Prompt}} {{.HelpName}} mysilo
 
   2. Return Latency and liveness probe 5 number of times.
-     {{.Prompt}} {{.HelpName}} --count 5 myminio
+     {{.Prompt}} {{.HelpName}} --count 5 mysilo
 
   3. Return Latency and liveness with wait interval set to 30 seconds.
-     {{.Prompt}} {{.HelpName}} --interval 30 myminio
+     {{.Prompt}} {{.HelpName}} --interval 30 mysilo
 
   4. Stop pinging when error count > 20.
-     {{.Prompt}} {{.HelpName}} --error-count 20 myminio
+     {{.Prompt}} {{.HelpName}} --error-count 20 mysilo
 `,
 }
 
@@ -236,7 +236,7 @@ type ServerStats struct {
 
 func fetchAdminInfo(admClnt *madmin.AdminClient) (madmin.InfoMessage, error) {
 	ctx, cancel := context.WithTimeout(globalContext, 3*time.Second)
-	// Fetch the service status of the specified MinIO server
+	// Fetch the service status of the specified Silo/MinIO server
 	info, e := admClnt.ServerInfo(ctx)
 	cancel()
 	if e == nil {

@@ -50,8 +50,8 @@ FLAGS:
 EXAMPLES:
   The output includes environment variables set on the server. These cannot be overridden from the client.
 
-  1. Export the current config from MinIO server
-     {{.Prompt}} {{.HelpName}} play/ > config.txt
+  1. Export the current config from Silo/MinIO server
+     {{.Prompt}} {{.HelpName}} mysilo/ > config.txt
 `,
 }
 

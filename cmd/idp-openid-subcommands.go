@@ -46,17 +46,17 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Create a default OpenID IDP configuration (CFG_NAME is omitted).
-     {{.Prompt}} {{.HelpName}} play/ \
-          client_id=minio-client-app \
-          client_secret=minio-client-app-secret \
+     {{.Prompt}} {{.HelpName}} mysilo/ \
+          client_id=silo-client-app \
+          client_secret=silo-client-app-secret \
           config_url="http://localhost:5556/dex/.well-known/openid-configuration" \
           scopes="openid,groups" \
           redirect_uri="http://127.0.0.1:10000/oauth_callback" \
           role_policy="consoleAdmin"
   2. Create OpenID IDP configuration named "dex_test".
-     {{.Prompt}} {{.HelpName}} play/ dex_test \
-          client_id=minio-client-app \
-          client_secret=minio-client-app-secret \
+     {{.Prompt}} {{.HelpName}} mysilo/ dex_test \
+          client_id=silo-client-app \
+          client_secret=silo-client-app-secret \
           config_url="http://localhost:5556/dex/.well-known/openid-configuration" \
           scopes="openid,groups" \
           redirect_uri="http://127.0.0.1:10000/oauth_callback" \
@@ -120,11 +120,11 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Update the default OpenID IDP configuration (CFG_NAME is omitted).
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
           scopes="openid,groups" \
           role_policy="consoleAdmin"
   2. Update configuration for OpenID IDP configuration named "dex_test".
-     {{.Prompt}} {{.HelpName}} play/ dex_test \
+     {{.Prompt}} {{.HelpName}} mysilo/ dex_test \
           scopes="openid,groups" \
           role_policy="consoleAdmin"
 `,
@@ -153,9 +153,9 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Remove the default OpenID IDP configuration (CFG_NAME is omitted).
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
   2. Remove OpenID IDP configuration named "dex_test".
-     {{.Prompt}} {{.HelpName}} play/ dex_test
+     {{.Prompt}} {{.HelpName}} mysilo/ dex_test
 `,
 }
 
@@ -216,7 +216,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. List configurations for OpenID IDP.
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -360,9 +360,9 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Get configuration info on the default OpenID IDP configuration (CFG_NAME is omitted).
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
   2. Get configuration info on OpenID IDP configuration named "dex_test".
-     {{.Prompt}} {{.HelpName}} play/ dex_test
+     {{.Prompt}} {{.HelpName}} mysilo/ dex_test
 `,
 }
 
@@ -488,9 +488,9 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Enable the default OpenID IDP configuration (CFG_NAME is omitted).
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
   2. Enable OpenID IDP configuration named "dex_test".
-     {{.Prompt}} {{.HelpName}} play/ dex_test
+     {{.Prompt}} {{.HelpName}} mysilo/ dex_test
 `,
 }
 
@@ -554,9 +554,9 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Disable the default OpenID IDP configuration (CFG_NAME is omitted).
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
   2. Disable OpenID IDP configuration named "dex_test".
-     {{.Prompt}} {{.HelpName}} play/ dex_test
+     {{.Prompt}} {{.HelpName}} mysilo/ dex_test
 `,
 }
 

@@ -56,8 +56,8 @@ QUOTA
   units, so that "gi" refers to "gibibyte" or "GiB". A "b" at the end is
   also accepted. Without suffixes the unit is bytes.
 
-  The MinIO object scanner checks a bucket's quota each time it is scanned.
-  If the scanner determines a bucket has met or exceeded its quota, MinIO
+  The Silo/MinIO object scanner checks a bucket's quota each time it is scanned.
+  If the scanner determines a bucket has met or exceeded its quota, Silo/MinIO
   rejects subsequent object write requests until the scanner determines the
   bucket no longer exceeds its quota.
 
@@ -65,8 +65,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Set hard quota of 1gb for a bucket "mybucket" on MinIO.
-     {{.Prompt}} {{.HelpName}} myminio/mybucket --size 1GB
+  1. Set hard quota of 1gb for a bucket "mybucket" on Silo/MinIO.
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket --size 1GB
 `,
 }
 

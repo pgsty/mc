@@ -46,7 +46,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Create a new master key named 'my-key' default master key.
-     $ {{.HelpName}} play my-key
+     $ {{.HelpName}} mysilo my-key
 `,
 }
 

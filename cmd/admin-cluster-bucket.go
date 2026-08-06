@@ -26,7 +26,7 @@ var adminClusterBucketSubcommands = []cli.Command{
 
 var adminClusterBucketCmd = cli.Command{
 	Name:            "bucket",
-	Usage:           "manage bucket metadata on MinIO cluster",
+	Usage:           "manage bucket metadata on Silo/MinIO cluster",
 	Action:          mainAdminClusterBucket,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

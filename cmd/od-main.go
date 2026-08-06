@@ -56,13 +56,13 @@ FLAGS:
   {{end}}{{end}}
 EXAMPLES:
   1. Upload 200MiB of a file to a bucket in 5 parts of size 40MiB.
-      {{.HelpName}} if=file.txt of=play/my-bucket/file.txt size=40MiB parts=5
+      {{.HelpName}} if=file.txt of=mysilo/my-bucket/file.txt size=40MiB parts=5
 
   2. Upload a full file to a bucket with 40MiB parts.
-      {{.HelpName}} if=file.txt of=play/my-bucket/file.txt size=40MiB
+      {{.HelpName}} if=file.txt of=mysilo/my-bucket/file.txt size=40MiB
 
   3. Upload a full file to a bucket in 5 parts.
-      {{.HelpName}} if=file.txt of=play/my-bucket/file.txt parts=5
+      {{.HelpName}} if=file.txt of=mysilo/my-bucket/file.txt parts=5
 `,
 }
 

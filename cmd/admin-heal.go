@@ -110,7 +110,7 @@ var adminHealFlags = []cli.Flag{
 
 var adminHealCmd = cli.Command{
 	Name:            "heal",
-	Usage:           "monitor healing for bucket(s) and object(s) on MinIO server",
+	Usage:           "monitor healing for bucket(s) and object(s) on Silo/MinIO server",
 	Action:          mainAdminHeal,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -126,8 +126,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Monitor healing status on a running server at alias 'myminio':
-     {{.Prompt}} {{.HelpName}} myminio/
+  1. Monitor healing status on a running server at alias 'mysilo':
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 

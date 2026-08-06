@@ -68,16 +68,16 @@ FLAGS:
 
 EXAMPLES:
    1. Enable legal hold on a specific object
-      $ {{.HelpName}} myminio/mybucket/prefix/obj.csv
+      $ {{.HelpName}} mysilo/mybucket/prefix/obj.csv
 
    2. Enable legal hold on a specific object version
-      $ {{.HelpName}} myminio/mybucket/prefix/obj.csv --version-id "HiMFUTOowG6ylfNi4LKxD3ieHbgfgrvC"
+      $ {{.HelpName}} mysilo/mybucket/prefix/obj.csv --version-id "HiMFUTOowG6ylfNi4LKxD3ieHbgfgrvC"
 
    3. Enable object legal hold recursively for all objects at a prefix
-      $ {{.HelpName}} myminio/mybucket/prefix --recursive
+      $ {{.HelpName}} mysilo/mybucket/prefix --recursive
 
    4. Enable object legal hold recursively for all objects versions older than one year
-      $ {{.HelpName}} myminio/mybucket/prefix --recursive --rewind 365d --versions
+      $ {{.HelpName}} mysilo/mybucket/prefix --recursive --rewind 365d --versions
 `,
 }
 

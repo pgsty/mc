@@ -45,8 +45,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Import the new local config and apply to the MinIO server
-     {{.Prompt}} {{.HelpName}} play/ < config.txt
+  1. Import the new local config and apply to the Silo/MinIO server
+     {{.Prompt}} {{.HelpName}} mysilo/ < config.txt
 `,
 }
 

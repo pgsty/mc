@@ -42,8 +42,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Remove a service account 'J123C4ZXEQN8RK6ND35I' from MinIO server.
-     {{.Prompt}} {{.HelpName}} myminio/ J123C4ZXEQN8RK6ND35I
+  1. Remove a service account 'J123C4ZXEQN8RK6ND35I' from Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo/ J123C4ZXEQN8RK6ND35I
 `,
 }
 

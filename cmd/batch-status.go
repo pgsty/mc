@@ -21,7 +21,7 @@ import (
 
 var batchStatusCmd = cli.Command{
 	Name:            "status",
-	Usage:           "summarize job events on MinIO server in real-time",
+	Usage:           "summarize job events on Silo/MinIO server in real-time",
 	Action:          mainBatchStatus,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -38,7 +38,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
    1. Display current in-progress JOB events.
-      {{.Prompt}} {{.HelpName}} myminio/ KwSysDpxcBU9FNhGkn2dCf
+      {{.Prompt}} {{.HelpName}} mysilo/ KwSysDpxcBU9FNhGkn2dCf
 `,
 }
 

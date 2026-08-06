@@ -39,7 +39,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Disable access key
-	 {{.Prompt}} {{.HelpName}} myminio myaccesskey
+	 {{.Prompt}} {{.HelpName}} mysilo myaccesskey
 `,
 }
 

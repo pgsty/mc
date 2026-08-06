@@ -39,6 +39,6 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Disable group 'allcents'.
-     {{.Prompt}} {{.HelpName}} myminio allcents
+     {{.Prompt}} {{.HelpName}} mysilo allcents
 `,
 }

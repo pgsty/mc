@@ -54,10 +54,10 @@ FLAGS:
 
 EXAMPLES:
   1. Add a site for cluster-level replication:
-     {{.Prompt}} {{.HelpName}} minio1 minio2
+     {{.Prompt}} {{.HelpName}} silo1 silo2
 
   2. Add a site for cluster-level replication with replication of ILM expiry rules:
-     {{.Prompt}} {{.HelpName}} minio1 minio2 --replicate-ilm-expiry
+     {{.Prompt}} {{.HelpName}} silo1 silo2 --replicate-ilm-expiry
 `,
 }
 

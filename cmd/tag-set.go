@@ -72,25 +72,25 @@ DESCRIPTION:
 
 EXAMPLES:
   1. Assign tags to an object.
-     {{.Prompt}} {{.HelpName}} play/testbucket/testobject "key1=value1&key2=value2&key3=value3"
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket/testobject "key1=value1&key2=value2&key3=value3"
 
   2. Assign tags to a particuler version of an object.
-     {{.Prompt}} {{.HelpName}} --version-id "ieQq7aXsyhlhDt47YURGlrucYY3GxWHa" play/testbucket/testobject "key1=value1&key2=value2&key3=value3"
+     {{.Prompt}} {{.HelpName}} --version-id "ieQq7aXsyhlhDt47YURGlrucYY3GxWHa" mysilo/testbucket/testobject "key1=value1&key2=value2&key3=value3"
 
   3. Assign tags to a object versions older than one week.
-     {{.Prompt}} {{.HelpName}} --versions --rewind 7d play/testbucket/testobject "key1=value1&key2=value2&key3=value3"
+     {{.Prompt}} {{.HelpName}} --versions --rewind 7d mysilo/testbucket/testobject "key1=value1&key2=value2&key3=value3"
 
   4. Assign tags to a bucket.
-     {{.Prompt}} {{.HelpName}} myminio/testbucket "key1=value1&key2=value2&key3=value3"
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket "key1=value1&key2=value2&key3=value3"
 
   5. Assign tags recursively to all the objects of subdirs of bucket.
-     {{.Prompt}} {{.HelpName}} myminio/testbucket --recursive "key1=value1&key2=value2&key3=value3"
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket --recursive "key1=value1&key2=value2&key3=value3"
 
   6. Assign tags recursively to all versions of all objects of subdirs of bucket.
-     {{.Prompt}} {{.HelpName}} myminio/testbucket --recursive --versions "key1=value1&key2=value2&key3=value3"
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket --recursive --versions "key1=value1&key2=value2&key3=value3"
 
   7. Assign tags to all the objects on a bucket, excluding folders
-     {{.Prompt}} {{.HelpName}} myminio/testbucket --exclude-folders --recursive "key1=value1&key2=value2&key3=value3"
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket --exclude-folders --recursive "key1=value1&key2=value2&key3=value3"
 `,
 }
 

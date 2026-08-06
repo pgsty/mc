@@ -44,8 +44,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. List all users on MinIO server.
-     {{.Prompt}} {{.HelpName}} myminio
+  1. List all users on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 

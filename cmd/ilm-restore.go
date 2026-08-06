@@ -74,19 +74,19 @@ FLAGS:
 
 EXAMPLES:
   1. Restore one specific object
-     {{.Prompt}} {{.HelpName}} myminio/mybucket/path/to/object
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket/path/to/object
 
   2. Restore a specific object version
-     {{.Prompt}} {{.HelpName}} --vid "CL3sWgdSN2pNntSf6UnZAuh2kcu8E8si" myminio/mybucket/path/to/object
+     {{.Prompt}} {{.HelpName}} --vid "CL3sWgdSN2pNntSf6UnZAuh2kcu8E8si" mysilo/mybucket/path/to/object
 
   3. Restore all objects under a specific prefix
-     {{.Prompt}} {{.HelpName}} --recursive myminio/mybucket/dir/
+     {{.Prompt}} {{.HelpName}} --recursive mysilo/mybucket/dir/
 
   4. Restore all objects with all versions under a specific prefix
-     {{.Prompt}} {{.HelpName}} --recursive --versions myminio/mybucket/dir/
+     {{.Prompt}} {{.HelpName}} --recursive --versions mysilo/mybucket/dir/
 
   5. Restore an SSE-C encrypted object.
-     {{.Prompt}} {{.HelpName}} --enc-c "myminio/mybucket/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" myminio/mybucket/myobject.txt
+     {{.Prompt}} {{.HelpName}} --enc-c "mysilo/mybucket/=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" mysilo/mybucket/myobject.txt
 `,
 }
 

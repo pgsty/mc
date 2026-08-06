@@ -45,14 +45,14 @@ var adminClusterIAMImportCmd = cli.Command{
   {{.HelpName}} - {{.Usage}}
 
 USAGE:
-  {{.HelpName}} [FLAGS] TARGET/BUCKET /path/to/myminio-iam-info.zip
+  {{.HelpName}} [FLAGS] TARGET/BUCKET /path/to/mysilo-iam-info.zip
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
   1. Set IAM info from previously exported metadata zip file.
-     {{.Prompt}} {{.HelpName}} myminio /tmp/myminio-iam-info.zip
+     {{.Prompt}} {{.HelpName}} mysilo /tmp/mysilo-iam-info.zip
 
 `,
 }

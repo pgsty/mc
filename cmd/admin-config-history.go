@@ -59,7 +59,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. List all history entries sorted by time.
-     {{.Prompt}} {{.HelpName}} play/
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 

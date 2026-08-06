@@ -54,8 +54,8 @@ FLAGS:
   {{end}}
 
 EXAMPLES:
-  1. Display status of resync from minio1 to minio2
-     {{.Prompt}} {{.HelpName}} minio1 minio2
+  1. Display status of resync from silo1 to silo2
+     {{.Prompt}} {{.HelpName}} silo1 silo2
 `,
 }
 

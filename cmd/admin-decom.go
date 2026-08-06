@@ -30,7 +30,7 @@ var adminDecommissionSubcommands = []cli.Command{
 var adminDecommissionCmd = cli.Command{
 	Name:            "decommission",
 	Aliases:         []string{"decom"},
-	Usage:           "manage MinIO server pool decommissioning",
+	Usage:           "manage Silo/MinIO server pool decommissioning",
 	Action:          mainAdminDecommission,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

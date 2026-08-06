@@ -44,8 +44,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Restore 'restore-id' history key value on MinIO server.
-     {{.Prompt}} {{.HelpName}} play/ <restore-id>
+  1. Restore 'restore-id' history key value on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo/ <restore-id>
 `,
 }
 

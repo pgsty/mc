@@ -48,16 +48,16 @@ USAGE:
   Exactly one of --user or --group is required.
 
 POLICY:
-  Name of the policy on the MinIO server.
+  Name of the policy on the Silo/MinIO server.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
   1. Detach the "readonly" policy from user "james".
-     {{.Prompt}} {{.HelpName}} myminio readonly --user james
+     {{.Prompt}} {{.HelpName}} mysilo readonly --user james
   2. Detach the "audit-policy" and "acct-policy" policies from group "legal".
-     {{.Prompt}} {{.HelpName}} myminio audit-policy acct-policy --group legal
+     {{.Prompt}} {{.HelpName}} mysilo audit-policy acct-policy --group legal
 `,
 }
 

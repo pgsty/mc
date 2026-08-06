@@ -82,22 +82,22 @@ ENVIRONMENT VARIABLES:
 
 EXAMPLES:
   1. Put an object from local file system to S3 storage
-     {{.Prompt}} {{.HelpName}} path-to/object play/mybucket
+     {{.Prompt}} {{.HelpName}} path-to/object mysilo/mybucket
 
   2. Put an object from local file system to S3 bucket with name
-     {{.Prompt}} {{.HelpName}} path-to/object play/mybucket/object
+     {{.Prompt}} {{.HelpName}} path-to/object mysilo/mybucket/object
 
   3. Put an object from local file system to S3 bucket under a prefix
-     {{.Prompt}} {{.HelpName}} path-to/object play/mybucket/object-prefix/
+     {{.Prompt}} {{.HelpName}} path-to/object mysilo/mybucket/object-prefix/
 
-  4. Put an object to MinIO storage using sse-c encryption
-     {{.Prompt}} {{.HelpName}} --enc-c "play/mybucket/object=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" path-to/object play/mybucket/object 
+  4. Put an object to Silo/MinIO storage using sse-c encryption
+     {{.Prompt}} {{.HelpName}} --enc-c "mysilo/mybucket/object=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" path-to/object mysilo/mybucket/object 
 
-  5. Put an object to MinIO storage using sse-kms encryption
-     {{.Prompt}} {{.HelpName}} --enc-kms path-to/object play/mybucket/object
+  5. Put an object to Silo/MinIO storage using sse-kms encryption
+     {{.Prompt}} {{.HelpName}} --enc-kms path-to/object mysilo/mybucket/object
 
-  6. Put an object to MinIO storage and assign REDUCED_REDUNDANCY storage-class to the uploaded object.
-      {{.Prompt}} {{.HelpName}} --storage-class REDUCED_REDUNDANCY myobject.txt play/mybucket
+  6. Put an object to Silo/MinIO storage and assign REDUCED_REDUNDANCY storage-class to the uploaded object.
+      {{.Prompt}} {{.HelpName}} --storage-class REDUCED_REDUNDANCY myobject.txt mysilo/mybucket
 `,
 }
 

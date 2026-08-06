@@ -23,7 +23,7 @@ import (
 
 var adminInspectCmd = cli.Command{
 	Name:               "inspect",
-	Usage:              "inspect files on MinIO server",
+	Usage:              "inspect files on Silo/MinIO server",
 	Action:             mainAdminInspect,
 	OnUsageError:       onUsageError,
 	Before:             setGlobalsFromContext,

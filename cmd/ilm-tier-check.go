@@ -40,6 +40,6 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Validate a tier config given by name.
-     {{.Prompt}} {{.HelpName}} myminio WARM-TIER
+     {{.Prompt}} {{.HelpName}} mysilo WARM-TIER
 `,
 }

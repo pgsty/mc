@@ -45,7 +45,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Start decommissioning a pool for removal.
-     {{.Prompt}} {{.HelpName}} myminio/ http://server{5...8}/disk{1...4}
+     {{.Prompt}} {{.HelpName}} mysilo/ http://server{5...8}/disk{1...4}
 `,
 }
 

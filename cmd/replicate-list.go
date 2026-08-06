@@ -57,8 +57,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. List server side replication configuration rules on bucket "mybucket" for alias "myminio".
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. List server side replication configuration rules on bucket "mybucket" for alias "mysilo".
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 `,
 }
 

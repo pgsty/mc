@@ -54,11 +54,11 @@ FLAGS:
    {{range .VisibleFlags}}{{.}}
    {{end}}
 EXAMPLES:
-  1. Status of replication resync in bucket "mybucket" under alias "myminio" for all targets.
-   {{.Prompt}} {{.HelpName}} myminio/mybucket
+  1. Status of replication resync in bucket "mybucket" under alias "mysilo" for all targets.
+   {{.Prompt}} {{.HelpName}} mysilo/mybucket
 
   2. Status of replication resync in bucket "mybucket" under specific remote bucket target.
-   {{.Prompt}} {{.HelpName}} myminio/mybucket --remote-bucket "arn:minio:replication::xxx:mybucket"
+   {{.Prompt}} {{.HelpName}} mysilo/mybucket --remote-bucket "arn:minio:replication::xxx:mybucket"
 `,
 }
 

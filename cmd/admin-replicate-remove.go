@@ -60,10 +60,10 @@ FLAGS:
 
 EXAMPLES:
   1. Remove site replication for all sites:
-     {{.Prompt}} {{.HelpName}} minio2 --all --force
+     {{.Prompt}} {{.HelpName}} silo2 --all --force
 
-  2. Remove site replication for site with site names alpha, baker from active cluster minio2:
-     {{.Prompt}} {{.HelpName}} minio2 alpha baker --force
+  2. Remove site replication for site with site names alpha, baker from active cluster silo2:
+     {{.Prompt}} {{.HelpName}} silo2 alpha baker --force
 `,
 }
 

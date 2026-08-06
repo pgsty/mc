@@ -47,7 +47,7 @@ var supportTopAPIFlags = []cli.Flag{
 
 var supportTopAPICmd = cli.Command{
 	Name:            "api",
-	Usage:           "summarize API events on MinIO server in real-time",
+	Usage:           "summarize API events on Silo/MinIO server in real-time",
 	Action:          mainSupportTopAPI,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -64,10 +64,10 @@ FLAGS:
   {{end}}
 EXAMPLES:
    1. Display current in-progress all S3 API calls.
-      {{.Prompt}} {{.HelpName}} myminio/
+      {{.Prompt}} {{.HelpName}} mysilo/
 
    2. Display current in-progress all 's3.PutObject' API calls.
-      {{.Prompt}} {{.HelpName}} --name s3.PutObject myminio/
+      {{.Prompt}} {{.HelpName}} --name s3.PutObject mysilo/
 `,
 }
 

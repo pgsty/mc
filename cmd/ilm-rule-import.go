@@ -45,11 +45,11 @@ DESCRIPTION:
   Import entire lifecycle configuration from STDIN, input file is expected to be in JSON format.
 
 EXAMPLES:
-  1. Set lifecycle configuration for the mybucket on alias 'myminio' to the rules imported from lifecycle.json
-     {{.Prompt}} {{.HelpName}} myminio/mybucket < lifecycle.json
+  1. Set lifecycle configuration for the mybucket on alias 'mysilo' to the rules imported from lifecycle.json
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket < lifecycle.json
 
-  2. Set lifecycle configuration for the mybucket on alias 'myminio'. User is expected to enter the JSON contents on STDIN
-     {{.Prompt}} {{.HelpName}} myminio/mybucket
+  2. Set lifecycle configuration for the mybucket on alias 'mysilo'. User is expected to enter the JSON contents on STDIN
+     {{.Prompt}} {{.HelpName}} mysilo/mybucket
 `,
 }
 

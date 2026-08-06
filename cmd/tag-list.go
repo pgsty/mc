@@ -73,28 +73,28 @@ DESCRIPTION:
 
 EXAMPLES:
   1. List the tags assigned to an object.
-     {{.Prompt}} {{.HelpName}} myminio/testbucket/testobject
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket/testobject
 
   2. List the tags assigned to particular version of an object.
-     {{.Prompt}} {{.HelpName}} --version-id "ieQq7aXsyhlhDt47YURGlrucYY3GxWHa" myminio/testbucket/testobject
+     {{.Prompt}} {{.HelpName}} --version-id "ieQq7aXsyhlhDt47YURGlrucYY3GxWHa" mysilo/testbucket/testobject
 
   3. List the tags assigned to an object versions that are older than one week.
-     {{.Prompt}} {{.HelpName}} --versions --rewind 7d myminio/testbucket/testobject
+     {{.Prompt}} {{.HelpName}} --versions --rewind 7d mysilo/testbucket/testobject
 
   4. List the tags assigned to an object in JSON format.
-     {{.Prompt}} {{.HelpName}} --json myminio/testbucket/testobject
+     {{.Prompt}} {{.HelpName}} --json mysilo/testbucket/testobject
 
   5. List the tags assigned to a bucket.
-     {{.Prompt}} {{.HelpName}} myminio/testbucket
+     {{.Prompt}} {{.HelpName}} mysilo/testbucket
 
   6. List the tags assigned to a bucket in JSON format.
      {{.Prompt}} {{.HelpName}} --json s3/testbucket
 
   7. List the tags recursively for all the objects of subdirs of bucket.
-     {{.Prompt}} {{.HelpName}} --recursive myminio/testbucket
+     {{.Prompt}} {{.HelpName}} --recursive mysilo/testbucket
 
   8. Show the tags recursively for all versions of all objects of subdirs of bucket.
-     {{.Prompt}} {{.HelpName}} --recursive --versions myminio/testbucket
+     {{.Prompt}} {{.HelpName}} --recursive --versions mysilo/testbucket
 `,
 }
 

@@ -26,7 +26,7 @@ var adminClusterSubcommands = []cli.Command{
 
 var adminClusterCmd = cli.Command{
 	Name:            "cluster",
-	Usage:           "manage MinIO cluster metadata",
+	Usage:           "manage Silo/MinIO cluster metadata",
 	Action:          mainAdminCluster,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,

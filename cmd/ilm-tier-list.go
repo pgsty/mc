@@ -50,8 +50,8 @@ FLAGS:
   {{end}}
 
 EXAMPLES:
-  1. List remote tier targets configured on 'myminio':
-     {{.Prompt}} {{.HelpName}} myminio
+  1. List remote tier targets configured on 'mysilo':
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 

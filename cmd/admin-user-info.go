@@ -46,7 +46,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Display the info of a user "foobar".
-     {{.Prompt}} {{.HelpName}} myminio foobar
+     {{.Prompt}} {{.HelpName}} mysilo foobar
 `,
 }
 

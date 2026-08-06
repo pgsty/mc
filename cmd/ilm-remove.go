@@ -64,12 +64,12 @@ DESCRIPTION:
   all the lifecycle rules on a bucket with '--all --force' option.
 
 EXAMPLES:
-  1. Remove the lifecycle management configuration rule given by ID "bgrt1ghju" for mybucket on alias 'myminio'. ID is case sensitive.
-     {{.Prompt}} {{.HelpName}} --id "bgrt1ghju" myminio/mybucket
+  1. Remove the lifecycle management configuration rule given by ID "bgrt1ghju" for mybucket on alias 'mysilo'. ID is case sensitive.
+     {{.Prompt}} {{.HelpName}} --id "bgrt1ghju" mysilo/mybucket
 
-  2. Remove ALL the lifecycle management configuration rules for mybucket on alias 'myminio'.
+  2. Remove ALL the lifecycle management configuration rules for mybucket on alias 'mysilo'.
      Because the result is complete removal, the use of --force flag is enforced.
-     {{.Prompt}} {{.HelpName}} --all --force myminio/mybucket
+     {{.Prompt}} {{.HelpName}} --all --force mysilo/mybucket
 `,
 }
 

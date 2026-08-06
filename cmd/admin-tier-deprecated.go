@@ -48,11 +48,11 @@ FLAGS:
   {{end}}
 
 EXAMPLES:
-  1. Prints per-tier statistics of all remote tier targets configured on 'myminio':
-     {{.Prompt}} {{.HelpName}} myminio
+  1. Prints per-tier statistics of all remote tier targets configured on 'mysilo':
+     {{.Prompt}} {{.HelpName}} mysilo
 
-  2. Print per-tier statistics of given tier name 'MINIOTIER-1':
-     {{.Prompt}} {{.HelpName}} myminio MINIOTIER-1
+  2. Print per-tier statistics of given tier name 'SILOTIER-1':
+     {{.Prompt}} {{.HelpName}} mysilo SILOTIER-1
 `,
 	}
 
@@ -75,8 +75,8 @@ FLAGS:
   {{end}}
 
 EXAMPLES:
-  1. List remote tier targets configured on 'myminio':
-     {{.Prompt}} {{.HelpName}} myminio
+  1. List remote tier targets configured on 'mysilo':
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 	}
 
@@ -104,21 +104,21 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Configure a new remote tier which transitions objects to a bucket in a MinIO deployment:
-     {{.Prompt}} {{.HelpName}} minio myminio WARM-MINIO-TIER --endpoint https://warm-minio.com \
+  1. Configure a new remote tier which transitions objects to a bucket in a Silo/MinIO deployment:
+     {{.Prompt}} {{.HelpName}} minio mysilo WARM-SILO-TIER --endpoint https://warm-silo.com \
         --access-key ACCESSKEY --secret-key SECRETKEY --bucket mybucket --prefix myprefix/
 
   2. Configure a new remote tier which transitions objects to a bucket in Azure Blob Storage:
-     {{.Prompt}} {{.HelpName}} azure myminio AZTIER --account-name ACCOUNT-NAME --account-key ACCOUNT-KEY \
+     {{.Prompt}} {{.HelpName}} azure mysilo AZTIER --account-name ACCOUNT-NAME --account-key ACCOUNT-KEY \
         --bucket myazurebucket --prefix myazureprefix/
 
   3. Configure a new remote tier which transitions objects to a bucket in AWS S3 with STANDARD storage class:
-     {{.Prompt}} {{.HelpName}} s3 myminio S3TIER --endpoint https://s3.amazonaws.com \
+     {{.Prompt}} {{.HelpName}} s3 mysilo S3TIER --endpoint https://s3.amazonaws.com \
         --access-key ACCESSKEY --secret-key SECRETKEY --bucket mys3bucket --prefix mys3prefix/ \
         --storage-class "STANDARD" --region us-west-2
 
   4. Configure a new remote tier which transitions objects to a bucket in Google Cloud Storage:
-     {{.Prompt}} {{.HelpName}} gcs myminio GCSTIER --credentials-file /path/to/credentials.json \
+     {{.Prompt}} {{.HelpName}} gcs mysilo GCSTIER --credentials-file /path/to/credentials.json \
         --bucket mygcsbucket  --prefix mygcsprefix/
 `,
 	}
@@ -144,13 +144,13 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Update credentials for an existing Azure Blob Storage remote tier:
-     {{.Prompt}} {{.HelpName}} myminio AZTIER --account-key ACCOUNT-KEY
+     {{.Prompt}} {{.HelpName}} mysilo AZTIER --account-key ACCOUNT-KEY
 
   2. Update credentials for an existing AWS S3 compatible remote tier:
-     {{.Prompt}} {{.HelpName}} myminio S3TIER --access-key ACCESS-KEY --secret-key SECRET-KEY
+     {{.Prompt}} {{.HelpName}} mysilo S3TIER --access-key ACCESS-KEY --secret-key SECRET-KEY
 
   3. Update credentials for an existing Google Cloud Storage remote tier:
-     {{.Prompt}} {{.HelpName}} myminio GCSTIER --credentials-file /path/to/credentials.json
+     {{.Prompt}} {{.HelpName}} mysilo GCSTIER --credentials-file /path/to/credentials.json
 `,
 	}
 
@@ -176,7 +176,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Verify if a tier config is valid.
-     {{.Prompt}} {{.HelpName}} myminio WARM-TIER
+     {{.Prompt}} {{.HelpName}} mysilo WARM-TIER
 `,
 	}
 
@@ -202,7 +202,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Remove an empty tier by name 'WARM-TIER':
-     {{.Prompt}} {{.HelpName}} myminio WARM-TIER
+     {{.Prompt}} {{.HelpName}} mysilo WARM-TIER
 `,
 	}
 )

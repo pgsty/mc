@@ -43,19 +43,19 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Revoke all STS accounts for LDAP user 'bobfisher'
-	 {{.Prompt}} {{.HelpName}} myminio uid=bobfisher,ou=people,ou=hwengg,dc=min,dc=io --all
+	 {{.Prompt}} {{.HelpName}} mysilo uid=bobfisher,ou=people,ou=hwengg,dc=example,dc=com --all
 
   2. Revoke all STS accounts for LDAP user 'bobfisher' (alt)
-	 {{.Prompt}} {{.HelpName}} myminio bobfisher --all
+	 {{.Prompt}} {{.HelpName}} mysilo bobfisher --all
 
   3. Revoke STS accounts of a token type 'app-1' for user 'user1'
-	 {{.Prompt}} {{.HelpName}} myminio user1 --token-type app-1
+	 {{.Prompt}} {{.HelpName}} mysilo user1 --token-type app-1
 
   4. Revoke all STS accounts for the authenticated user (must be LDAP service account)
-	 {{.Prompt}} {{.HelpName}} myminio --self
+	 {{.Prompt}} {{.HelpName}} mysilo --self
 
   5. Revoke STS accounts of a token type 'app-1' for the authenticated user (must be LDAP service account)
-	 {{.Prompt}} {{.HelpName}} myminio --self --token-type app-1
+	 {{.Prompt}} {{.HelpName}} mysilo --self --token-type app-1
 `,
 }
 

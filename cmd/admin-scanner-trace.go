@@ -64,7 +64,7 @@ var adminScannerTraceFlags = []cli.Flag{
 
 var adminScannerTraceCmd = cli.Command{
 	Name:            "trace",
-	Usage:           "show trace for MinIO scanner operations",
+	Usage:           "show trace for Silo/MinIO scanner operations",
 	Action:          mainAdminScannerTrace,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -88,26 +88,26 @@ UNITS
   also accepted. Without suffixes the unit is bytes.
 
 EXAMPLES:
-  1. Show scanner trace for MinIO server
-     {{.Prompt}} {{.HelpName}} myminio
+  1. Show scanner trace for Silo/MinIO server
+     {{.Prompt}} {{.HelpName}} mysilo
 
   2. Show scanner trace for a specific path
-    {{.Prompt}} {{.HelpName}} --path my-bucket/my-prefix/* myminio
+    {{.Prompt}} {{.HelpName}} --path my-bucket/my-prefix/* mysilo
 
   3. Show trace for only ScanObject operations
-    {{.Prompt}} {{.HelpName}} --funcname=scanner.ScanObject myminio
+    {{.Prompt}} {{.HelpName}} --funcname=scanner.ScanObject mysilo
 
   4. Avoid printing replication related S3 requests
-    {{.Prompt}} {{.HelpName}} --request-header '!X-Minio-Source' myminio
+    {{.Prompt}} {{.HelpName}} --request-header '!X-Minio-Source' mysilo
 
   5. Show trace only for ScanObject operations request bytes greater than 1MB
-    {{.Prompt}} {{.HelpName}} --filter-request --filter-size 1MB myminio
+    {{.Prompt}} {{.HelpName}} --filter-request --filter-size 1MB mysilo
 
   6. Show trace only for ScanObject operations response bytes greater than 1MB
-    {{.Prompt}} {{.HelpName}} --filter-response --filter-size 1MB myminio
+    {{.Prompt}} {{.HelpName}} --filter-response --filter-size 1MB mysilo
   
   7. Show trace only for requests operations duration greater than 5ms
-    {{.Prompt}} {{.HelpName}} --response-duration 5ms myminio
+    {{.Prompt}} {{.HelpName}} --response-duration 5ms mysilo
 `,
 }
 

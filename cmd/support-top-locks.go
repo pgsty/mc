@@ -45,7 +45,7 @@ var supportTopLocksFlag = []cli.Flag{
 
 var supportTopLocksCmd = cli.Command{
 	Name:         "locks",
-	Usage:        "list all active locks on a MinIO cluster",
+	Usage:        "list all active locks on a Silo/MinIO cluster",
 	Before:       setGlobalsFromContext,
 	Action:       mainSupportTopLocks,
 	OnUsageError: onUsageError,
@@ -60,8 +60,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. List oldest locks on a MinIO cluster.
-     {{.Prompt}} {{.HelpName}} myminio/
+  1. List oldest locks on a Silo/MinIO cluster.
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 

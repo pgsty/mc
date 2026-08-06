@@ -54,7 +54,7 @@ FLAGS:
   {{end}}
 EXAMPLES:
   1. Recover bucket metadata for all buckets from previously saved bucket metadata backup.
-     {{.Prompt}} {{.HelpName}} myminio /backups/myminio-bucket-metadata.zip
+     {{.Prompt}} {{.HelpName}} mysilo /backups/mysilo-bucket-metadata.zip
 `,
 }
 

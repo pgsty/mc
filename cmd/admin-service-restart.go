@@ -48,7 +48,7 @@ var serviceRestartFlag = []cli.Flag{
 
 var adminServiceRestartCmd = cli.Command{
 	Name:         "restart",
-	Usage:        "restart a MinIO cluster",
+	Usage:        "restart a Silo/MinIO cluster",
 	Action:       mainAdminServiceRestart,
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
@@ -63,8 +63,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Restart MinIO server represented by its alias 'play'.
-     {{.Prompt}} {{.HelpName}} play/
+  1. Restart Silo/MinIO server represented by its alias 'mysilo'.
+     {{.Prompt}} {{.HelpName}} mysilo/
 `,
 }
 
@@ -262,7 +262,7 @@ func mainAdminServiceRestart(ctx *cli.Context) error {
 	go func() {
 		t := time.Now()
 
-		// Restart the specified MinIO server
+		// Restart the specified Silo/MinIO server
 		result, e := client.ServiceAction(ctxt, madmin.ServiceActionOpts{
 			Action: madmin.ServiceActionRestart,
 			DryRun: ctx.Bool("dry-run"),
@@ -304,7 +304,7 @@ func mainAdminServiceRestart(ctx *cli.Context) error {
 				for {
 					healthCtx, healthCancel := context.WithTimeout(ctxt, 2*time.Second)
 
-					// Fetch the health status of the specified MinIO server
+					// Fetch the health status of the specified Silo/MinIO server
 					healthResult, healthErr := anonClient.Healthy(healthCtx, madmin.HealthOpts{})
 					healthCancel()
 

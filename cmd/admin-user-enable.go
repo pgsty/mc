@@ -42,8 +42,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Enable a disabled user 'foobar' on MinIO server.
-     {{.Prompt}} {{.HelpName}} myminio foobar
+  1. Enable a disabled user 'foobar' on Silo/MinIO server.
+     {{.Prompt}} {{.HelpName}} mysilo foobar
 `,
 }
 

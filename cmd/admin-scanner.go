@@ -26,7 +26,7 @@ var adminScannerSubcommands = []cli.Command{
 
 var adminScannerCmd = cli.Command{
 	Name:            "scanner",
-	Usage:           "provide MinIO scanner info",
+	Usage:           "provide Silo/MinIO scanner info",
 	Action:          mainAdminScanner,
 	Before:          setGlobalsFromContext,
 	Flags:           globalFlags,
