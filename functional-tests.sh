@@ -20,16 +20,16 @@
 
 ################################################################################
 #
-# This script is usable by mc functional tests, mint tests and MinIO verification
-# tests.
+# This script is usable by mc functional tests, mint tests and server
+# verification tests.
 #
 # * As mc functional tests, just run this script.  It uses mc executable binary
-#   in current working directory or in the path.  The tests uses play.min.io
-#   as MinIO server.
+#   in current working directory or in the path.  The tests use a local
+#   Silo/MinIO server at localhost:9000 by default.
 #
 # * For other, call this script with environment variables MINT_MODE,
 #   MINT_DATA_DIR, SERVER_ENDPOINT, ACCESS_KEY, SECRET_KEY and ENABLE_HTTPS. It
-#   uses mc executable binary in current working directory and uses given MinIO
+#   uses mc executable binary in current working directory and uses the given
 #   server to run tests. MINT_MODE is set by mint to specify what category of
 #   tests to run.
 #
@@ -62,10 +62,12 @@ if [ -n "$MINT_MODE" ]; then
 fi
 
 if [ -z "${SERVER_ENDPOINT+x}" ]; then
-	SERVER_ENDPOINT="play.min.io"
-	ACCESS_KEY="Q3AM3UQ867SPQQA43P2F"
-	SECRET_KEY="zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
-	ENABLE_HTTPS=1
+	# Default to a locally running server; never target third-party
+	# infrastructure. Override with SERVER_ENDPOINT/ACCESS_KEY/SECRET_KEY.
+	SERVER_ENDPOINT="localhost:9000"
+	ACCESS_KEY="minioadmin"
+	SECRET_KEY="minioadmin"
+	ENABLE_HTTPS=0
 fi
 
 # If you want to run the complete site cleaning test, set this variable to true
@@ -90,8 +92,8 @@ if [ "$ENABLE_HTTPS" != "1" ]; then
 	ENDPOINT="http://$SERVER_ENDPOINT"
 fi
 
-SERVER_ALIAS="myminio"
-SERVER_ALIAS_TLS="myminio-ssl"
+SERVER_ALIAS="mysilo"
+SERVER_ALIAS_TLS="mysilo-ssl"
 
 BUCKET_NAME="mc-test-bucket-$RANDOM"
 WATCH_OUT_FILE="$WORK_DIR/watch.out-$RANDOM"
