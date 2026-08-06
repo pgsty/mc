@@ -87,7 +87,7 @@ var supportPerfFlags = append([]cli.Flag{
 
 var supportPerfCmd = cli.Command{
 	Name:            "perf",
-	Usage:           "upload object, network and drive performance analysis",
+	Usage:           "run object, network and drive performance analysis",
 	Action:          mainSupportPerf,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -103,11 +103,8 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Upload object storage, network, and drive performance analysis for cluster with alias 'myminio' to SUBNET
-     {{.Prompt}} {{.HelpName}} myminio
-
-  2. Run object storage, network, and drive performance tests on cluster with alias 'myminio', save and upload to SUBNET manually
-     {{.Prompt}} {{.HelpName}} myminio --airgap
+  1. Run object storage, network, and drive performance tests on cluster with alias 'mysilo' and save the results locally
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 
@@ -249,7 +246,7 @@ func objectTestVerboseResult(result *madmin.SpeedTestResult) (msg string) {
 }
 
 func objectTestShortResult(result *madmin.SpeedTestResult) (msg string) {
-	msg += fmt.Sprintf("MinIO %s, %d servers, %d drives, %s objects, %d threads",
+	msg += fmt.Sprintf("Silo/MinIO %s, %d servers, %d drives, %s objects, %d threads",
 		result.Version, result.Servers, result.Disks,
 		humanize.IBytes(uint64(result.Size)), result.Concurrent)
 
@@ -271,6 +268,11 @@ func (p PerfTestOutput) JSON() string {
 var globalPerfTestVerbose bool
 
 func mainSupportPerf(ctx *cli.Context) error {
+	if !subnetServicesEnabled() {
+		// SUBNET uploads are disabled in this build; always operate in
+		// local (airgap) mode so results are saved to disk.
+		globalAirgapped = true
+	}
 	args := ctx.Args()
 
 	// the alias parameter from cli
@@ -514,7 +516,7 @@ func savePerfResultFile(tmpFileName, resultFileNamePfx string) {
 	zipFileName := resultFileNamePfx + ".zip"
 	e := moveFile(tmpFileName, zipFileName)
 	fatalIf(probe.NewError(e), fmt.Sprintf("Unable to move %s -> %s", tmpFileName, zipFileName))
-	console.Infof("MinIO performance report saved at %s, please upload to SUBNET portal manually\n", zipFileName)
+	console.Infof("Performance report saved at %s\n", zipFileName)
 }
 
 func runPerfTests(ctx *cli.Context, aliasedURL, perfType string) []PerfTestResult {

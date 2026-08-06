@@ -49,8 +49,8 @@ FLAGS:
   {{end}}
 
 EXAMPLES:
-  1. Display license configuration for cluster with alias 'play'
-     {{.Prompt}} {{.HelpName}} play
+  1. Display license configuration for cluster with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} mysilo
 `,
 }
 
@@ -160,8 +160,7 @@ func getLicInfoStr(li licInfo) string {
 }
 
 func getAGPLMessage() string {
-	return `License: GNU AGPL v3 <https://www.gnu.org/licenses/agpl-3.0.txt>
-If you are distributing or hosting MinIO along with your proprietary application as combined works, you may require a commercial license included in the Standard and Enterprise subscription plans. (https://min.io/signup?ref=mc)`
+	return `License: GNU AGPL v3 <https://www.gnu.org/licenses/agpl-3.0.txt>`
 }
 
 func initLicInfoColors() {
@@ -174,6 +173,10 @@ func initLicInfoColors() {
 func mainLicenseInfo(ctx *cli.Context) error {
 	if len(ctx.Args()) != 1 {
 		showCommandHelpAndExit(ctx, 1) // last argument is exit code
+	}
+	if !subnetServicesEnabled() {
+		// Display only locally stored license information; never consult SUBNET.
+		globalAirgapped = true
 	}
 
 	initLicInfoColors()

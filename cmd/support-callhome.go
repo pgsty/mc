@@ -39,7 +39,7 @@ USAGE:
   {{.HelpName}} enable|disable|status ALIAS
 
 OPTIONS:
-  enable - Enable callhome
+  enable - Enable callhome (not supported in this build; always exits with an error)
   disable - Disable callhome
   status - Display callhome settings
 
@@ -47,14 +47,14 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Enable callhome for cluster with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} enable myminio
+  1. Enable callhome for cluster with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} enable mysilo
 
-  2. Disable callhome for cluster with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} disable myminio
+  2. Disable callhome for cluster with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} disable mysilo
 
-  3. Check callhome status for cluster with alias 'myminio'
-     {{.Prompt}} {{.HelpName}} status myminio
+  3. Check callhome status for cluster with alias 'mysilo'
+     {{.Prompt}} {{.HelpName}} status mysilo
 `,
 }
 
@@ -84,7 +84,13 @@ func mainCallhome(ctx *cli.Context) error {
 
 	setSuccessMessageColor()
 	alias, arg := checkToggleCmdSyntax(ctx)
-	validateClusterRegistered(alias, false)
+	if subnetServicesEnabled() {
+		validateClusterRegistered(alias, false)
+	} else if arg == "enable" {
+		// Call-home reports to MinIO SUBNET; enabling it is not supported
+		// in this build. Status display and disabling remain available.
+		return subnetDisabledExit()
+	}
 
 	if arg == "status" {
 		printCallhomeStatus(alias)
@@ -114,7 +120,7 @@ func setCallhomeConfig(alias string, enableCallhome bool) {
 	fatalIf(err, "Unable to initialize admin connection.")
 
 	if !minioConfigSupportsSubSys(client, "callhome") {
-		fatal(errDummy().Trace(), "Your version of MinIO doesn't support this configuration")
+		fatal(errDummy().Trace(), "Your version of the Silo/MinIO server doesn't support this configuration")
 	}
 
 	enableStr := "off"
@@ -123,5 +129,5 @@ func setCallhomeConfig(alias string, enableCallhome bool) {
 	}
 	configStr := "callhome enable=" + enableStr
 	_, e := client.SetConfigKV(globalContext, configStr)
-	fatalIf(probe.NewError(e), "Unable to set callhome config on minio")
+	fatalIf(probe.NewError(e), "Unable to set callhome config on the server")
 }

@@ -55,7 +55,7 @@ var supportInspectFlags = append(subnetCommonFlags,
 
 var supportInspectCmd = cli.Command{
 	Name:            "inspect",
-	Usage:           "upload raw object contents for analysis",
+	Usage:           "download raw object contents for analysis",
 	Action:          mainSupportInspect,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -71,14 +71,11 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Upload 'xl.meta' of a specific object from all the drives
-     {{.Prompt}} {{.HelpName}} myminio/bucket/test*/xl.meta
+  1. Download 'xl.meta' of a specific object from all the drives
+     {{.Prompt}} {{.HelpName}} mysilo/bucket/test*/xl.meta
 
-  2. Upload recursively all objects at a prefix. NOTE: This can be an expensive operation use it with caution.
-     {{.Prompt}} {{.HelpName}} myminio/bucket/test/**
-
-  3. Download 'xl.meta' of a specific object from all the drives locally, and upload to SUBNET manually
-     {{.Prompt}} {{.HelpName}} myminio/bucket/test*/xl.meta --airgap
+  2. Download recursively all objects at a prefix. NOTE: This can be an expensive operation use it with caution.
+     {{.Prompt}} {{.HelpName}} mysilo/bucket/test/**
 `,
 }
 
@@ -124,6 +121,11 @@ func checkSupportInspectSyntax(ctx *cli.Context) {
 
 // mainSupportInspect - the entry function of inspect command
 func mainSupportInspect(ctx *cli.Context) error {
+	if !subnetServicesEnabled() {
+		// SUBNET uploads are disabled in this build; always operate in
+		// local (airgap) mode so inspect data is saved to disk.
+		globalAirgapped = true
+	}
 	// Check for command syntax
 	checkSupportInspectSyntax(ctx)
 

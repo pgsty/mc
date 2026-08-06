@@ -40,7 +40,7 @@ const (
 var licenseRegisterFlags = append([]cli.Flag{
 	cli.StringFlag{
 		Name:  "name",
-		Usage: "Specify the name to associate to this MinIO cluster in SUBNET",
+		Usage: "Specify the name to associate to this Silo/MinIO cluster in SUBNET",
 	},
 	cli.StringFlag{
 		Name:  "license",
@@ -50,7 +50,7 @@ var licenseRegisterFlags = append([]cli.Flag{
 
 var licenseRegisterCmd = cli.Command{
 	Name:         "register",
-	Usage:        "register with MinIO Subscription Network",
+	Usage:        "register with MinIO SUBNET (disabled in this build)",
 	OnUsageError: onUsageError,
 	Action:       mainLicenseRegister,
 	Before:       setGlobalsFromContext,
@@ -64,23 +64,12 @@ USAGE:
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
-EXAMPLES:
-  1. Register MinIO cluster at alias 'play' on SUBNET, using api key for auth
-     {{.Prompt}} {{.HelpName}} play --api-key 08efc836-4289-dbd4-ad82-b5e8b6d25577
+DESCRIPTION:
+  Registration with MinIO SUBNET is not available in this Silo build of mc.
+  The command is retained for CLI compatibility and always exits with an error.
 
-  2. Register MinIO cluster at alias 'play' on SUBNET, using license file ./minio.license
-     {{.Prompt}} {{.HelpName}} play --license ./minio.license
-
-  3. Register MinIO cluster at alias 'play' on SUBNET, using api key for auth,
-     and "play-cluster" as the preferred name for the cluster on SUBNET.
-     {{.Prompt}} {{.HelpName}} play --api-key 08efc836-4289-dbd4-ad82-b5e8b6d25577 --name play-cluster
-
-  4. Register MinIO cluster at alias 'play' on SUBNET in an airgapped environment
-     {{.Prompt}} {{.HelpName}} play --airgap
-
-  5. Register MinIO cluster at alias 'play' on SUBNET, using alias as the cluster name.
-     This asks for SUBNET credentials if the cluster is not already registered.
-     {{.Prompt}} {{.HelpName}} play
+EXIT STATUS:
+  1 - SUBNET services are disabled
 `,
 }
 
@@ -203,6 +192,9 @@ func validateNotPlay(aliasedURL string) {
 }
 
 func mainLicenseRegister(ctx *cli.Context) error {
+	if !subnetServicesEnabled() {
+		return subnetDisabledExit()
+	}
 	console.SetColor(licRegisterMsgTag, color.New(color.FgGreen, color.Bold))
 	console.SetColor(licRegisterLinkTag, color.New(color.FgWhite, color.Bold))
 	checkLicenseRegisterSyntax(ctx)

@@ -72,7 +72,7 @@ func (c *configV10) setAlias(alias string, cfg aliasConfigV10) {
 
 // load default values for missing entries.
 func (c *configV10) loadDefaults() {
-	// MinIO server running locally.
+	// Silo/MinIO server running locally.
 	c.setAlias("local", aliasConfigV10{
 		URL:       "http://localhost:9000",
 		AccessKey: "",
@@ -99,14 +99,10 @@ func (c *configV10) loadDefaults() {
 		Path:      "dns",
 	})
 
-	// MinIO anonymous server for demo.
-	c.setAlias("play", aliasConfigV10{
-		URL:       "https://play.min.io",
-		AccessKey: "Q3AM3UQ867SPQQA43P2F",
-		SecretKey: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG",
-		API:       "S3v4",
-		Path:      "auto",
-	})
+	// The upstream MinIO client also seeded a "play" alias pointing at
+	// MinIO's public demo cluster (play.min.io). The Silo fork does not
+	// create aliases for third-party services in new configurations;
+	// existing user configurations are never modified.
 }
 
 // loadConfigV10 - loads a new config.

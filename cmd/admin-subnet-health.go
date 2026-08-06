@@ -27,7 +27,7 @@ import (
 
 var adminSubnetHealthCmd = cli.Command{
 	Name:               "health",
-	Usage:              "generate MinIO health report for SUBNET",
+	Usage:              "generate a health report for SUBNET (deprecated)",
 	OnUsageError:       onUsageError,
 	Action:             mainSubnetHealth,
 	Before:             setGlobalsFromContext,

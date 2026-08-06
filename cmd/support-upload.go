@@ -39,7 +39,7 @@ var (
 		},
 		cli.BoolFlag{
 			Name:  "enc",
-			Usage: "encrypt content with key only accessible to minio employees",
+			Usage: "accepted for compatibility; uploads are disabled in this build",
 		},
 		cli.BoolFlag{
 			Name:   "dev",
@@ -68,7 +68,7 @@ func (s supportUploadMessage) JSON() string {
 
 var supportUploadCmd = cli.Command{
 	Name:            "upload",
-	Usage:           "upload file to a SUBNET issue",
+	Usage:           "upload file to a SUBNET issue (disabled in this build)",
 	Action:          mainSupportUpload,
 	OnUsageError:    onUsageError,
 	Before:          setGlobalsFromContext,
@@ -83,12 +83,12 @@ USAGE:
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
-EXAMPLES:
-  1. Upload file './trace.log' for cluster 'myminio' to SUBNET issue number 10
-     {{.Prompt}} {{.HelpName}} --issue 10 myminio ./trace.log
+DESCRIPTION:
+  Uploads to MinIO SUBNET are not available in this Silo build of mc.
+  The command is retained for CLI compatibility and always exits with an error.
 
-  2. Upload file './trace.log' for cluster 'myminio' to SUBNET issue number 10 with comment 'here is the trace log'
-     {{.Prompt}} {{.HelpName}} --issue 10 --comment "here is the trace log" myminio ./trace.log 
+EXIT STATUS:
+  1 - SUBNET services are disabled
 `,
 }
 
@@ -104,6 +104,9 @@ func checkSupportUploadSyntax(ctx *cli.Context) {
 
 // mainSupportUpload is the handle for "mc support upload" command.
 func mainSupportUpload(ctx *cli.Context) error {
+	if !subnetServicesEnabled() {
+		return subnetDisabledExit()
+	}
 	// Check for command syntax
 	checkSupportUploadSyntax(ctx)
 	setSuccessMessageColor()

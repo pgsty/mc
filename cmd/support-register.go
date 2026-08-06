@@ -24,13 +24,13 @@ import (
 var supportRegisterFlags = append([]cli.Flag{
 	cli.StringFlag{
 		Name:  "name",
-		Usage: "Specify the name to associate to this MinIO cluster in SUBNET",
+		Usage: "Specify the name to associate to this Silo/MinIO cluster in SUBNET",
 	},
 }, subnetCommonFlags...)
 
 var supportRegisterCmd = cli.Command{
 	Name:               "register",
-	Usage:              "register with MinIO subscription network",
+	Usage:              "register with MinIO SUBNET (deprecated)",
 	OnUsageError:       onUsageError,
 	Action:             mainSupportRegister,
 	Before:             setGlobalsFromContext,

@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	selfUpdateDisabledMessage         = "Self-update is disabled in the Pigsty mc fork; upgrade only through the Pigsty package repository or https://github.com/pgsty/mc/releases."
+	selfUpdateDisabledMessage         = "Self-update is disabled in this Silo build of mc; upgrade only through your package repository or https://github.com/pgsty/mc/releases."
 	selfUpdateTooManyArgumentsMessage = "mc update accepts at most one custom release URL; self-update remains disabled."
 )
 
@@ -47,7 +47,7 @@ func (m disabledUpdateMessage) JSON() string {
 func disabledUpdateCmd() cli.Command {
 	return cli.Command{
 		Name:         "update",
-		Usage:        "self-update is disabled in this Pigsty build",
+		Usage:        "self-update is disabled in this Silo build",
 		Action:       mainUpdate,
 		OnUsageError: onUsageError,
 		Flags: []cli.Flag{

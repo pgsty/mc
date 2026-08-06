@@ -46,10 +46,12 @@ FLAGS:
   {{end}}
 
 EXAMPLES:
-  1. Update license for cluster with alias 'play' from the file license.key
-     {{.Prompt}} {{.HelpName}} play license.key
-  2. Update (renew) license for already registered cluster with alias 'play'
-     {{.Prompt}} {{.HelpName}} play
+  1. Update license for cluster with alias 'mysilo' from the file license.key
+     {{.Prompt}} {{.HelpName}} mysilo license.key
+
+NOTE:
+  Online license renewal via MinIO SUBNET ('{{.HelpName}} ALIAS' without a
+  file argument) is disabled in this Silo build and always exits with an error.
 `,
 }
 
@@ -92,6 +94,9 @@ func mainLicenseUpdate(ctx *cli.Context) error {
 	}
 
 	// renew the license
+	if !subnetServicesEnabled() {
+		return subnetDisabledExit()
+	}
 	printMsg(performLicenseRenew(alias))
 	return nil
 }
