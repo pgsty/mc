@@ -1,9 +1,11 @@
 ## Community Contribution License
-All community contributions in this pull request are licensed to the project maintainers
-under the terms of the [GNU AGPL v3.0 or later](https://www.gnu.org/licenses/agpl-3.0.html),
-the license of this project.
-By creating this pull request I represent that I have the right to license the
-contributions to the project maintainers under that license.
+This project does not use a CLA; contributions are accepted inbound=outbound.
+All community contributions in this pull request are licensed under the
+[GNU AGPL v3.0 or later](https://www.gnu.org/licenses/agpl-3.0.html), the
+license of this project, and every commit must carry a DCO `Signed-off-by`
+trailer (`git commit -s`) certifying the
+[Developer Certificate of Origin](https://developercertificate.org/) —
+see [CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ## Description
 
@@ -21,6 +23,7 @@ contributions to the project maintainers under that license.
 - [ ] Breaking change (fix or feature that would cause existing functionality to change)
 
 ## Checklist:
+- [ ] All commits are signed off (`git commit -s`) per the [DCO](https://developercertificate.org/)
 - [ ] Fixes a regression (If yes, please add `commit-id` or `PR #` here)
 - [ ] Unit tests added/updated
 - [ ] Internal documentation updated
