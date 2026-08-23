@@ -41,7 +41,9 @@ require (
 	github.com/pkg/xattr v0.4.12
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.23.2
+	github.com/prometheus/common v0.67.5
 	github.com/prometheus/procfs v0.20.1
+	github.com/prometheus/prom2json v1.5.0
 	github.com/rjeczalik/notify v0.9.3
 	github.com/rs/xid v1.6.0
 	github.com/shirou/gopsutil/v3 v3.24.5
@@ -107,8 +109,6 @@ require (
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.67.5 // indirect
-	github.com/prometheus/prom2json v1.5.0 // indirect
 	// Security floor for the Prometheus parser used by madmin-go.
 	github.com/prometheus/prometheus v0.311.3 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect

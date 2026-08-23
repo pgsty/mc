@@ -19,17 +19,21 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/minio/cli"
 	json "github.com/minio/colorjson"
-	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/minio-go/v7/pkg/set"
+	"github.com/prometheus/common/expfmt"
+	prommodel "github.com/prometheus/common/model"
+	"github.com/prometheus/prom2json"
 )
 
 var metricsFlags = append(metricsV3Flags,
@@ -180,12 +184,35 @@ func printPrometheusMetricsV2(ctx *cli.Context, req prometheusMetricsReq) error 
 
 // JSON returns jsonified message
 func (pm prometheusMetricsReader) JSON() string {
-	results, e := madmin.ParsePrometheusResults(pm.Reader)
+	results, e := parsePrometheusResults(pm.Reader)
 	fatalIf(probe.NewError(e), "Unable to parse Prometheus metrics.")
 
 	jsonMessageBytes, e := json.MarshalIndent(results, "", " ")
 	fatalIf(probe.NewError(e), "Unable to marshal into JSON.")
 	return string(jsonMessageBytes)
+}
+
+// parsePrometheusResults mirrors madmin.ParsePrometheusResults while using the
+// parser constructor required by prometheus/common v0.66.0 and newer. Remove
+// this shim when the madmin-go/v3 dependency includes upstream commit d960f54.
+func parsePrometheusResults(reader io.Reader) ([]*prom2json.Family, error) {
+	parser := expfmt.NewTextParser(prommodel.UTF8Validation)
+	metricFamilies, err := parser.TextToMetricFamilies(reader)
+	if err != nil {
+		return nil, fmt.Errorf("reading text format failed: %w", err)
+	}
+
+	names := make([]string, 0, len(metricFamilies))
+	for name := range metricFamilies {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	results := make([]*prom2json.Family, 0, len(metricFamilies))
+	for _, name := range names {
+		results = append(results, prom2json.NewFamily(metricFamilies[name]))
+	}
+	return results, nil
 }
 
 // String - returns the string representation of the prometheus metrics
