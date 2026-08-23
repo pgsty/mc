@@ -23,7 +23,7 @@ jobs:
       GO111MODULE: on
     strategy:
       matrix:
-        go-version: [1.26.5]
+        go-version: [1.27.0]
         os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Set up Go ${{ matrix.go-version }} on ${{ matrix.os }}
@@ -43,7 +43,7 @@ jobs:
       - name: Build on ${{ matrix.os }}
         if: matrix.os == 'macos-latest'
         run: |
-          go build --ldflags="-s -w" -o %GOPATH%\bin\mc
+          go build --ldflags="-s -w" -o "$(go env GOPATH)/bin/mc"
           go test -v -race --timeout 30m ./...
       - name: Build on ${{ matrix.os }}
         if: matrix.os == 'ubuntu-latest'
@@ -56,17 +56,17 @@ jobs:
           MC_TEST_ENABLE_HTTPS: true
           MC_TEST_SKIP_INSECURE: true
           MC_TEST_SKIP_BUILD: true
-          MINIO_RELEASE: RELEASE.2026-08-04T00-00-00Z
-          MINIO_ARCHIVE: minio_20260804000000.0.0_linux_amd64.tar.gz
-          MINIO_ARCHIVE_SHA256: 3c1d229209db049618cb9c6d4132fa2882b15cdded337511486e811c187eec08
+          SILO_RELEASE: RELEASE.2026-08-06T00-00-00Z
+          SILO_ARCHIVE: silo_20260806000000.0.0_linux_amd64.tar.gz
+          SILO_ARCHIVE_SHA256: d63d57cc7f0535e1aa116f9e5f42117dbfc4f63492da692b64d3ba6ded30e574
         run: |
-          curl -fsSLO "https://github.com/pgsty/silo/releases/download/${MINIO_RELEASE}/${MINIO_ARCHIVE}"
-          echo "${MINIO_ARCHIVE_SHA256}  ${MINIO_ARCHIVE}" | sha256sum --check --strict
-          tar -xzf "${MINIO_ARCHIVE}"
-          test -x minio
+          curl -fsSLO "https://github.com/pgsty/silo/releases/download/${SILO_RELEASE}/${SILO_ARCHIVE}"
+          echo "${SILO_ARCHIVE_SHA256}  ${SILO_ARCHIVE}" | sha256sum --check --strict
+          tar -xzf "${SILO_ARCHIVE}"
+          test -x silo
           mkdir -p ~/.minio/certs/ && cp testdata/localhost.crt ~/.minio/certs/public.crt && cp testdata/localhost.key ~/.minio/certs/private.key
           sudo cp testdata/localhost.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
-          ./minio server /tmp/test-xl/{1...4}/ & sleep 10
+          ./silo server /tmp/test-xl/{1...4}/ & sleep 10
           make
           make test-race
           make verify
@@ -79,10 +79,12 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: 1.26.5
+          go-version: 1.27.0
 
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       # The release build no longer runs `go mod tidy`, so drift has to be
       # caught here instead of being silently applied while cutting a release.
@@ -90,6 +92,9 @@ jobs:
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
+
+      - name: Reject dependency floor regressions
+        run: go run ./buildscripts/check-dependency-floors
 
       # Brand policy gate: user-visible surfaces must keep the Silo identity
       # and never reintroduce MinIO endpoints or commercial upsell, while

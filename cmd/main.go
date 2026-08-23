@@ -146,7 +146,7 @@ func Main(args []string) error {
 
 func flagValue(f cli.Flag) reflect.Value {
 	fv := reflect.ValueOf(f)
-	for fv.Kind() == reflect.Ptr {
+	for fv.Kind() == reflect.Pointer {
 		fv = reflect.Indirect(fv)
 	}
 	return fv

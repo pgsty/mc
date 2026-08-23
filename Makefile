@@ -9,6 +9,8 @@ VERSION ?= $(shell git describe --tags)
 TAG ?= "pgsty/mc:$(VERSION)"
 
 GOLANGCI = $(GOPATH)/bin/golangci-lint
+GOLANGCI_VERSION ?= v2.13.1
+GOLANGCI_MODULE = github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
 all: build
 
@@ -18,12 +20,21 @@ checks:
 
 getdeps:
 	@mkdir -p ${GOPATH}/bin
-	@echo "Installing tools" && go install tool
+	@if ! $(GOLANGCI) version 2>/dev/null | grep -qF " $(patsubst v%,%,$(GOLANGCI_VERSION)) "; then \
+		set -e; \
+		echo "Installing golangci-lint $(GOLANGCI_VERSION)"; \
+		GOBIN=$(GOPATH)/bin GOFLAGS= go install $(GOLANGCI_MODULE)@$(GOLANGCI_VERSION); \
+	fi
+	@echo "Installing module tools" && go install tool
 
 crosscompile:
 	@(env bash $(PWD)/buildscripts/cross-compile.sh)
 
-verifiers: getdeps vet lint check-brand
+verifiers: getdeps vet lint check-brand check-dependency-floors
+
+check-dependency-floors:
+	@echo "Checking dependency floors"
+	@go run ./buildscripts/check-dependency-floors
 
 check-brand:
 	@echo "Running $@ check"

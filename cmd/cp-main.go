@@ -497,11 +497,11 @@ loop:
 				errSeen = true
 				if progressReader, pgok := pg.(*progressBar); pgok {
 					if progressReader.Get() > 0 {
-						writeContSize := (int)(cpURLs.SourceContent.Size)
-						totalPGSize := (int)(progressReader.Total)
-						written := (int)(progressReader.Get())
+						writeContSize := int(cpURLs.SourceContent.Size)
+						totalPGSize := int(progressReader.Total)
+						written := int(progressReader.Get())
 						if totalPGSize > writeContSize && written > writeContSize {
-							progressReader.Set((written - writeContSize))
+							progressReader.Set(written - writeContSize)
 							progressReader.Update()
 						}
 					}
