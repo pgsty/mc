@@ -12,6 +12,8 @@ before:
     - go generate ./...
     - go mod download
     - go mod verify
+    - go run ./buildscripts/check-dependency-floors
+    - make check-credits
 
 builds:
   - id: mcli
@@ -37,6 +39,12 @@ archives:
     ids:
       - mcli
     name_template: "mcli_{{ .Env.PKG_VERSION }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - NOTICE
+      - CREDITS
+      - README.md
+      - README_ZH.md
 
 checksum:
   name_template: "mcli_{{ .Env.PKG_VERSION }}_checksums.txt"

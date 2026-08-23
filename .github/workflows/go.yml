@@ -96,6 +96,9 @@ jobs:
       - name: Reject dependency floor regressions
         run: go run ./buildscripts/check-dependency-floors
 
+      - name: Check third-party credits
+        run: make check-credits
+
       # Brand policy gate: user-visible surfaces must keep the Silo identity
       # and never reintroduce MinIO endpoints or commercial upsell, while
       # protocol-compatibility identifiers stay untouched.

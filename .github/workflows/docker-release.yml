@@ -87,7 +87,7 @@ jobs:
             mkdir -p "${context}"
             tar -xzf "${archive}" -C "${context}" mcli
             mv "${context}/mcli" "${context}/mc"
-            cp Dockerfile.goreleaser LICENSE CREDITS "${context}/"
+            cp Dockerfile.goreleaser LICENSE NOTICE CREDITS "${context}/"
           done
 
           echo "RELEASE_REVISION=$(git rev-parse HEAD)" >> "${GITHUB_ENV}"

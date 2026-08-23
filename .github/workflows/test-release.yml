@@ -16,6 +16,11 @@ on:
       - ".github/workflows/test-release.yml"
       - ".gitignore"
       - "Makefile"
+      - "CREDITS"
+      - "NOTICE"
+      - "buildscripts/gen-credits.sh"
+      - "buildscripts/license-overrides/**"
+      - "buildscripts/check-dependency-floors/**"
 
 permissions:
   contents: read
@@ -69,6 +74,19 @@ jobs:
         run: |
           set -euo pipefail
           buildscripts/verify-build-provenance.sh
+
+      - name: Verify archive documentation
+        run: |
+          set -euo pipefail
+          count=0
+          for archive in dist/mcli_*.tar.gz; do
+            count=$((count + 1))
+            listing="$(tar -tzf "${archive}")"
+            for member in LICENSE NOTICE CREDITS README.md README_ZH.md; do
+              grep -Fx "${member}" <<< "${listing}"
+            done
+          done
+          test "${count}" -eq 6
 
       - name: Install package validation tools
         run: |
@@ -156,6 +174,20 @@ jobs:
               apk_arch=aarch64
             fi
 
+            rpm_package="mcli-${PKG_VERSION}-1.${rpm_arch}.rpm"
+            deb_package="mcli_${PKG_VERSION}_${deb_arch}.deb"
+            apk_package="mcli_${PKG_VERSION}_${apk_arch}.apk"
+
+            rpm -qpl "${rpm_package}" | grep -Fx '/usr/share/licenses/mcli/LICENSE'
+            rpm -qpl "${rpm_package}" | grep -Fx '/usr/share/doc/mcli/NOTICE'
+            rpm -qpl "${rpm_package}" | grep -Fx '/usr/share/doc/mcli/CREDITS'
+            dpkg-deb --contents "${deb_package}" | grep -E 'usr/share/licenses/mcli/LICENSE$'
+            dpkg-deb --contents "${deb_package}" | grep -E 'usr/share/doc/mcli/NOTICE$'
+            dpkg-deb --contents "${deb_package}" | grep -E 'usr/share/doc/mcli/CREDITS$'
+            tar -tzf "${apk_package}" | grep -Fx 'usr/share/licenses/mcli/LICENSE'
+            tar -tzf "${apk_package}" | grep -Fx 'usr/share/doc/mcli/NOTICE'
+            tar -tzf "${apk_package}" | grep -Fx 'usr/share/doc/mcli/CREDITS'
+
             test "$(rpm -qp --queryformat '%{ARCH}' "mcli-${PKG_VERSION}-1.${rpm_arch}.rpm")" = "${rpm_arch}"
             test "$(dpkg-deb --field "mcli_${PKG_VERSION}_${deb_arch}.deb" Architecture)" = "${deb_arch}"
             grep -Fx "arch = ${apk_arch}" <<< "$(tar -xOzf "mcli_${PKG_VERSION}_${apk_arch}.apk" .PKGINFO)"
@@ -188,7 +220,7 @@ jobs:
           context="$(mktemp -d)"
           tar -xzf "dist/mcli_${PKG_VERSION}_linux_amd64.tar.gz" -C "${context}" mcli
           mv "${context}/mcli" "${context}/mc"
-          cp Dockerfile.goreleaser LICENSE CREDITS "${context}/"
+          cp Dockerfile.goreleaser LICENSE NOTICE CREDITS "${context}/"
           docker build --tag mcli-release-test:snapshot \
             --file "${context}/Dockerfile.goreleaser" "${context}"
           docker run --rm mcli-release-test:snapshot --version

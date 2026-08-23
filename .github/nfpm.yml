@@ -20,6 +20,36 @@ contents:
       mode: 0755
       owner: root
       group: root
+  - src: LICENSE
+    dst: /usr/share/licenses/mcli/LICENSE
+    type: license
+    packager: rpm
+  - src: LICENSE
+    dst: /usr/share/licenses/mcli/LICENSE
+    packager: deb
+  - src: LICENSE
+    dst: /usr/share/licenses/mcli/LICENSE
+    packager: apk
+  - src: NOTICE
+    dst: /usr/share/doc/mcli/NOTICE
+    type: doc
+    packager: rpm
+  - src: NOTICE
+    dst: /usr/share/doc/mcli/NOTICE
+    packager: deb
+  - src: NOTICE
+    dst: /usr/share/doc/mcli/NOTICE
+    packager: apk
+  - src: CREDITS
+    dst: /usr/share/doc/mcli/CREDITS
+    type: doc
+    packager: rpm
+  - src: CREDITS
+    dst: /usr/share/doc/mcli/CREDITS
+    packager: deb
+  - src: CREDITS
+    dst: /usr/share/doc/mcli/CREDITS
+    packager: apk
 
 rpm:
   group: Applications/File

@@ -5,6 +5,7 @@ LABEL maintainer="pgsty <https://github.com/pgsty/mc>"
 COPY mc /usr/bin/
 COPY CREDITS /licenses/CREDITS
 COPY LICENSE /licenses/LICENSE
+COPY NOTICE /licenses/NOTICE
 
 RUN  \
      microdnf update --nodocs --assumeyes && \

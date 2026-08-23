@@ -7,6 +7,8 @@ repo_dir="$(cd "${script_dir}/.." && pwd)"
 dist_dir="${DIST_DIR:-${repo_dir}/dist}"
 nfpm_config="${NFPM_CONFIG:-${repo_dir}/.github/nfpm.yml}"
 
+cd "${repo_dir}"
+
 if [ -z "${PKG_VERSION:-}" ]; then
   echo "PKG_VERSION is required" >&2
   exit 1

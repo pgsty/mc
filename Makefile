@@ -12,6 +12,8 @@ GOLANGCI = $(GOPATH)/bin/golangci-lint
 GOLANGCI_VERSION ?= v2.13.1
 GOLANGCI_MODULE = github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
+.PHONY: credits check-credits check-dependency-floors
+
 all: build
 
 checks:
@@ -30,11 +32,25 @@ getdeps:
 crosscompile:
 	@(env bash $(PWD)/buildscripts/cross-compile.sh)
 
-verifiers: getdeps vet lint check-brand check-dependency-floors
+verifiers: getdeps vet lint check-brand check-credits
 
 check-dependency-floors:
 	@echo "Checking dependency floors"
 	@go run ./buildscripts/check-dependency-floors
+
+credits:
+	@env bash $(PWD)/buildscripts/gen-credits.sh
+
+check-credits:
+	@echo "Checking third-party credits"
+	@tmp=$$(mktemp); \
+		trap 'rm -f "$$tmp"' EXIT; \
+		env bash $(PWD)/buildscripts/gen-credits.sh "$$tmp"; \
+		if ! cmp -s CREDITS "$$tmp"; then \
+			echo "CREDITS is stale; run 'make credits'" >&2; \
+			diff -u CREDITS "$$tmp" || true; \
+			exit 1; \
+		fi
 
 check-brand:
 	@echo "Running $@ check"

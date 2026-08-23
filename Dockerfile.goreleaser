@@ -21,6 +21,7 @@ COPY --from=certs /tmp/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY mc /usr/bin/mc
 COPY LICENSE /licenses/LICENSE
 COPY CREDITS /licenses/CREDITS
+COPY NOTICE /licenses/NOTICE
 
 RUN chmod +x /usr/bin/mc
 

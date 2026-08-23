@@ -25,6 +25,7 @@ FROM scratch
 COPY --from=build /go/bin/mc /usr/bin/mc
 COPY --from=build /src/CREDITS /licenses/CREDITS
 COPY --from=build /src/LICENSE /licenses/LICENSE
+COPY --from=build /src/NOTICE /licenses/NOTICE
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 ENTRYPOINT ["mc"]
