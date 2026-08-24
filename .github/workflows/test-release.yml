@@ -9,6 +9,7 @@ on:
       - "Dockerfile.goreleaser"
       - "buildscripts/package-release.sh"
       - "buildscripts/sign-release-rpms.sh"
+      - "buildscripts/verify-rpm-payload.sh"
       - "buildscripts/verify-build-provenance.sh"
       - "buildscripts/gen-ldflags.go"
       - ".github/workflows/docker-release.yml"
@@ -178,9 +179,8 @@ jobs:
             deb_package="mcli_${PKG_VERSION}_${deb_arch}.deb"
             apk_package="mcli_${PKG_VERSION}_${apk_arch}.apk"
 
-            rpm -qpl "${rpm_package}" | grep -Fx '/usr/share/licenses/mcli/LICENSE'
-            rpm -qpl "${rpm_package}" | grep -Fx '/usr/share/doc/mcli/NOTICE'
-            rpm -qpl "${rpm_package}" | grep -Fx '/usr/share/doc/mcli/CREDITS'
+            rpm -qpl "${rpm_package}" |
+              ../../buildscripts/verify-rpm-payload.sh "${rpm_package}"
             dpkg-deb --contents "${deb_package}" | grep -E 'usr/share/licenses/mcli/LICENSE$'
             dpkg-deb --contents "${deb_package}" | grep -E 'usr/share/doc/mcli/NOTICE$'
             dpkg-deb --contents "${deb_package}" | grep -E 'usr/share/doc/mcli/CREDITS$'
@@ -232,7 +232,9 @@ jobs:
           set -euo pipefail
           bash -n buildscripts/package-release.sh
           bash -n buildscripts/sign-release-rpms.sh
+          bash -n buildscripts/verify-rpm-payload.sh
           bash -n buildscripts/verify-build-provenance.sh
           test -x buildscripts/package-release.sh
           test -x buildscripts/sign-release-rpms.sh
+          test -x buildscripts/verify-rpm-payload.sh
           test -x buildscripts/verify-build-provenance.sh

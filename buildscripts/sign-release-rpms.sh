@@ -209,12 +209,8 @@ for rpm_file in "${rpm_files[@]}"; do
   assert_rpm_tag "${container_rpm}" SUMMARY "${expected_summary}"
   assert_rpm_tag "${container_rpm}" DESCRIPTION "${expected_description}"
 
-  rpm_payload="$(docker exec "${container}" rpm -qpl "${container_rpm}")"
-  if [ "${rpm_payload}" != "/usr/local/bin/mcli" ]; then
-    echo "Unexpected RPM payload for ${rpm_file}:" >&2
-    printf '%s\n' "${rpm_payload}" >&2
-    exit 1
-  fi
+  docker exec "${container}" rpm -qpl "${container_rpm}" |
+    "${repo_dir}/buildscripts/verify-rpm-payload.sh" "${rpm_file}"
 
   docker exec "${container}" rpmsign \
     --define "_gpg_name ${expected_fingerprint}" \
