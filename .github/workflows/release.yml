@@ -5,6 +5,11 @@ on:
     tags:
       - "RELEASE.*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing RELEASE.* tag to publish"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -17,6 +22,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -34,9 +40,15 @@ jobs:
           fi
 
       - name: Compute release variables
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            TAG="${RELEASE_TAG_INPUT}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
           VERSION_HYPHEN="${TAG#RELEASE.}"
           PKG_VERSION="$(echo "${VERSION_HYPHEN}" | sed -E 's/^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2})-([0-9]{2})-([0-9]{2})Z$/\1\2\3\4\5\6.0.0/')"
           if [ "${PKG_VERSION}" = "${VERSION_HYPHEN}" ]; then
