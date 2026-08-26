@@ -40,7 +40,7 @@ require (
 	github.com/minio/filepath v1.0.0
 	github.com/minio/madmin-go/v3 v3.0.110
 	github.com/minio/minio-go/v7 v7.3.0
-	github.com/minio/pkg/v3 v3.11.0
+	github.com/minio/pkg/v3 v3.6.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
