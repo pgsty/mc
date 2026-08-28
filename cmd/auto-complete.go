@@ -230,6 +230,8 @@ var (
 // with their bash completer function
 var completeCmds = map[string]complete.Predictor{
 	// S3 API level commands
+	"/checksum/verify": s3Completer,
+
 	"/ls":        complete.PredictOr(s3Completer, fsCompleter),
 	"/cp":        complete.PredictOr(s3Completer, fsCompleter),
 	"/mv":        complete.PredictOr(s3Completer, fsCompleter),
