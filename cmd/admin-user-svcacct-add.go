@@ -18,7 +18,6 @@
 package cmd
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -33,7 +32,6 @@ import (
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/pkg/v3/console"
-	"github.com/minio/pkg/v3/policy"
 )
 
 var adminUserSvcAcctAddFlags = []cli.Flag{
@@ -321,7 +319,7 @@ func mainAdminUserSvcAcctAdd(ctx *cli.Context) error {
 		policyBytes, e := os.ReadFile(policyPath)
 		fatalIf(probe.NewError(e), "unable to read the policy document")
 
-		p, e := policy.ParseConfig(bytes.NewReader(policyBytes))
+		p, e := parsePolicyForWrite(policyBytes)
 		fatalIf(probe.NewError(e), "unable to parse the policy document")
 
 		if p.IsEmpty() {

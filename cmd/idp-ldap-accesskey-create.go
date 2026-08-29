@@ -18,7 +18,6 @@
 package cmd
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -27,7 +26,6 @@ import (
 	"github.com/minio/cli"
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/policy"
 )
 
 var idpLdapAccesskeyCreateFlags = []cli.Flag{
@@ -181,7 +179,7 @@ func accessKeyCreateOpts(ctx *cli.Context, targetUser string) madmin.AddServiceA
 		policyBytes, e := os.ReadFile(policyPath)
 		fatalIf(probe.NewError(e), "unable to read the policy document")
 
-		p, e := policy.ParseConfig(bytes.NewReader(policyBytes))
+		p, e := parsePolicyForWrite(policyBytes)
 		fatalIf(probe.NewError(e), "unable to parse the policy document")
 
 		if p.IsEmpty() {

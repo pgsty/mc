@@ -129,6 +129,9 @@ func mainAdminPolicyCreate(ctx *cli.Context) error {
 	policy, e := os.ReadFile(args.Get(2))
 	fatalIf(probe.NewError(e).Trace(args...), "Unable to get policy")
 
+	_, e = parseNamedPolicyForWrite(policy)
+	fatalIf(probe.NewError(e).Trace(args...), "Unable to parse policy")
+
 	// Create a new MinIO Admin Client
 	client, err := newAdminClient(aliasedURL)
 	fatalIf(err, "Unable to initialize admin connection.")
