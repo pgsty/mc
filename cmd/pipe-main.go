@@ -18,6 +18,9 @@
 package cmd
 
 import (
+	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -35,6 +38,19 @@ import (
 func defaultPartSize() string {
 	_, partSize, _, _ := minio.OptimalPartInfo(-1, 0)
 	return humanize.IBytes(uint64(partSize))
+}
+
+func preparePipeReader(reader io.Reader) (io.Reader, int64, error) {
+	// Give empty input a known size so it uses a regular zero-byte PUT
+	// instead of an unnecessary one-part multipart upload.
+	buffered := bufio.NewReader(reader)
+	if _, err := buffered.Peek(1); err != nil {
+		if errors.Is(err, io.EOF) {
+			return bytes.NewReader(nil), 0, nil
+		}
+		return nil, -1, err
+	}
+	return buffered, -1, nil
 }
 
 var pipeFlags = []cli.Flag{
@@ -168,9 +184,8 @@ func pipe(ctx *cli.Context, targetURL string, encKeyDB map[string][]prefixSSEPai
 		}
 	}
 
-	// Stream from stdin to multiple objects until EOF.
-	// Ignore size, since os.Stat() would not return proper size all the time
-	// for local filesystem for example /proc files.
+	// Stream non-empty stdin until EOF; empty input is identified below so it
+	// can use a regular zero-byte PUT instead of unknown-size multipart.
 	opts := PutOptions{
 		sse:              sseKey,
 		storageClass:     storageClass,
@@ -182,15 +197,16 @@ func pipe(ctx *cli.Context, targetURL string, encKeyDB map[string][]prefixSSEPai
 		checksum:         checksum,
 	}
 
-	var reader io.Reader
+	reader, streamSize, e := preparePipeReader(os.Stdin)
+	if e != nil {
+		return probe.NewError(e)
+	}
 	if !quiet && !json {
 		pg := newProgressBar(0)
-		reader = io.TeeReader(os.Stdin, pg)
-	} else {
-		reader = os.Stdin
+		reader = io.TeeReader(reader, pg)
 	}
 
-	n, err := putTargetStreamWithURL(targetURL, reader, -1, opts)
+	n, err := putTargetStreamWithURL(targetURL, reader, streamSize, opts)
 	// TODO: See if this check is necessary.
 	switch e := err.ToGoError().(type) {
 	case *os.PathError:
