@@ -106,6 +106,27 @@ code convention is preserved: normal completion is 0, command failure is 1,
 and signals keep their existing codes. Detailed classification lives in the
 per-object JSON Lines records and final summary.
 
+### Output and automation contract
+
+Object records and the final summary are semantic command output. Unless the
+caller explicitly requests `--quiet`, `-q`, or `MC_QUIET=true`, they are written
+to stdout whether stdout is a terminal, a pipe, or a regular file. MCLI's
+automatic non-TTY quiet state exists to disable progress UI when terminal size
+is unavailable; it must not suppress checksum verification results.
+
+With `--json`, non-TTY stdout contains exactly one compact JSON value per line.
+TTY JSON retains MCLI's existing pretty presentation. The global flags are
+accepted at the app, `checksum`, and `verify` levels. The implementation checks
+the complete CLI context chain because `GlobalBool` stops at the nearest
+ancestor flag set and nested `Before` hooks can otherwise reset JSON Lines mode.
+
+`--report` is independent of stdout. It writes the same object records and final
+summary as JSON Lines even under explicit quiet, while stdout remains silent.
+Report creation/write failures and `--fail-on` continue to use the exit behavior
+defined below; the output fix does not turn findings into transport errors or
+change fatal-error formatting. See [pgsty/mc#5](https://github.com/pgsty/mc/issues/5)
+for the reproducer and release gate.
+
 `--fail-on` accepts `mismatch`, `unknown`, `any`, or `none`. It applies to
 completed object results, not fatal argument, authentication, enumeration, or
 report-write failures. Dry-run is an inventory operation and does not apply
@@ -113,8 +134,10 @@ report-write failures. Dry-run is an inventory operation and does not apply
 means there was no stored additional checksum to compare and does not by itself
 make the command fail. Human and JSON summaries must show this count explicitly
 so an all-`NO_CHECKSUM` run cannot be mistaken for a fully verified data set.
-`unknown` matches only `UNKNOWN_*` results; use the default `any` to fail on both
-unknown results and checksum mismatches.
+`unknown` matches only `UNKNOWN_*` results. The default `any` fails on checksum
+mismatches, `UNKNOWN_*`, and `SKIPPED_TOO_LARGE`, because an explicit size cap
+leaves the audit incomplete. Time-filter and delete-marker skips do not fail by
+themselves.
 
 The result means only:
 
@@ -164,5 +187,9 @@ The release test boundary keeps the following behavior explicit:
   the generic HTTP 403 access-denied classification;
 - normal worker completion returns exactly one result per candidate, and worker
   cancellation closes the result stream without deadlock;
+- a non-TTY pipe and a regular-file redirect receive every object record and the
+  final summary; non-TTY JSON is compact JSON Lines;
+- explicit quiet at the app, parent-command, or leaf-command position, the `-q`
+  alias, and `MC_QUIET=true` suppress stdout without suppressing `--report`;
 - the known SILO missing-SSE-C-parameters response is classified without using
   URL or object-name text, which could otherwise create false KMS/SSE labels.
