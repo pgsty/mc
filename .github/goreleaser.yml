@@ -56,8 +56,10 @@ release:
     name: mc
   draft: true
   prerelease: false
-  mode: append
+  replace_existing_draft: true
   replace_existing_artifacts: false
+  mode: replace
+  # Draft replacement matches the release name; keep it identical to the tag.
   name_template: "{{ .Tag }}"
 
 changelog:
