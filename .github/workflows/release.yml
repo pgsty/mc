@@ -14,6 +14,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -55,6 +59,15 @@ jobs:
             echo "Invalid release tag format: ${TAG}"
             exit 1
           fi
+          if ! TAG_COMMIT="$(git rev-parse "${TAG}^{commit}" 2>/dev/null)"; then
+            echo "Release tag ${TAG} does not resolve to a commit" >&2
+            exit 1
+          fi
+          HEAD_COMMIT="$(git rev-parse HEAD)"
+          if [ "${TAG_COMMIT}" != "${HEAD_COMMIT}" ]; then
+            echo "Release tag ${TAG} resolves to ${TAG_COMMIT}, checkout is ${HEAD_COMMIT}" >&2
+            exit 1
+          fi
           VERSION_COLON="$(echo "${VERSION_HYPHEN}" | sed -E 's/T([0-9]{2})-([0-9]{2})-([0-9]{2})Z$/T\1:\2:\3Z/')"
           LDFLAGS="$(MC_RELEASE=RELEASE go run buildscripts/gen-ldflags.go "${VERSION_COLON}")"
 
@@ -68,6 +81,13 @@ jobs:
           echo "Package version: ${PKG_VERSION}"
           echo "LDFLAGS: ${LDFLAGS}"
 
+      - name: Check existing release state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          buildscripts/check-release-state.sh "${RELEASE_TAG}"
+
       - name: Build Draft release with GoReleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
@@ -75,6 +95,7 @@ jobs:
           args: release --clean --skip=validate --config .github/goreleaser.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ env.RELEASE_TAG }}
           LDFLAGS: ${{ env.LDFLAGS }}
           PKG_VERSION: ${{ env.PKG_VERSION }}
 
@@ -93,6 +114,14 @@ jobs:
         run: |
           set -euo pipefail
           buildscripts/package-release.sh
+
+      - name: Confirm Draft release state
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REQUIRE_DRAFT: "true"
+        run: |
+          set -euo pipefail
+          buildscripts/check-release-state.sh "${RELEASE_TAG}"
 
       - name: Upload nFPM packages to Draft release
         env:

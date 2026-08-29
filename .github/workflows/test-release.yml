@@ -11,6 +11,8 @@ on:
       - "buildscripts/sign-release-rpms.sh"
       - "buildscripts/verify-rpm-payload.sh"
       - "buildscripts/verify-build-provenance.sh"
+      - "buildscripts/check-release-state.sh"
+      - "buildscripts/check-release-state_test.sh"
       - "buildscripts/gen-ldflags.go"
       - ".github/workflows/docker-release.yml"
       - ".github/workflows/release.yml"
@@ -234,7 +236,12 @@ jobs:
           bash -n buildscripts/sign-release-rpms.sh
           bash -n buildscripts/verify-rpm-payload.sh
           bash -n buildscripts/verify-build-provenance.sh
+          bash -n buildscripts/check-release-state.sh
+          bash -n buildscripts/check-release-state_test.sh
           test -x buildscripts/package-release.sh
           test -x buildscripts/sign-release-rpms.sh
           test -x buildscripts/verify-rpm-payload.sh
           test -x buildscripts/verify-build-provenance.sh
+          test -x buildscripts/check-release-state.sh
+          test -x buildscripts/check-release-state_test.sh
+          buildscripts/check-release-state_test.sh
