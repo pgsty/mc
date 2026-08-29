@@ -34,6 +34,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -393,8 +394,10 @@ func TestChecksumVerifyReportPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := info.Mode().Perm(); got != 0o600 {
-		t.Fatalf("report mode %o, want 600", got)
+	if runtime.GOOS != "windows" {
+		if got := info.Mode().Perm(); got != 0o600 {
+			t.Fatalf("report mode %o, want 600", got)
+		}
 	}
 	if _, err = openChecksumVerifyReport(path); err == nil {
 		t.Fatal("expected existing report file to be rejected")

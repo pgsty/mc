@@ -159,7 +159,8 @@ object or establish correctness against an external source of truth.
 - `--older-than` and `--newer-than` reuse MCLI's existing relative-duration or
   absolute-time filters. Filtering still requires a HEAD so the decision uses
   the authoritative object version metadata.
-- Report files are newly created with mode `0600` and never contain object data
+- On POSIX systems, report files are newly created with mode `0600`; Windows
+  uses the account's filesystem ACLs. Reports never contain object data
   or SSE-C keys.
 - Tests must reject any unexpected write method at the mock S3 boundary.
 
