@@ -111,6 +111,12 @@ func mainAdminUserSvcAcctSet(ctx *cli.Context) error {
 		var e error
 		buf, e = os.ReadFile(policyPath)
 		fatalIf(probe.NewError(e), "Unable to open the policy document.")
+
+		p, e := parsePolicyForWrite(buf)
+		fatalIf(probe.NewError(e), "Unable to parse the policy document.")
+		if p.IsEmpty() {
+			fatalIf(errInvalidArgument(), "empty policies are not allowed")
+		}
 	}
 
 	var expiryTime time.Time
