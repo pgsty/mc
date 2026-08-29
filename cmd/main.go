@@ -401,6 +401,7 @@ var appCmds = []cli.Command{
 	adminCmd,
 	anonymousCmd,
 	batchCmd,
+	checksumCmd,
 	cpCmd,
 	catCmd,
 	corsCmd,
