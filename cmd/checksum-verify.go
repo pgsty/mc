@@ -801,8 +801,24 @@ func runChecksumVerifyWorkers(ctx context.Context, backend checksumVerifyBackend
 	return results
 }
 
+// checksumVerifyFlagEnabled checks every command level because GlobalBool stops
+// at the nearest ancestor flag set and cannot see an app-level flag here.
+func checksumVerifyFlagEnabled(cliCtx *cli.Context, name string) bool {
+	for ctx := cliCtx; ctx != nil; ctx = ctx.Parent() {
+		if ctx.Bool(name) {
+			return true
+		}
+	}
+	return false
+}
+
 func mainChecksumVerify(cliCtx *cli.Context) error {
 	validateChecksumVerifySyntax(cliCtx)
+	quiet := checksumVerifyFlagEnabled(cliCtx, "quiet")
+	if checksumVerifyFlagEnabled(cliCtx, "json") && !isTerminal() {
+		// A nested Before hook can reset this after an app-level --json.
+		globalJSONLine = true
+	}
 	ctx, cancel := context.WithCancel(globalContext)
 	defer cancel()
 
@@ -857,7 +873,7 @@ func mainChecksumVerify(cliCtx *cli.Context) error {
 				cancel()
 			}
 		}
-		if !globalQuiet {
+		if !quiet {
 			printMsg(result)
 		}
 	}
@@ -870,7 +886,7 @@ func mainChecksumVerify(cliCtx *cli.Context) error {
 	if outputErr == nil {
 		outputErr = report.write(summary)
 	}
-	if !globalQuiet {
+	if !quiet {
 		printMsg(summary)
 	}
 	if closeErr := report.close(); outputErr == nil {

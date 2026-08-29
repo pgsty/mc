@@ -19,9 +19,11 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -29,6 +31,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -39,6 +42,7 @@ import (
 	minio "github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/encrypt"
+	"github.com/minio/pkg/v3/console"
 )
 
 type checksumVerifyFakeBackend struct {
@@ -788,5 +792,343 @@ func TestS3ChecksumVerifyHelpersAreReadOnly(t *testing.T) {
 	defer mu.Unlock()
 	if !reflect.DeepEqual(methods, []string{http.MethodHead, http.MethodGet}) {
 		t.Fatalf("methods %v, want only HEAD and GET", methods)
+	}
+}
+
+const checksumVerifyCLIHelperEnv = "MC_CHECKSUM_VERIFY_CLI_HELPER"
+
+type checksumVerifyCLIResult struct {
+	stdout   []byte
+	stderr   []byte
+	exitCode int
+}
+
+type checksumVerifyCLIRecord struct {
+	Type   string `json:"type"`
+	Result string `json:"result"`
+}
+
+func TestChecksumVerifyCLIHelper(_ *testing.T) {
+	if os.Getenv(checksumVerifyCLIHelperEnv) != "1" {
+		return
+	}
+	separator := -1
+	for i, arg := range os.Args {
+		if arg == "--" {
+			separator = i
+			break
+		}
+	}
+	if separator < 0 {
+		console.Fatalln("checksum verify CLI helper is missing --")
+	}
+	args := append([]string{"mcli"}, os.Args[separator+1:]...)
+	if err := Main(args); err != nil {
+		console.Fatalln(err)
+	}
+	os.Exit(0)
+}
+
+func newChecksumVerifyCLIServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	data := []byte("checksum verify CLI output contract")
+	checksum := checksumForTest(t, minio.ChecksumCRC32, data)
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Query().Has("location") {
+			w.Header().Set("Content-Type", "application/xml")
+			_, _ = io.WriteString(w, `<LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/">us-east-1</LocationConstraint>`)
+			return
+		}
+
+		if !strings.HasPrefix(r.URL.Path, "/archive/") {
+			http.NotFound(w, r)
+			return
+		}
+		object := strings.TrimPrefix(r.URL.Path, "/archive/")
+		switch r.Method {
+		case http.MethodHead:
+			w.Header().Set("Content-Length", fmt.Sprint(len(data)))
+			w.Header().Set("Last-Modified", time.Unix(100, 0).UTC().Format(http.TimeFormat))
+			w.Header().Set("ETag", `"test-etag"`)
+			switch object {
+			case "match":
+				w.Header().Set("X-Amz-Checksum-Type", checksumVerifyFullObjectType)
+				w.Header().Set("X-Amz-Checksum-Crc32", checksum)
+			case "mismatch":
+				w.Header().Set("X-Amz-Checksum-Type", checksumVerifyFullObjectType)
+				w.Header().Set("X-Amz-Checksum-Crc32", "AAAAAA==")
+			case "unknown":
+				w.Header().Set("X-Amz-Checksum-Type", checksumVerifyCompositeType)
+				w.Header().Set("X-Amz-Checksum-Crc32", checksum+"-1")
+			default:
+				http.NotFound(w, r)
+			}
+		case http.MethodGet:
+			if object == "unknown" {
+				t.Errorf("unexpected GET for composite checksum object")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if object != "match" && object != "mismatch" {
+				http.NotFound(w, r)
+				return
+			}
+			w.Header().Set("Content-Length", fmt.Sprint(len(data)))
+			w.Header().Set("Last-Modified", time.Unix(100, 0).UTC().Format(http.TimeFormat))
+			w.Header().Set("ETag", `"test-etag"`)
+			_, _ = w.Write(data)
+		default:
+			t.Errorf("unexpected method %s for %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusMethodNotAllowed)
+		}
+	}))
+}
+
+func checksumVerifyCLIEnv(configDir, endpoint string, extra ...string) []string {
+	env := make([]string, 0, len(os.Environ())+5+len(extra))
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		upperKey := strings.ToUpper(key)
+		if strings.HasPrefix(upperKey, "MC_") || upperKey == "NO_PROXY" {
+			continue
+		}
+		env = append(env, entry)
+	}
+	host := strings.TrimPrefix(endpoint, "http://")
+	env = append(env,
+		checksumVerifyCLIHelperEnv+"=1",
+		"MC_CONFIG_DIR="+configDir,
+		"MC_HOST_b4=http://access:secret@"+host,
+		"NO_PROXY=127.0.0.1,localhost",
+	)
+	return append(env, extra...)
+}
+
+func checksumVerifyCLICommand(t *testing.T, endpoint string, extraEnv []string, args ...string) *exec.Cmd {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	configDir := t.TempDir()
+	if err = os.WriteFile(filepath.Join(configDir, globalMCConfigFile), []byte("{\"version\":\"10\",\"aliases\":{}}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.MkdirAll(filepath.Join(configDir, globalSharedURLsDataDir), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	helperArgs := append([]string{"-test.run=^TestChecksumVerifyCLIHelper$", "--"}, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	t.Cleanup(cancel)
+	command := exec.CommandContext(ctx, executable, helperArgs...)
+	// Keep config migration and User-Agent behavior identical on every platform.
+	command.Args[0] = "mcli"
+	command.Env = checksumVerifyCLIEnv(configDir, endpoint, extraEnv...)
+	return command
+}
+
+func checksumVerifyCLIExitCode(t *testing.T, command *exec.Cmd) int {
+	t.Helper()
+	err := command.Run()
+	if err == nil {
+		return 0
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("running checksum verify CLI helper: %v", err)
+	}
+	return exitErr.ExitCode()
+}
+
+func runChecksumVerifyCLI(t *testing.T, endpoint string, extraEnv []string, args ...string) checksumVerifyCLIResult {
+	t.Helper()
+	command := checksumVerifyCLICommand(t, endpoint, extraEnv, args...)
+	var stdout, stderr bytes.Buffer
+	command.Stdout = &stdout
+	command.Stderr = &stderr
+	exitCode := checksumVerifyCLIExitCode(t, command)
+	return checksumVerifyCLIResult{
+		stdout:   stdout.Bytes(),
+		stderr:   stderr.Bytes(),
+		exitCode: exitCode,
+	}
+}
+
+func decodeChecksumVerifyJSONLines(t *testing.T, data []byte) []checksumVerifyCLIRecord {
+	t.Helper()
+	var records []checksumVerifyCLIRecord
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		var record checksumVerifyCLIRecord
+		if err := json.Unmarshal(scanner.Bytes(), &record); err != nil {
+			t.Fatalf("invalid checksum verify JSON line %q: %v", scanner.Text(), err)
+		}
+		records = append(records, record)
+	}
+	if err := scanner.Err(); err != nil {
+		t.Fatal(err)
+	}
+	return records
+}
+
+func assertChecksumVerifyHumanOutput(t *testing.T, result checksumVerifyCLIResult, status string) {
+	t.Helper()
+	if result.exitCode != 0 {
+		t.Fatalf("exit code %d, want 0; stderr=%s", result.exitCode, result.stderr)
+	}
+	output := string(result.stdout)
+	firstLine, _, _ := strings.Cut(output, "\n")
+	if !strings.HasPrefix(firstLine, status+" ") || !strings.Contains(output, "Checksum verification:") {
+		t.Fatalf("stdout %q does not contain %s object and summary", output, status)
+	}
+	if len(result.stderr) != 0 {
+		t.Fatalf("stderr %q, want empty", result.stderr)
+	}
+}
+
+func TestChecksumVerifyCLIOutputContract(t *testing.T) {
+	server := newChecksumVerifyCLIServer(t)
+	defer server.Close()
+	base := []string{"checksum", "verify", "--max-workers", "1", "--fail-on", "none", "b4/archive/match"}
+
+	t.Run("non-TTY human pipe", func(t *testing.T) {
+		assertChecksumVerifyHumanOutput(t, runChecksumVerifyCLI(t, server.URL, nil, base...), checksumResultMatch)
+	})
+
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{name: "JSON at app", args: append([]string{"--json"}, base...)},
+		{name: "JSON at parent", args: []string{"checksum", "--json", "verify", "--max-workers", "1", "--fail-on", "none", "b4/archive/match"}},
+		{name: "JSON at leaf", args: []string{"checksum", "verify", "--json", "--max-workers", "1", "--fail-on", "none", "b4/archive/match"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := runChecksumVerifyCLI(t, server.URL, nil, tc.args...)
+			if result.exitCode != 0 || len(result.stderr) != 0 {
+				t.Fatalf("exit code %d, stderr=%q", result.exitCode, result.stderr)
+			}
+			records := decodeChecksumVerifyJSONLines(t, result.stdout)
+			if len(records) != 2 || records[0].Type != "object" || records[0].Result != checksumResultMatch || records[1].Type != "summary" {
+				t.Fatalf("JSON Lines records %+v, want MATCH object and summary", records)
+			}
+		})
+	}
+
+	for _, tc := range []struct {
+		name     string
+		args     []string
+		extraEnv []string
+	}{
+		{name: "quiet at app", args: append([]string{"--quiet"}, base...)},
+		{name: "quiet at parent", args: []string{"checksum", "--quiet", "verify", "--max-workers", "1", "--fail-on", "none", "b4/archive/match"}},
+		{name: "quiet at leaf", args: []string{"checksum", "verify", "--quiet", "--max-workers", "1", "--fail-on", "none", "b4/archive/match"}},
+		{name: "short quiet", args: []string{"checksum", "verify", "-q", "--max-workers", "1", "--fail-on", "none", "b4/archive/match"}},
+		{name: "quiet from environment", args: base, extraEnv: []string{"MC_QUIET=true"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := runChecksumVerifyCLI(t, server.URL, tc.extraEnv, tc.args...)
+			if result.exitCode != 0 || len(result.stdout) != 0 || len(result.stderr) != 0 {
+				t.Fatalf("exit=%d stdout=%q stderr=%q, want silent success", result.exitCode, result.stdout, result.stderr)
+			}
+		})
+	}
+
+	t.Run("quiet false", func(t *testing.T) {
+		args := append([]string{"--quiet=false"}, base...)
+		assertChecksumVerifyHumanOutput(t, runChecksumVerifyCLI(t, server.URL, nil, args...), checksumResultMatch)
+	})
+}
+
+func TestChecksumVerifyCLIRedirectAndReport(t *testing.T) {
+	server := newChecksumVerifyCLIServer(t)
+	defer server.Close()
+	base := []string{"checksum", "verify", "--max-workers", "1", "--fail-on", "none", "b4/archive/match"}
+
+	t.Run("regular file redirect", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "stdout.txt")
+		file, err := os.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		command := checksumVerifyCLICommand(t, server.URL, nil, base...)
+		var stderr bytes.Buffer
+		command.Stdout = file
+		command.Stderr = &stderr
+		exitCode := checksumVerifyCLIExitCode(t, command)
+		if err = file.Close(); err != nil {
+			t.Fatal(err)
+		}
+		stdout, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertChecksumVerifyHumanOutput(t, checksumVerifyCLIResult{stdout: stdout, stderr: stderr.Bytes(), exitCode: exitCode}, checksumResultMatch)
+	})
+
+	for _, quiet := range []bool{false, true} {
+		name := "report with stdout"
+		if quiet {
+			name = "report with quiet"
+		}
+		t.Run(name, func(t *testing.T) {
+			reportPath := filepath.Join(t.TempDir(), "report.jsonl")
+			args := append([]string{}, base...)
+			args = append(args[:len(args)-1], "--report", reportPath, args[len(args)-1])
+			if quiet {
+				args = append([]string{"--quiet"}, args...)
+			}
+			result := runChecksumVerifyCLI(t, server.URL, nil, args...)
+			if result.exitCode != 0 || len(result.stderr) != 0 {
+				t.Fatalf("exit=%d stderr=%q", result.exitCode, result.stderr)
+			}
+			if quiet && len(result.stdout) != 0 {
+				t.Fatalf("quiet stdout %q, want empty", result.stdout)
+			}
+			if !quiet {
+				assertChecksumVerifyHumanOutput(t, result, checksumResultMatch)
+			}
+			report, err := os.ReadFile(reportPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			records := decodeChecksumVerifyJSONLines(t, report)
+			if len(records) != 2 || records[0].Type != "object" || records[1].Type != "summary" {
+				t.Fatalf("report records %+v, want object and summary", records)
+			}
+		})
+	}
+}
+
+func TestChecksumVerifyCLIFailOnExitStatus(t *testing.T) {
+	server := newChecksumVerifyCLIServer(t)
+	defer server.Close()
+	for _, tc := range []struct {
+		name       string
+		object     string
+		failOn     string
+		wantStatus string
+		wantExit   int
+	}{
+		{name: "mismatch fails", object: "mismatch", failOn: "mismatch", wantStatus: checksumResultMismatch, wantExit: 1},
+		{name: "mismatch ignored", object: "mismatch", failOn: "unknown", wantStatus: checksumResultMismatch},
+		{name: "unknown fails", object: "unknown", failOn: "unknown", wantStatus: checksumResultUnknownComposite, wantExit: 1},
+		{name: "unknown ignored", object: "unknown", failOn: "mismatch", wantStatus: checksumResultUnknownComposite},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := runChecksumVerifyCLI(t, server.URL, nil,
+				"checksum", "verify", "--max-workers", "1", "--fail-on", tc.failOn, "b4/archive/"+tc.object,
+			)
+			if result.exitCode != tc.wantExit {
+				t.Fatalf("exit code %d, want %d; stdout=%q stderr=%q", result.exitCode, tc.wantExit, result.stdout, result.stderr)
+			}
+			if len(result.stderr) != 0 {
+				t.Fatalf("stderr %q, want empty", result.stderr)
+			}
+			output := string(result.stdout)
+			if !strings.Contains(output, tc.wantStatus) || !strings.Contains(output, "Checksum verification:") {
+				t.Fatalf("stdout %q does not contain %s object and summary", output, tc.wantStatus)
+			}
+		})
 	}
 }
