@@ -1,15 +1,19 @@
 name: Go
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
   workflow_dispatch:
 
-# This ensures that previous jobs for the PR are canceled when the PR is
-# updated.
+# Supersede an earlier run of the same pull request or branch. github.head_ref
+# is empty outside pull_request, so keying on it alone would drop every push
+# and manual dispatch into one shared group where they cancel each other.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
