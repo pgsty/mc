@@ -20,7 +20,6 @@ package cmd
 import (
 	"net/http"
 	"net/http/httputil"
-	"strings"
 
 	"github.com/minio/mc/pkg/httptracer"
 	"github.com/pgsty/silo-pkg/v3/console"
@@ -35,26 +34,13 @@ func newTraceV2() httptracer.HTTPTracer {
 }
 
 // Request - Trace HTTP Request
-func (t traceV2) Request(req *http.Request) (err error) {
-	origAuth := req.Header.Get("Authorization")
-
-	if strings.TrimSpace(origAuth) != "" {
-		// Authorization (S3 v2 signature) Format:
-		// Authorization: AWS AKIAJVA5BMMU2RHO6IO1:Y10YHUZ0DTUterAUI6w3XKX7Iqk=
-
-		// Set a temporary redacted auth
-		req.Header.Set("Authorization", "AWS **REDACTED**:**REDACTED**")
-
-		var reqTrace []byte
-		reqTrace, err = httputil.DumpRequestOut(req, false) // Only display header
-		if err == nil {
-			console.Debug(string(reqTrace))
-		}
-
-		// Undo
-		req.Header.Set("Authorization", origAuth)
+func (t traceV2) Request(req *http.Request) error {
+	reqTrace, err := httputil.DumpRequestOut(redactRequestForTrace(req), false) // Only display header
+	if err != nil {
+		return err
 	}
-	return err
+	console.Debug(string(reqTrace))
+	return nil
 }
 
 // Response - Trace HTTP Response
