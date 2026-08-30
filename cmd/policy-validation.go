@@ -21,11 +21,13 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/minio/pkg/v3/policy"
+	"github.com/pgsty/silo-pkg/v3/policy"
 )
 
-// Require the v3.12 policy implementation even when a consuming module
-// overrides mc's module replacement with its own silo-pkg version.
+// IsBareARN exists only in silo-pkg, and upstream minio/pkg has no equivalent.
+// Keep this compile-time reference so a consuming module that selects an older
+// silo-pkg fails to build instead of silently downgrading policy-write
+// validation to a parser that accepts bare ARNs.
 var _ func(policy.Resource) bool = policy.Resource.IsBareARN
 
 // parsePolicyForWrite applies the strict validation required for new and

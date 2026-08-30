@@ -21,7 +21,7 @@ import (
 	"os"
 
 	mc "github.com/minio/mc/cmd"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 func main() {

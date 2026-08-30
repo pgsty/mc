@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/minio/pkg/v3/policy"
+	"github.com/pgsty/silo-pkg/v3/policy"
 )
 
 func TestParsePolicyForWriteRejectsBareARNs(t *testing.T) {

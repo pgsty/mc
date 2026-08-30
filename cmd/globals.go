@@ -35,8 +35,8 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/minio/cli"
 	"github.com/minio/madmin-go/v3"
-	"github.com/minio/pkg/v3/console"
 	"github.com/muesli/termenv"
+	"github.com/pgsty/silo-pkg/v3/console"
 	"golang.org/x/net/http/httpguts"
 )
 

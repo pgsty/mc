@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/minio/mc/pkg/httptracer"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 // traceV4 - tracing structure for signature version '4'.

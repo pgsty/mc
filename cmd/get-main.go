@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	"github.com/minio/cli"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 // get command flags.

@@ -35,10 +35,6 @@ var allowedDowngrades = map[string]string{
 	// SILO's shared portability pin. The v22.7.0 daemon package does not
 	// compile on NetBSD; do not permit this exception to drift any lower.
 	"github.com/coreos/go-systemd/v22": "v22.6.0",
-	// Keep the public module graph compatible with servers that embed mc or
-	// Console. Standalone SILO builds still select silo-pkg v3.12.2 through the
-	// top-level replacement, while downstream modules ignore that replacement.
-	"github.com/minio/pkg/v3": "v3.6.1",
 }
 
 type floorSet struct {

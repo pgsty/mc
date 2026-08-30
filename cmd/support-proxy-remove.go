@@ -20,7 +20,7 @@ package cmd
 import (
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 type supportProxyRemoveMessage struct {
