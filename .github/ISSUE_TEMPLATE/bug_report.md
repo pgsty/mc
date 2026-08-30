@@ -2,7 +2,7 @@
 name: Bug report
 about: Bug report template
 title: ''
-labels: community, triage
+labels: bug
 assignees: ''
 
 ---
