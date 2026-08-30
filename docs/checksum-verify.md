@@ -151,9 +151,13 @@ count appears in both the human and JSON summaries alongside the per-status
 counts.
 
 `--fail-on no-checksum` is the exit-status form of the same check: it fails on
-everything `any` fails on, plus any `NO_CHECKSUM` result. Use it when the
-objects under audit are expected to carry checksums and their absence is itself
-the finding.
+everything `any` fails on, plus any `NO_CHECKSUM` result, plus any run whose
+`verified` count is zero. The last condition matters because an empty manifest,
+a prefix that matched nothing, a listing of only delete markers and a time
+filter that excluded everything all produce zero `NO_CHECKSUM` results and zero
+verifications. Use this value when the objects under audit are expected to carry
+checksums and their absence — or their absence from the listing — is itself the
+finding.
 
 The result means only:
 

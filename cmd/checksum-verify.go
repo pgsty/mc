@@ -320,8 +320,13 @@ func (s checksumVerifySummary) shouldFail(failOn string, dryRun bool) bool {
 		return unknown
 	case "no-checksum":
 		// For callers that treat "nothing was verifiable" as a failure rather
-		// than a clean run.
-		return mismatch || incomplete || s.Counts[checksumResultNoChecksum] > 0
+		// than a clean run. Verified == 0 is part of the condition because an
+		// empty manifest, an empty prefix, an all-delete-marker listing and a
+		// fully excluding time filter all produce zero NO_CHECKSUM results and
+		// zero verifications.
+		return mismatch || incomplete ||
+			s.Counts[checksumResultNoChecksum] > 0 ||
+			s.Verified == 0
 	default:
 		return mismatch || incomplete
 	}

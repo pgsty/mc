@@ -454,6 +454,44 @@ func TestChecksumVerifySummaryAllNoChecksumIsNotSilentSuccess(t *testing.T) {
 	}
 }
 
+// An empty manifest, a prefix that matched nothing, an all-delete-marker
+// listing and a fully excluding time filter all reach the end with zero
+// NO_CHECKSUM results and nothing verified. Counting NO_CHECKSUM alone would
+// let every one of them exit 0 under --fail-on no-checksum.
+func TestChecksumVerifySummaryFailsWhenNothingWasVerified(t *testing.T) {
+	for name, results := range map[string][]string{
+		"nothing listed":       {},
+		"only delete markers":  {checksumResultSkippedDeleteMarker, checksumResultSkippedDeleteMarker},
+		"excluded by time":     {checksumResultSkippedTimeFilter},
+		"delete marker and no": {checksumResultSkippedDeleteMarker},
+	} {
+		t.Run(name, func(t *testing.T) {
+			summary := newChecksumVerifySummary(false)
+			for _, result := range results {
+				summary.add(checksumVerifyResult{Result: result})
+			}
+			if summary.Verified != 0 {
+				t.Fatalf("verified = %d, want 0", summary.Verified)
+			}
+			// Unchanged default: nothing went wrong, so the run succeeds.
+			if summary.shouldFail("any", false) {
+				t.Fatal("--fail-on any must not fail on deliberate exclusions")
+			}
+			if !summary.shouldFail("no-checksum", false) {
+				t.Fatal("--fail-on no-checksum must fail when nothing was verified")
+			}
+		})
+	}
+
+	// One real verification is enough to clear the bar.
+	summary := newChecksumVerifySummary(false)
+	summary.add(checksumVerifyResult{Result: checksumResultMatch})
+	summary.add(checksumVerifyResult{Result: checksumResultSkippedTimeFilter})
+	if summary.shouldFail("no-checksum", false) {
+		t.Fatal("--fail-on no-checksum must pass once something was verified")
+	}
+}
+
 func TestChecksumVerifySelectionAcceptsNoChecksumFailOn(t *testing.T) {
 	if err := validateChecksumVerifySelection("", "", false, false, "", "", 4, "no-checksum"); err != nil {
 		t.Fatalf("--fail-on no-checksum rejected: %v", err)
