@@ -102,6 +102,40 @@ func TestMoveFileTightensExistingDestination(t *testing.T) {
 	}
 }
 
+// This is what support profile and support inspect actually do first: rotate
+// the previous final artifact aside before writing the new one. That source is
+// not a fresh 0600 temporary file - a version of this client from before the
+// fix will have left it 0644 - so preserving the source mode would carry the
+// exposure into the backup.
+func TestMoveFileTightensRotatedLegacyArtifact(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX permission bits are not meaningful on Windows")
+	}
+
+	dir := t.TempDir()
+	current := filepath.Join(dir, "profile.zip")
+	backup := current + ".20260830T000000"
+
+	if err := os.WriteFile(current, []byte("previous profile"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(current, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := moveFile(current, backup); err != nil {
+		t.Fatal(err)
+	}
+
+	info, err := os.Stat(backup)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("rotated backup mode %o, want 600", got)
+	}
+}
+
 // tarGZ writes the health report the command itself warns may contain
 // sensitive environment detail.
 func TestTarGZWritesPrivateHealthReport(t *testing.T) {

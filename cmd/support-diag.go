@@ -127,13 +127,25 @@ func tarGZ(healthInfo any, version, filename string) error {
 	}
 
 	// This archive can contain environment variables, endpoints and other
-	// deployment detail - the warning printed below says so. 0666 leaves it
-	// world-readable under the usual 022 umask, so create it 0600 and tighten
-	// an existing file too, since WriteFile only applies the mode on create.
-	if e = os.WriteFile(filename, data, 0o600); e != nil {
+	// deployment detail - the warning printed below says so. 0666 left it
+	// world-readable under the usual 022 umask.
+	//
+	// Open and chmod before writing rather than using os.WriteFile: O_CREATE
+	// applies the umask and an existing file keeps its own mode, so tightening
+	// afterwards would expose the new contents for the length of the write.
+	out, e := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, supportFileMode)
+	if e != nil {
 		return e
 	}
-	if e = os.Chmod(filename, 0o600); e != nil {
+	if e = out.Chmod(supportFileMode); e != nil {
+		out.Close()
+		return e
+	}
+	if _, e = out.Write(data); e != nil {
+		out.Close()
+		return e
+	}
+	if e = out.Close(); e != nil {
 		return e
 	}
 

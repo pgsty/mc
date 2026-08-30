@@ -144,24 +144,22 @@ func checkAdminProfileSyntax(ctx *cli.Context) {
 // be handled appropriately use this function instead of os.Rename()
 // moveFile copies sourcePath to destPath and removes the source.
 //
-// The destination inherits the source's permission bits. Every caller moves a
-// file created by os.CreateTemp, which is 0600; os.Create would have widened
-// that to 0644 under the usual 022 umask, publishing profiles, perf traces,
-// inspect output and exported IAM metadata to every local user.
+// The destination is always 0600. Every caller moves a support artifact -
+// profile, perf, inspect output, exported bucket or IAM metadata - and os.Create
+// would have produced 0644 under the usual 022 umask, publishing it to every
+// local user.
+//
+// Preserving the source mode instead would not be enough: the rotate-then-move
+// callers pass the *previous* final artifact as the source, which a version of
+// this client before the fix may well have left 0644, so the rotated backup
+// would carry that mode forward.
 func moveFile(sourcePath, destPath string) error {
 	inputFile, e := os.Open(sourcePath)
 	if e != nil {
 		return e
 	}
 
-	sourceInfo, e := inputFile.Stat()
-	if e != nil {
-		inputFile.Close()
-		return e
-	}
-	sourceMode := sourceInfo.Mode().Perm()
-
-	outputFile, e := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, sourceMode)
+	outputFile, e := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, supportFileMode)
 	if e != nil {
 		inputFile.Close()
 		return e
@@ -169,8 +167,8 @@ func moveFile(sourcePath, destPath string) error {
 	defer outputFile.Close()
 
 	// O_CREATE applies the umask, and an existing destination keeps its own
-	// mode, so set it explicitly either way.
-	if e = outputFile.Chmod(sourceMode); e != nil {
+	// mode, so set it explicitly either way - before any bytes are written.
+	if e = outputFile.Chmod(supportFileMode); e != nil {
 		inputFile.Close()
 		return e
 	}
@@ -184,6 +182,11 @@ func moveFile(sourcePath, destPath string) error {
 	inputFile.Close()
 	return os.Remove(sourcePath)
 }
+
+// supportFileMode is the mode every locally saved support artifact gets. These
+// files carry deployment configuration, environment detail and object
+// metadata, so they must not be readable by other local users.
+const supportFileMode = 0o600
 
 func saveProfileFile(data io.ReadCloser) {
 	// Create profile zip file
