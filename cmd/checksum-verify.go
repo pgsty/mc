@@ -139,16 +139,16 @@ FLAGS:
 
 EXAMPLES:
   1. Verify one object checksum.
-     {{.Prompt}} {{.HelpName}} play/archive/report.json
+     {{.Prompt}} {{.HelpName}} mysilo/archive/report.json
 
   2. Estimate the read cost before recursively verifying a prefix.
-     {{.Prompt}} {{.HelpName}} --recursive --dry-run play/archive/2025/
+     {{.Prompt}} {{.HelpName}} --recursive --dry-run mysilo/archive/2025/
 
   3. Verify all historical versions under a prefix with four workers.
-     {{.Prompt}} {{.HelpName}} --recursive --versions --max-workers 4 play/archive/2025/
+     {{.Prompt}} {{.HelpName}} --recursive --versions --max-workers 4 mysilo/archive/2025/
 
   4. Verify exact objects supplied by an external candidate manifest.
-     {{.Prompt}} {{.HelpName}} --manifest candidates.jsonl --report results.jsonl play
+     {{.Prompt}} {{.HelpName}} --manifest candidates.jsonl --report results.jsonl mysilo
 `,
 }
 
