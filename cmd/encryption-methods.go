@@ -192,23 +192,27 @@ func splitKey(sseKey string) (alias, prefix string) {
 	return "", ""
 }
 
-// redactSSEKeySpec strips the key material out of an "alias/prefix=key" spec so
-// it can be recorded in an error trace. The alias and prefix are kept because
-// they are what makes the message actionable; only SSE-C specs carry a secret,
-// a KMS spec names a key that the server resolves.
-// Unlike parseSSEKey, which splits on the last "=" to find the separator, this
-// cuts at the first one. A redactor must never under-redact: a padded base64
-// key ends in "=", so splitting on the last one would hand the whole key back.
-// Cutting early can hide part of a prefix that itself contains "=", which is a
-// price worth paying.
+// redactSSEKeySpec strips key material out of an "alias/prefix=key" spec so it
+// can appear in an error or a trace.
+//
+// It cuts at the FIRST "=", unlike parseSSEKey which splits on the last one. A
+// redactor must never under-redact: a padded base64 key ends in "=", so
+// splitting on the last one would hand the whole key straight back. Cutting
+// early can hide part of a prefix that itself contains "=", which is a price
+// worth paying.
+//
+// The prefix is only kept when something follows the separator. Nothing after
+// it means the spec is either "alias/prefix=" or a bare padded base64 key such
+// as "MzJi...=", and those two are indistinguishable - so is a spec with no
+// separator at all. The common mistake is passing the bare key instead of
+// "alias/prefix=key", so those shapes are withheld entirely.
 func redactSSEKeySpec(spec string, keyType sseKeyType) string {
 	if keyType != sseC {
 		return spec
 	}
 	separatorIndex := strings.Index(spec, "=")
 	if separatorIndex < 0 || separatorIndex == len(spec)-1 {
-		// No key material present to hide.
-		return spec
+		return redactedMarker
 	}
 	return spec[:separatorIndex+1] + redactedMarker
 }

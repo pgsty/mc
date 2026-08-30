@@ -215,6 +215,20 @@ var (
 	hostKeyTokens = regexp.MustCompile("^(https?://)(.*?):(.*?):(.*)@(.*?)$")
 )
 
+// redactCredentialURL removes credentials embedded in a remote-target URL so
+// the URL can appear in an error message or a probe trace. A remote replication
+// target is supplied as https://ACCESSKEY:SECRETKEY[:TOKEN]@host/bucket, which
+// several validation failures used to print verbatim.
+func redactCredentialURL(rawURL string) string {
+	if parts := hostKeyTokens.FindStringSubmatch(rawURL); len(parts) == 6 {
+		return parts[1] + redactedMarker + ":" + redactedMarker + ":" + redactedMarker + "@" + parts[5]
+	}
+	if parts := hostKeys.FindStringSubmatch(rawURL); len(parts) == 5 {
+		return parts[1] + redactedMarker + ":" + redactedMarker + "@" + parts[4]
+	}
+	return rawURL
+}
+
 // parse url usually obtained from env.
 func parseEnvURLStr(envURL string) (*url.URL, string, string, string, *probe.Error) {
 	var accessKey, secretKey, sessionToken string
@@ -279,19 +293,24 @@ func readAliasesFromFile(envConfigFile string) *probe.Error {
 	}
 	defer r.Close()
 	scanner := bufio.NewScanner(r)
+	line := 0
 	for scanner.Scan() {
+		line++
 		envLine := scanner.Text()
 		strs := strings.SplitN(envLine, "=", 2)
+		// Never echo envLine: the value half of an MC_HOST_* entry is
+		// https://ACCESSKEY:SECRETKEY[:TOKEN]@host, and this error is printed
+		// without --debug. The line number is what makes it actionable.
 		if len(strs) != 2 {
-			return probe.NewError(fmt.Errorf("parsing error at %s", envLine)).Trace(envConfigFile)
+			return probe.NewError(fmt.Errorf("parsing error at line %d", line)).Trace(envConfigFile)
 		}
 		alias := strings.TrimPrefix(strs[0], mcEnvHostPrefix)
 		if len(alias) == 0 {
-			return probe.NewError(fmt.Errorf("parsing error at %s", envLine)).Trace(envConfigFile)
+			return probe.NewError(fmt.Errorf("parsing error at line %d", line)).Trace(envConfigFile)
 		}
 		aliasConfig, err := expandAliasFromEnv(strs[1])
 		if err != nil {
-			return err.Trace(envLine)
+			return err.Trace(envConfigFile, fmt.Sprintf("line %d", line))
 		}
 		aliasConfig.Src = envConfigFile
 		aliasToConfigMap[alias] = aliasConfig

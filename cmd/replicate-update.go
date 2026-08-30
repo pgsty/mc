@@ -202,7 +202,7 @@ func modifyRemoteTarget(cli *cli.Context, targets []madmin.BucketTarget, arnStr 
 		if u.Path != "" {
 			tgtBucket = path.Clean(u.Path[1:])
 		}
-		fatalIf(probe.NewError(s3utils.CheckValidBucketName(tgtBucket)).Trace(tgtURL), "invalid target bucket")
+		fatalIf(probe.NewError(s3utils.CheckValidBucketName(tgtBucket)).Trace(redactCredentialURL(tgtURL)), "invalid target bucket")
 
 		secure := u.Scheme == "https"
 		host := u.Host

@@ -101,10 +101,40 @@ func TestRedactSSEKeySpec(t *testing.T) {
 	if got := redactSSEKeySpec(spec, sseKMS); got != spec {
 		t.Fatalf("KMS spec should be untouched: %q", got)
 	}
-	if got := redactSSEKeySpec("mysilo/bucket", sseC); got != "mysilo/bucket" {
-		t.Fatalf("spec without key material should be untouched: %q", got)
+	// With no "=" there is no way to tell a prefix from a key, and the common
+	// mistake is passing the bare key: withhold the whole string.
+	if got := redactSSEKeySpec(material, sseC); got != redactedMarker {
+		t.Fatalf("a spec with no separator must be withheld entirely: %q", got)
 	}
-	if got := redactSSEKeySpec("mysilo/bucket=", sseC); got != "mysilo/bucket=" {
-		t.Fatalf("spec with an empty key should be untouched: %q", got)
+	if got := redactSSEKeySpec("mysilo/bucket", sseC); got != redactedMarker {
+		t.Fatalf("a spec with no separator must be withheld entirely: %q", got)
+	}
+	// "mysilo/bucket=" and a bare padded key "MzJi...=" have the same shape, so
+	// neither can keep its leading segment.
+	if got := redactSSEKeySpec("mysilo/bucket=", sseC); got != redactedMarker {
+		t.Fatalf("a spec with nothing after the separator must be withheld: %q", got)
+	}
+	if got := redactSSEKeySpec(material+"=", sseC); got != redactedMarker {
+		t.Fatalf("a bare padded key must be withheld: %q", got)
+	}
+}
+
+// The likely mistake is `--enc-c "$KEY"` instead of `--enc-c alias/prefix=$KEY`.
+// The parser rejects it either way; it must not print the key while doing so.
+func TestParseSSEKeyDoesNotEchoAKeyPassedWithoutAPrefix(t *testing.T) {
+	for name, spec := range map[string]string{
+		"bare key":        "MzJieXRlc2xvbmdzZWNyZXRrZXltdXN0YmVnaXZlbjE",
+		"bare padded key": "MzJieXRlc2xvbmdzZWNyZXRrZXltdXN0YmVnaXZlbjE=",
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, _, _, err := parseSSEKey(spec, sseC)
+			if err == nil {
+				t.Fatal("expected a prefix-less SSE-C spec to be rejected")
+			}
+			rendered := err.String() + " " + err.ToGoError().Error() + " " + renderProbeTraceEnv(err)
+			if strings.Contains(rendered, strings.TrimSuffix(spec, "=")) {
+				t.Fatalf("key material leaked into the error: %s", rendered)
+			}
+		})
 	}
 }

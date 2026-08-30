@@ -184,12 +184,12 @@ func extractCredentialURL(argURL string) (accessKey, secretKey string, u *url.UR
 	var parsedURL string
 	if strings.HasPrefix(argURL, "http://") || strings.HasPrefix(argURL, "https://") {
 		if hostKeyTokens.MatchString(argURL) {
-			fatalIf(errInvalidArgument().Trace(argURL), "temporary tokens are not allowed for remote targets")
+			fatalIf(errInvalidArgument().Trace(redactCredentialURL(argURL)), "temporary tokens are not allowed for remote targets")
 		}
 		if hostKeys.MatchString(argURL) {
 			parts := hostKeys.FindStringSubmatch(argURL)
 			if len(parts) != 5 {
-				fatalIf(errInvalidArgument().Trace(argURL), "unsupported remote target format, please check --help")
+				fatalIf(errInvalidArgument().Trace(redactCredentialURL(argURL)), "unsupported remote target format, please check --help")
 			}
 			accessKey = parts[2]
 			secretKey = parts[3]
@@ -201,14 +201,14 @@ func extractCredentialURL(argURL string) (accessKey, secretKey string, u *url.UR
 		// get alias config by alias url
 		alias, parsedURL, aliasCfg = mustExpandAlias(argURL)
 		if aliasCfg == nil {
-			fatalIf(errInvalidAliasedURL(alias).Trace(argURL), "No such alias `"+alias+"` found.")
+			fatalIf(errInvalidAliasedURL(alias).Trace(redactCredentialURL(argURL)), "No such alias `"+alias+"` found.")
 			return
 		}
 		accessKey, secretKey = aliasCfg.AccessKey, aliasCfg.SecretKey
 	}
 	var e error
 	if parsedURL == "" {
-		fatalIf(errInvalidArgument().Trace(argURL), "no valid credentials were detected")
+		fatalIf(errInvalidArgument().Trace(redactCredentialURL(argURL)), "no valid credentials were detected")
 	}
 	u, e = url.Parse(parsedURL)
 	if e != nil {
@@ -235,7 +235,7 @@ func fetchRemoteTarget(cli *cli.Context) (bktTarget *madmin.BucketTarget) {
 	if u.Path != "" {
 		tgtBucket = path.Clean(u.Path[1:])
 	}
-	fatalIf(probe.NewError(s3utils.CheckValidBucketName(tgtBucket)).Trace(tgtURL), "invalid target bucket")
+	fatalIf(probe.NewError(s3utils.CheckValidBucketName(tgtBucket)).Trace(redactCredentialURL(tgtURL)), "invalid target bucket")
 
 	bandwidthStr := cli.String("bandwidth")
 	bandwidth, e := getBandwidthInBytes(bandwidthStr)
