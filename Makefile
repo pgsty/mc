@@ -41,6 +41,7 @@ check-dependency-floors:
 test-release-state:
 	@echo "Checking release-state decisions"
 	@env bash $(PWD)/buildscripts/check-release-state_test.sh
+	@env bash $(PWD)/buildscripts/check-release-commit_test.sh
 
 credits:
 	@env bash $(PWD)/buildscripts/gen-credits.sh

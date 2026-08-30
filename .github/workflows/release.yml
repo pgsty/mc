@@ -13,6 +13,12 @@ on:
 
 permissions:
   contents: write
+  # Sigstore build provenance for the archives, checksums and packages. Only
+  # the RPMs carry a detached GPG signature, which is applied by hand after the
+  # fact; attestations cover every artifact and are produced by the run that
+  # built them.
+  id-token: write
+  attestations: write
 
 concurrency:
   group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -81,6 +87,13 @@ jobs:
           echo "Package version: ${PKG_VERSION}"
           echo "LDFLAGS: ${LDFLAGS}"
 
+      - name: Check release commit is on main and green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          buildscripts/check-release-commit.sh "$(git rev-parse HEAD)"
+
       - name: Check existing release state
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -135,6 +148,16 @@ jobs:
             exit 1
           fi
           gh release upload "${RELEASE_TAG}" "${files[@]}"
+
+      - name: Attest build provenance for release artifacts
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/mcli_*.tar.gz
+            dist/mcli_*_checksums.txt
+            dist/packages/*.rpm
+            dist/packages/*.deb
+            dist/packages/*.apk
 
       - name: Upload dist artifact
         if: always()

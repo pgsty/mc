@@ -13,3 +13,13 @@ updates:
           - "*"
     commit-message:
       prefix: ci
+
+  # Dockerfile.goreleaser pins its UBI bases by digest so a release tag always
+  # rebuilds the same image. Without this the pins would silently rot and stop
+  # receiving base-image CVE fixes.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
