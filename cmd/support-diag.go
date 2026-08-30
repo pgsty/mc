@@ -126,8 +126,14 @@ func tarGZ(healthInfo any, version, filename string) error {
 		return e
 	}
 
-	e = os.WriteFile(filename, data, 0o666)
-	if e != nil {
+	// This archive can contain environment variables, endpoints and other
+	// deployment detail - the warning printed below says so. 0666 leaves it
+	// world-readable under the usual 022 umask, so create it 0600 and tighten
+	// an existing file too, since WriteFile only applies the mode on create.
+	if e = os.WriteFile(filename, data, 0o600); e != nil {
+		return e
+	}
+	if e = os.Chmod(filename, 0o600); e != nil {
 		return e
 	}
 

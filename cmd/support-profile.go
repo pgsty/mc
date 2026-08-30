@@ -142,18 +142,38 @@ func checkAdminProfileSyntax(ctx *cli.Context) {
 // it is possible that /tmp is mounted from a separate partition and current
 // working directory is a different partition. To allow all situations to
 // be handled appropriately use this function instead of os.Rename()
+// moveFile copies sourcePath to destPath and removes the source.
+//
+// The destination inherits the source's permission bits. Every caller moves a
+// file created by os.CreateTemp, which is 0600; os.Create would have widened
+// that to 0644 under the usual 022 umask, publishing profiles, perf traces,
+// inspect output and exported IAM metadata to every local user.
 func moveFile(sourcePath, destPath string) error {
 	inputFile, e := os.Open(sourcePath)
 	if e != nil {
 		return e
 	}
 
-	outputFile, e := os.Create(destPath)
+	sourceInfo, e := inputFile.Stat()
+	if e != nil {
+		inputFile.Close()
+		return e
+	}
+	sourceMode := sourceInfo.Mode().Perm()
+
+	outputFile, e := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, sourceMode)
 	if e != nil {
 		inputFile.Close()
 		return e
 	}
 	defer outputFile.Close()
+
+	// O_CREATE applies the umask, and an existing destination keeps its own
+	// mode, so set it explicitly either way.
+	if e = outputFile.Chmod(sourceMode); e != nil {
+		inputFile.Close()
+		return e
+	}
 
 	if _, e = io.Copy(outputFile, inputFile); e != nil {
 		inputFile.Close()
