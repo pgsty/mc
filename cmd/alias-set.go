@@ -132,8 +132,11 @@ func checkAliasSetSyntax(ctx *cli.Context, accessKey, secretKey string, deprecat
 	}
 
 	if !isValidSecretKey(secretKey) {
-		fatalIf(errInvalidArgument().Trace(secretKey),
-			"Invalid secret key `"+secretKey+"`.")
+		// Never echo the secret. It reaches the terminal, shell history through
+		// a copied error message, and CI logs, and the only actionable detail
+		// is the length requirement.
+		fatalIf(errInvalidArgument().Trace(alias),
+			fmt.Sprintf("Invalid secret key: must be at least %d characters.", secretKeyMinLen))
 	}
 
 	if api != "" && !isValidAPI(api) { // Empty value set to default "S3v4".

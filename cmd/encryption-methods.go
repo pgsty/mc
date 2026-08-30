@@ -126,11 +126,11 @@ func validateAndParseKey(ctx *cli.Context, key string, keyType sseKeyType) (SSEP
 		return nil, "", keyErr
 	}
 	if alias == "" {
-		return nil, "", errSSEInvalidAlias(prefix).Trace(key)
+		return nil, "", errSSEInvalidAlias(prefix).Trace(redactSSEKeySpec(key, keyType))
 	}
 
 	if (keyType == sseKMS || keyType == sseC) && encKey == "" {
-		return nil, "", errSSEClientKeyFormat("SSE-C/KMS key should be of the form alias/prefix=key,... ").Trace(key)
+		return nil, "", errSSEClientKeyFormat("SSE-C/KMS key should be of the form alias/prefix=key,... ").Trace(redactSSEKeySpec(key, keyType))
 	}
 
 	ssePairPrefix := alias + "/" + prefix
@@ -160,7 +160,7 @@ func validateAndParseKey(ctx *cli.Context, key string, keyType sseKeyType) (SSEP
 	}
 
 	if err != nil {
-		return nil, "", probe.NewError(err).Trace(key)
+		return nil, "", probe.NewError(err).Trace(redactSSEKeySpec(key, keyType))
 	}
 
 	return &prefixSSEPair{
@@ -192,6 +192,27 @@ func splitKey(sseKey string) (alias, prefix string) {
 	return "", ""
 }
 
+// redactSSEKeySpec strips the key material out of an "alias/prefix=key" spec so
+// it can be recorded in an error trace. The alias and prefix are kept because
+// they are what makes the message actionable; only SSE-C specs carry a secret,
+// a KMS spec names a key that the server resolves.
+// Unlike parseSSEKey, which splits on the last "=" to find the separator, this
+// cuts at the first one. A redactor must never under-redact: a padded base64
+// key ends in "=", so splitting on the last one would hand the whole key back.
+// Cutting early can hide part of a prefix that itself contains "=", which is a
+// price worth paying.
+func redactSSEKeySpec(spec string, keyType sseKeyType) string {
+	if keyType != sseC {
+		return spec
+	}
+	separatorIndex := strings.Index(spec, "=")
+	if separatorIndex < 0 || separatorIndex == len(spec)-1 {
+		// No key material present to hide.
+		return spec
+	}
+	return spec[:separatorIndex+1] + redactedMarker
+}
+
 func parseSSEKey(sseKey string, keyType sseKeyType) (
 	alias string,
 	prefix string,
@@ -206,11 +227,11 @@ func parseSSEKey(sseKey string, keyType sseKeyType) (
 			alias, prefix = splitKey(sseKey)
 			return
 		}
-		err = errSSEKeyMissing().Trace(sseKey)
+		err = errSSEKeyMissing().Trace(redactSSEKeySpec(sseKey, keyType))
 		return
 	}
 	if separatorIndex == len(sseKeyBytes)-1 {
-		err = errSSEKeyMissing().Trace(sseKey)
+		err = errSSEKeyMissing().Trace(redactSSEKeySpec(sseKey, keyType))
 		return
 	}
 
@@ -218,7 +239,9 @@ func parseSSEKey(sseKey string, keyType sseKeyType) (
 	alias, prefix = splitKey(string(sseKeyBytes[:separatorIndex]))
 	if keyType == sseKMS {
 		if !validKMSKeyName(encodedKey) {
-			err = errSSEKMSKeyFormat(fmt.Sprintf("Key (%s) is badly formatted.", encodedKey)).Trace(sseKey)
+			// A KMS key name is an identifier, not key material, so it stays
+			// in the message: the user needs it to spot the typo.
+			err = errSSEKMSKeyFormat(fmt.Sprintf("Key (%s) is badly formatted.", encodedKey)).Trace(redactSSEKeySpec(sseKey, keyType))
 		}
 		key = encodedKey
 		return
@@ -233,12 +256,12 @@ func parseSSEKey(sseKey string, keyType sseKeyType) (
 	}
 
 	if decodeError != nil {
-		err = errSSEClientKeyFormat(fmt.Sprintf("Key (%s) was neither base64 raw encoded nor hex encoded.", encodedKey)).Trace(sseKey)
+		err = errSSEClientKeyFormat("SSE-C key was neither base64 raw encoded nor hex encoded.").Trace(redactSSEKeySpec(sseKey, keyType))
 	}
 
 	key = string(keyB)
 	if len(key) != 32 {
-		err = errSSEClientKeyFormat(fmt.Sprintf("Plain text from key (%s) is only %d bytes, but should be 32 bytes.", encodedKey, len(key))).Trace(sseKey)
+		err = errSSEClientKeyFormat(fmt.Sprintf("Decoded SSE-C key is %d bytes, but should be 32 bytes.", len(key))).Trace(redactSSEKeySpec(sseKey, keyType))
 		return
 	}
 

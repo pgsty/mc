@@ -201,7 +201,9 @@ func mainAdminUserAdd(ctx *cli.Context) error {
 	client, err := newAdminClient(aliasedURL)
 	fatalIf(err, "Unable to initialize admin connection.")
 
-	fatalIf(probe.NewError(client.AddUser(globalContext, accessKey, secretKey)).Trace(args...), "Unable to add new user")
+	// Trace the alias and access key only: args carries the secret key when it
+	// is supplied positionally, and --debug prints the whole trace.
+	fatalIf(probe.NewError(client.AddUser(globalContext, accessKey, secretKey)).Trace(aliasedURL, accessKey), "Unable to add new user")
 
 	printMsg(userMessage{
 		op:         ctx.Command.Name,
