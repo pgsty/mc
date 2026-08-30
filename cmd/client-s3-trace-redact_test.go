@@ -18,6 +18,7 @@
 package cmd
 
 import (
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -53,8 +54,13 @@ func dumpRedacted(t *testing.T, req *http.Request) string {
 
 func TestRedactRequestForTraceHidesLowercaseAccessKey(t *testing.T) {
 	// A SILO or MinIO deployment's default key is lowercase; the previous
-	// [A-Z0-9]+ pattern let it through verbatim.
-	for _, accessKey := range []string{"minioadmin", "AKIAJNACEGBGMXBHLEZA", "siloAdmin1", "key-with.symbols"} {
+	// [A-Z0-9]+ pattern let it through verbatim. A key may also contain a
+	// slash - this client only checks a key's length, and minio-go builds
+	// Credential by concatenating the raw key with the scope - so a redactor
+	// that stops at the first "/" would leak the rest of it.
+	for _, accessKey := range []string{
+		"minioadmin", "AKIAJNACEGBGMXBHLEZA", "siloAdmin1", "key-with.symbols", "team/alice", "a/b/c/d",
+	} {
 		req := newTraceProbeRequest(t)
 		req.Header.Set("Authorization",
 			"AWS4-HMAC-SHA256 Credential="+accessKey+"/20260830/us-east-1/s3/aws4_request, "+
@@ -158,5 +164,172 @@ func TestRedactRequestForTraceHandlesRequestWithoutCredentials(t *testing.T) {
 	dump := dumpRedacted(t, req)
 	if !strings.Contains(dump, "GET /bucket/object HTTP/1.1") {
 		t.Fatalf("unauthenticated request should still render: %s", dump)
+	}
+}
+
+func TestRedactRequestForTraceHidesUnparseableCredential(t *testing.T) {
+	// No 8-digit scope date to anchor on: give up the scope rather than the key.
+	req := newTraceProbeRequest(t)
+	req.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=minioadmin/not-a-scope, Signature=abc123")
+
+	dump := dumpRedacted(t, req)
+	if strings.Contains(dump, "minioadmin") {
+		t.Fatalf("access key leaked when the scope did not parse: %s", dump)
+	}
+}
+
+// --custom-header lets a caller attach any Authorization value, and a proxy in
+// front of the endpoint may want Basic or Bearer credentials.
+func TestRedactRequestForTraceHidesNonS3AuthorizationSchemes(t *testing.T) {
+	for name, value := range map[string]string{
+		"basic":   "Basic dXNlcjpodW50ZXIy",
+		"bearer":  "Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature",
+		"opaque":  "some-opaque-token-value",
+		"negotia": "Negotiate YIIFm",
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := newTraceProbeRequest(t)
+			req.Header.Set("Authorization", value)
+
+			dump := dumpRedacted(t, req)
+			secret := value
+			if scheme, rest, ok := strings.Cut(value, " "); ok {
+				secret = rest
+				if !strings.Contains(dump, scheme) {
+					t.Errorf("scheme %q should stay visible: %s", scheme, dump)
+				}
+			}
+			if strings.Contains(dump, secret) {
+				t.Fatalf("credential leaked for %s: %s", name, dump)
+			}
+		})
+	}
+}
+
+// minio-go sends this instead of X-Amz-Security-Token for S3 Express buckets.
+func TestRedactRequestForTraceHidesS3ExpressSessionToken(t *testing.T) {
+	req := newTraceProbeRequest(t)
+	req.Header.Set("X-Amz-S3session-Token", testSessionToken)
+
+	if dump := dumpRedacted(t, req); strings.Contains(dump, testSessionToken) {
+		t.Fatalf("S3 Express session token leaked into trace: %s", dump)
+	}
+}
+
+func TestRedactRequestForTraceHidesSignatureV2QueryCredentials(t *testing.T) {
+	req := newTraceProbeRequest(t)
+	req.URL.RawQuery = url.Values{
+		"AWSAccessKeyId": []string{"minioadmin"},
+		"Signature":      []string{"Y10YHUZ0DTUterAUI6w3XKX7Iqk="},
+		"Expires":        []string{"1787765892"},
+	}.Encode()
+
+	dump := dumpRedacted(t, req)
+	for _, secret := range []string{"minioadmin", "Y10YHUZ0DTUterAUI6w3XKX7Iqk="} {
+		if strings.Contains(dump, secret) {
+			t.Errorf("signature v2 presign credential %q leaked: %s", secret, dump)
+		}
+	}
+	if !strings.Contains(dump, "Expires=1787765892") {
+		t.Errorf("non-secret query parameters must survive: %s", dump)
+	}
+}
+
+// url.Values.Get returns the first value, so a repeated parameter whose first
+// value is empty could hide a real one behind it.
+func TestRedactRequestForTraceHidesRepeatedQueryCredential(t *testing.T) {
+	req := newTraceProbeRequest(t)
+	req.URL.RawQuery = "X-Amz-Signature=&X-Amz-Signature=bbfaa693c626021bcb5f911cd898a1a3"
+
+	if dump := dumpRedacted(t, req); strings.Contains(dump, "bbfaa693c626021bcb5f911cd898a1a3") {
+		t.Fatalf("repeated query credential leaked: %s", dump)
+	}
+}
+
+func dumpResponse(t *testing.T, resp *http.Response) string {
+	t.Helper()
+	dump, err := dumpResponseForTrace(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(dump)
+}
+
+func newTraceProbeResponse(t *testing.T, status int, body string) *http.Response {
+	t.Helper()
+	req := newTraceProbeRequest(t)
+	return &http.Response{
+		Status:        http.StatusText(status),
+		StatusCode:    status,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		Header:        http.Header{},
+		Body:          io.NopCloser(strings.NewReader(body)),
+		ContentLength: int64(len(body)),
+		Request:       req,
+	}
+}
+
+func TestDumpResponseForTraceHidesSecretResponseHeaders(t *testing.T) {
+	resp := newTraceProbeResponse(t, http.StatusBadRequest, "<Error/>")
+	resp.Header.Set("X-Amz-Security-Token", testSessionToken)
+	resp.Header.Set("X-Amz-Server-Side-Encryption-Customer-Key", testSSECKey)
+	resp.Header.Set("Location", "https://silo.example.com/b/o?X-Amz-Signature=abc123&versionId=keep")
+
+	dump := dumpResponse(t, resp)
+	for _, secret := range []string{testSessionToken, testSSECKey, "X-Amz-Signature=abc123"} {
+		if strings.Contains(dump, secret) {
+			t.Errorf("response secret %q leaked: %s", secret, dump)
+		}
+	}
+	if !strings.Contains(dump, "versionId=keep") {
+		t.Errorf("non-secret redirect parameters must survive: %s", dump)
+	}
+}
+
+// A proxying or buggy endpoint can echo a request header into its error text.
+func TestDumpResponseForTraceScrubsReflectedRequestSecrets(t *testing.T) {
+	resp := newTraceProbeResponse(t, http.StatusBadRequest,
+		"<Error><Message>bad key "+testSSECKey+" for token "+testSessionToken+"</Message></Error>")
+	resp.Request.Header.Set("X-Amz-Server-Side-Encryption-Customer-Key", testSSECKey)
+	resp.Request.Header.Set("X-Amz-Security-Token", testSessionToken)
+
+	dump := dumpResponse(t, resp)
+	for _, secret := range []string{testSSECKey, testSessionToken} {
+		if strings.Contains(dump, secret) {
+			t.Errorf("reflected request secret %q leaked through the error body: %s", secret, dump)
+		}
+	}
+	if !strings.Contains(dump, "<Error><Message>bad key") {
+		t.Errorf("the rest of the error body must survive: %s", dump)
+	}
+}
+
+// httputil.DumpResponse restores the body on whatever value it is handed, so
+// the drain has to happen on the caller's response, not on a copy.
+func TestDumpResponseForTraceLeavesBodyReadable(t *testing.T) {
+	const body = "<Error><Code>NoSuchKey</Code></Error>"
+	resp := newTraceProbeResponse(t, http.StatusNotFound, body)
+
+	if dump := dumpResponse(t, resp); !strings.Contains(dump, "NoSuchKey") {
+		t.Fatalf("error body should be dumped: %s", dump)
+	}
+	remaining, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(remaining) != body {
+		t.Fatalf("caller's response body was consumed: %q", string(remaining))
+	}
+}
+
+// A 2xx body can be an object payload; only failures are worth dumping.
+func TestDumpResponseForTraceOmitsSuccessBodies(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusCreated, http.StatusNoContent, http.StatusPartialContent} {
+		resp := newTraceProbeResponse(t, status, "SENSITIVE-OBJECT-PAYLOAD")
+		if dump := dumpResponse(t, resp); strings.Contains(dump, "SENSITIVE-OBJECT-PAYLOAD") {
+			t.Errorf("status %d should not dump its body: %s", status, dump)
+		}
 	}
 }

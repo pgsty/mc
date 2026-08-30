@@ -44,23 +44,16 @@ func (t traceV2) Request(req *http.Request) error {
 }
 
 // Response - Trace HTTP Response
-func (t traceV2) Response(resp *http.Response) (err error) {
-	var respTrace []byte
-	// For errors we make sure to dump response body as well.
-	if resp.StatusCode != http.StatusOK &&
-		resp.StatusCode != http.StatusPartialContent &&
-		resp.StatusCode != http.StatusNoContent {
-		respTrace, err = httputil.DumpResponse(resp, true)
-	} else {
-		respTrace, err = httputil.DumpResponse(resp, false)
+func (t traceV2) Response(resp *http.Response) error {
+	respTrace, err := dumpResponseForTrace(resp)
+	if err != nil {
+		return err
 	}
-	if err == nil {
-		console.Debug(string(respTrace))
-	}
+	console.Debug(string(respTrace))
 
 	if resp.TLS != nil {
 		printTLSCertInfo(resp.TLS)
 	}
 
-	return err
+	return nil
 }
