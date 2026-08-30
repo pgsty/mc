@@ -13,12 +13,14 @@ on:
 
 permissions:
   contents: write
-  # Sigstore build provenance for the archives, checksums and packages. Only
-  # the RPMs carry a detached GPG signature, which is applied by hand after the
-  # fact; attestations cover every artifact and are produced by the run that
-  # built them.
+  # Sigstore build provenance for the artifacts this run produces and does not
+  # later modify. See the attestation step for why RPMs are excluded.
   id-token: write
   attestations: write
+  # check-release-commit.sh reads workflow runs through the Actions API. Every
+  # permission not listed here is "none", so omitting this fails a legitimate
+  # release with "Resource not accessible by integration".
+  actions: read
 
 concurrency:
   group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
@@ -149,13 +151,18 @@ jobs:
           fi
           gh release upload "${RELEASE_TAG}" "${files[@]}"
 
+      # RPMs are deliberately absent: buildscripts/sign-release-rpms.sh runs
+      # afterwards on a maintainer machine, rewrites their bytes with rpmsign
+      # and replaces the uploaded assets. An attestation made here would name a
+      # digest that no published RPM has, so `gh attestation verify` on the
+      # shipped file would fail. RPM integrity is covered by its detached GPG
+      # signature instead.
       - name: Attest build provenance for release artifacts
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             dist/mcli_*.tar.gz
             dist/mcli_*_checksums.txt
-            dist/packages/*.rpm
             dist/packages/*.deb
             dist/packages/*.apk
 

@@ -1,6 +1,10 @@
-# Base images are pinned by digest so the same release tag always produces the
-# same image. Dependabot's docker ecosystem keeps the pins current; do not
-# replace them with a floating tag.
+# Base images are pinned by digest so a rebuild of the same release tag starts
+# from the same bytes instead of whatever "latest" points at that day.
+# Dependabot's docker ecosystem keeps the pins current; do not replace them
+# with a floating tag.
+#
+# This is not full reproducibility: the dnf install below still resolves
+# whatever the Red Hat repositories serve at build time.
 FROM registry.access.redhat.com/ubi9/ubi:latest@sha256:b8c53f907b7ea8934d6bb23b319ca7b5ab567e61a0806ffc80170631cabc7563 AS certs
 RUN dnf -y install ca-certificates && \
     update-ca-trust && \
