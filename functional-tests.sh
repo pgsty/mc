@@ -1014,6 +1014,87 @@ function test_admin_users() {
 	log_success "$start_time" "${FUNCNAME[0]}"
 }
 
+# Verify that `checksum verify` works against a real server, not just the
+# in-process mock. Everything asserted here was reproduced against a live
+# SILO RELEASE.2026-08-06T00-00-00Z before being written down.
+#
+# MISMATCH is deliberately absent: it cannot be produced from outside. The
+# server's own bitrot hashes reject a corrupted part before the object API
+# returns it, which surfaces as UNKNOWN_READ_ERROR. A genuine MISMATCH needs a
+# stored checksum that describes different bytes than the object API returns,
+# which is the historical write-path defect this command exists to find, and it
+# is covered by the unit tests.
+function test_checksum_verify() {
+	show "${FUNCNAME[0]}"
+
+	start_time=$(get_time)
+	object_name="mc-test-object-$RANDOM"
+	prefix="checksum-$RANDOM"
+
+	# One object carrying an additional checksum, one without.
+	assert_success "$start_time" "${FUNCNAME[0]}" mc_cmd put --checksum CRC32C \
+		"${FILE_1_MB}" "${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/${object_name}.crc32c"
+	assert_success "$start_time" "${FUNCNAME[0]}" mc_cmd put \
+		"${FILE_1_MB}" "${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/${object_name}.plain"
+
+	# A stored checksum recomputes and matches.
+	assert_success "$start_time" "${FUNCNAME[0]}" mc_cmd checksum verify \
+		"${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/${object_name}.crc32c"
+
+	# An object with no additional checksum is not a failure by default.
+	assert_success "$start_time" "${FUNCNAME[0]}" mc_cmd checksum verify \
+		"${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/${object_name}.plain"
+
+	# Non-TTY stdout must carry the results, not just --report. This is the
+	# regression behind pgsty/mc#5, where a redirect produced a zero-byte file.
+	#
+	# MC_CMD always passes --quiet, and explicit quiet legitimately silences
+	# these records, so this one assertion has to build its own command line.
+	summary=$("${MC}" --config-dir "$MC_CONFIG_DIR" --no-color --json \
+		checksum verify --recursive --fail-on none \
+		"${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/" | jq -c 'select(.type == "summary")')
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "unable to read checksum verify summary"
+
+	# ...and explicit quiet must still silence stdout while --report keeps working.
+	report="${WORK_DIR}/checksum-report-$RANDOM.jsonl"
+	quiet_out=$(mc_cmd checksum verify --recursive --fail-on none --report "${report}" \
+		"${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/")
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "checksum verify failed under --quiet"
+	diff -bB <(echo "") <(echo "$quiet_out") >/dev/null 2>&1
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "explicit --quiet must silence checksum verify stdout"
+	diff -bB <(echo "1") <(jq -s -r '[.[] | select(.type == "summary")] | length' "${report}") >/dev/null 2>&1
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "--report must contain exactly one summary under --quiet"
+
+	diff -bB <(echo "2") <(echo "$summary" | jq -r '.objects') >/dev/null 2>&1
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "checksum verify did not report 2 objects"
+
+	# Exactly one of the two carried a checksum, so exactly one was verified.
+	# objects != verified is what stops an unverifiable run reading as a clean one.
+	diff -bB <(echo "1") <(echo "$summary" | jq -r '.verified') >/dev/null 2>&1
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "checksum verify did not report 1 verified object"
+
+	diff -bB <(echo "1") <(echo "$summary" | jq -r '.counts.NO_CHECKSUM') >/dev/null 2>&1
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "checksum verify did not report 1 no-checksum object"
+
+	# --fail-on no-checksum turns an unverifiable object into a non-zero exit.
+	assert_failure "$start_time" "${FUNCNAME[0]}" mc_cmd checksum verify --recursive \
+		--fail-on no-checksum "${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/"
+
+	# ...and so does a run that verified nothing at all, which an empty prefix
+	# produces without ever emitting a NO_CHECKSUM result.
+	assert_failure "$start_time" "${FUNCNAME[0]}" mc_cmd checksum verify --recursive \
+		--fail-on no-checksum "${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/nothing-here/"
+
+	# Dry-run reads no object data.
+	assert_success "$start_time" "${FUNCNAME[0]}" mc_cmd checksum verify --recursive --dry-run \
+		"${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/"
+
+	assert_success "$start_time" "${FUNCNAME[0]}" mc_cmd rm --recursive --force \
+		"${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/"
+
+	log_success "$start_time" "${FUNCNAME[0]}"
+}
+
 function run_test() {
 	test_make_bucket
 	test_make_bucket_error
@@ -1060,6 +1141,8 @@ function run_test() {
 		test_mirror_with_sse
 		test_rm_object_with_sse
 	fi
+
+	test_checksum_verify
 
 	test_config_host_add
 	test_config_host_add_error
