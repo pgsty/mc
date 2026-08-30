@@ -404,6 +404,62 @@ func TestChecksumVerifyReportPermissions(t *testing.T) {
 	}
 }
 
+// A run where nothing carried a checksum exits 0 with incomplete=false, which
+// looks identical to a clean audit. "verified" is what distinguishes them.
+func TestChecksumVerifySummaryReportsVerifiedCount(t *testing.T) {
+	summary := newChecksumVerifySummary(false)
+	summary.add(checksumVerifyResult{Result: checksumResultMatch})
+	summary.add(checksumVerifyResult{Result: checksumResultMismatch})
+	summary.add(checksumVerifyResult{Result: checksumResultNoChecksum})
+	summary.add(checksumVerifyResult{Result: checksumResultSkippedTimeFilter})
+
+	if summary.Objects != 4 {
+		t.Fatalf("objects = %d, want 4", summary.Objects)
+	}
+	// Only MATCH and MISMATCH involved recomputing a stored checksum.
+	if summary.Verified != 2 {
+		t.Fatalf("verified = %d, want 2", summary.Verified)
+	}
+	if !strings.Contains(summary.String(), "2 verified") {
+		t.Fatalf("human summary does not disclose the verified count: %q", summary.String())
+	}
+	if !strings.Contains(summary.JSON(), `"verified"`) {
+		t.Fatalf("JSON summary does not disclose the verified count: %s", summary.JSON())
+	}
+}
+
+func TestChecksumVerifySummaryAllNoChecksumIsNotSilentSuccess(t *testing.T) {
+	summary := newChecksumVerifySummary(false)
+	for range 3 {
+		summary.add(checksumVerifyResult{Result: checksumResultNoChecksum})
+	}
+
+	// Default behavior is deliberately unchanged: nothing was wrong, so the
+	// run succeeds.
+	if summary.shouldFail("any", false) {
+		t.Fatal("an all-NO_CHECKSUM run must keep succeeding under --fail-on any")
+	}
+	if summary.Incomplete {
+		t.Fatal("NO_CHECKSUM must not set incomplete")
+	}
+	// But the caller has two ways to tell nothing was verified.
+	if summary.Verified != 0 {
+		t.Fatalf("verified = %d, want 0", summary.Verified)
+	}
+	if !summary.shouldFail("no-checksum", false) {
+		t.Fatal("--fail-on no-checksum must fail when nothing carried a checksum")
+	}
+	if summary.shouldFail("no-checksum", true) {
+		t.Fatal("dry-run must not apply --fail-on no-checksum")
+	}
+}
+
+func TestChecksumVerifySelectionAcceptsNoChecksumFailOn(t *testing.T) {
+	if err := validateChecksumVerifySelection("", "", false, false, "", "", 4, "no-checksum"); err != nil {
+		t.Fatalf("--fail-on no-checksum rejected: %v", err)
+	}
+}
+
 func TestChecksumVerifySummaryFailOn(t *testing.T) {
 	summary := newChecksumVerifySummary(false)
 	summary.add(checksumVerifyResult{Result: checksumResultMismatch})
@@ -415,6 +471,7 @@ func TestChecksumVerifySummaryFailOn(t *testing.T) {
 		{failOn: "none", want: false},
 		{failOn: "mismatch", want: true},
 		{failOn: "unknown", want: true},
+		{failOn: "no-checksum", want: true},
 		{failOn: "any", want: true},
 	} {
 		if got := summary.shouldFail(tc.failOn, false); got != tc.want {

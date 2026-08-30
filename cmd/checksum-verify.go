@@ -113,7 +113,7 @@ var checksumVerifyFlags = []cli.Flag{
 	},
 	cli.StringFlag{
 		Name:  "fail-on",
-		Usage: "return failure on mismatch, unknown, any, or none",
+		Usage: "return failure on mismatch, unknown, no-checksum, any, or none",
 		Value: "any",
 	},
 }
@@ -209,6 +209,7 @@ type checksumVerifySummary struct {
 	Timestamp     time.Time        `json:"timestamp"`
 	Counts        map[string]int64 `json:"counts"`
 	Objects       int64            `json:"objects"`
+	Verified      int64            `json:"verified"`
 	BytesPlanned  int64            `json:"bytesPlanned"`
 	BytesRead     int64            `json:"bytesRead"`
 	Duration      time.Duration    `json:"durationNs"`
@@ -231,6 +232,12 @@ func (s *checksumVerifySummary) add(result checksumVerifyResult) {
 	s.Counts[result.Result]++
 	s.BytesRead += result.BytesRead
 	switch result.Result {
+	// Verified counts objects whose stored checksum was actually recomputed and
+	// compared. Objects and a zero exit status do not imply that: a run over a
+	// prefix where nothing carries a checksum reports NO_CHECKSUM for every
+	// object and still succeeds.
+	case checksumResultMatch, checksumResultMismatch:
+		s.Verified++
 	case checksumResultWouldVerify:
 		s.BytesPlanned += result.Size
 	case checksumResultUnknownComposite,
@@ -259,8 +266,9 @@ func (s checksumVerifySummary) String() string {
 			humanize.IBytes(uint64(s.BytesPlanned)),
 		)
 	}
-	return fmt.Sprintf("Checksum verification: %d objects, %d match, %d mismatch, %d no-checksum, %d unknown, %d skipped, %s read",
+	return fmt.Sprintf("Checksum verification: %d objects, %d verified, %d match, %d mismatch, %d no-checksum, %d unknown, %d skipped, %s read",
 		s.Objects,
+		s.Verified,
 		s.Counts[checksumResultMatch],
 		s.Counts[checksumResultMismatch],
 		s.Counts[checksumResultNoChecksum],
@@ -310,6 +318,10 @@ func (s checksumVerifySummary) shouldFail(failOn string, dryRun bool) bool {
 		return mismatch
 	case "unknown":
 		return unknown
+	case "no-checksum":
+		// For callers that treat "nothing was verifiable" as a failure rather
+		// than a clean run.
+		return mismatch || incomplete || s.Counts[checksumResultNoChecksum] > 0
 	default:
 		return mismatch || incomplete
 	}
@@ -401,8 +413,8 @@ func validateChecksumVerifySelection(manifest, versionID string, versions, recur
 	if workers < 1 || workers > checksumVerifyMaximumWorkers {
 		return fmt.Errorf("--max-workers must be between 1 and %d", checksumVerifyMaximumWorkers)
 	}
-	if failOn != "mismatch" && failOn != "unknown" && failOn != "any" && failOn != "none" {
-		return errors.New("--fail-on must be mismatch, unknown, any, or none")
+	if failOn != "mismatch" && failOn != "unknown" && failOn != "no-checksum" && failOn != "any" && failOn != "none" {
+		return errors.New("--fail-on must be mismatch, unknown, no-checksum, any, or none")
 	}
 	return nil
 }
