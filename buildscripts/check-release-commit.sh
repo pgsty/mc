@@ -21,12 +21,13 @@ release_branch="${RELEASE_BRANCH:-origin/main}"
 # second workflow could otherwise be added that calls itself "Go", succeeds
 # trivially, and satisfies this check while the real one fails.
 #
-# Test Release Pipeline is deliberately absent: it is path-filtered, so a
-# release commit that touches no packaging file legitimately has no run.
+# Test Release Pipeline runs unfiltered on every push to main, so it is
+# required evidence like the others.
 required_workflow_paths=(
   ".github/workflows/go.yml"
   ".github/workflows/go-cross.yml"
   ".github/workflows/vulncheck.yml"
+  ".github/workflows/test-release.yml"
 )
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -44,11 +45,15 @@ if [ -z "${fixture}" ]; then
     echo "Cannot resolve ${release_branch}; fetch it before releasing" >&2
     exit 1
   fi
-  if ! git merge-base --is-ancestor "${release_commit}" "${release_branch}"; then
-    echo "Refusing to release ${release_commit}: it is not an ancestor of ${release_branch}" >&2
+  # The exact tip, not merely an ancestor: an older commit on main has no
+  # push run of its own when it arrived as part of a multi-commit push, and a
+  # release must not trail behind what main already contains.
+  tip="$(git rev-parse "${release_branch}^{commit}")"
+  if [ "${tip}" != "${release_commit}" ]; then
+    echo "Refusing to release ${release_commit}: ${release_branch} is at ${tip}" >&2
     exit 1
   fi
-  echo "Release commit ${release_commit} is on ${release_branch}."
+  echo "Release commit ${release_commit} is the tip of ${release_branch}."
 
   error_file="$(mktemp)"
   trap 'rm -f "${error_file}"' EXIT
@@ -77,14 +82,14 @@ fi
 fail=0
 for workflow in "${required_workflow_paths[@]}"; do
   # Only runs that actually built this commit count: the right workflow file,
-  # triggered by a push to main or a manual dispatch, reporting this SHA. Take
-  # the newest such run; an older success must not paper over a later failure.
+  # triggered by the push that put this SHA on main. A manual dispatch is not
+  # substitute evidence - it can be run from any ref. Take the newest such
+  # run; an older success must not paper over a later failure.
   latest="$(jq -c --arg path "${workflow}" --arg sha "${release_commit}" '
     [ .[]
       | select(.path == $path)
       | select(.head_sha == $sha)
-      | select(.event == "push" or .event == "workflow_dispatch")
-      | select(.event != "push" or .head_branch == "main")
+      | select(.event == "push" and .head_branch == "main")
     ]
     | sort_by([.run_number // 0, .run_attempt // 0])
     | last // null' <<<"${runs_json}")"

@@ -87,7 +87,7 @@
 
 ## 治理
 
-本客户端与 [Silo 服务器](https://github.com/pgsty/silo)在同一套发布流程下共同维护：提交必须签署 DCO、Pull Request 经过评审、以 `RELEASE.YYYY-MM-DDTHH-MM-SSZ` 标签发布带校验和的产物。每个版本都会在门户发布[版本说明](https://silo.pgsty.com/zh/tags/mcli/)；安全问题遵循[安全策略](https://silo.pgsty.com/zh/about/security/)处理。上游版权、许可证与第三方声明完整保留于 [`LICENSE`](LICENSE)、[`NOTICE`](NOTICE) 与 [`CREDITS`](CREDITS)。
+本客户端与 [Silo 服务器](https://github.com/pgsty/silo)在同一套发布流程下共同维护：提交必须签署 DCO、Pull Request 必须通过全部必需 CI 检查（本项目由单人维护，不存在可强制执行的独立人工评审）、以签名且不可变的 `RELEASE.YYYY-MM-DDTHH-MM-SSZ` 标签发布带校验和的产物。每个版本都会在门户发布[版本说明](https://silo.pgsty.com/zh/tags/mcli/)；安全问题遵循[安全策略](https://silo.pgsty.com/zh/about/security/)处理。上游版权、许可证与第三方声明完整保留于 [`LICENSE`](LICENSE)、[`NOTICE`](NOTICE) 与 [`CREDITS`](CREDITS)。
 
 ## 兼容策略
 

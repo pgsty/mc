@@ -40,59 +40,61 @@ run() {
 go_ok="$(run .github/workflows/go.yml success)"
 cross_ok="$(run .github/workflows/go-cross.yml success)"
 vuln_ok="$(run .github/workflows/vulncheck.yml success)"
+release_ok="$(run .github/workflows/test-release.yml success)"
 
 all_green() {
-  printf '[%s,%s,%s%s]\n' "${go_ok}" "${cross_ok}" "${vuln_ok}" "${1:+,$1}" >"${fixture}"
+  printf '[%s,%s,%s,%s%s]\n' "${go_ok}" "${cross_ok}" "${vuln_ok}" "${release_ok}" "${1:+,$1}" >"${fixture}"
 }
 
-# Baseline: all three green on a push to main.
+# Baseline: all four green on a push to main.
 all_green
 expect_success "${commit}" "${fixture}"
 grep -qF "Required workflows are green for ${commit}." "${stdout_file}"
 
-# A manual dispatch of the same workflow on the same commit is valid evidence.
-printf '[%s,%s,%s]\n' \
-  "$(run .github/workflows/go.yml success workflow_dispatch some-branch)" \
-  "${cross_ok}" "${vuln_ok}" >"${fixture}"
-expect_success "${commit}" "${fixture}"
+# A manual dispatch is not evidence: it can be run from any ref.
+printf '[%s,%s,%s,%s]\n' \
+  "$(run .github/workflows/go.yml success workflow_dispatch main)" \
+  "${cross_ok}" "${vuln_ok}" "${release_ok}" >"${fixture}"
+expect_failure "${commit}" "${fixture}"
+grep -qF "no qualifying run" "${stderr_file}"
 
 # A re-run that finally succeeded is enough; the earlier failure is history.
-printf '[%s,%s,%s,%s]\n' \
+printf '[%s,%s,%s,%s,%s]\n' \
   "$(run .github/workflows/go.yml failure push main "${commit}" 1)" \
   "$(run .github/workflows/go.yml success push main "${commit}" 2)" \
-  "${cross_ok}" "${vuln_ok}" >"${fixture}"
+  "${cross_ok}" "${vuln_ok}" "${release_ok}" >"${fixture}"
 expect_success "${commit}" "${fixture}"
 
 # ...but a LATER failure must not be papered over by an earlier success.
-printf '[%s,%s,%s,%s]\n' \
+printf '[%s,%s,%s,%s,%s]\n' \
   "$(run .github/workflows/go.yml success push main "${commit}" 1)" \
   "$(run .github/workflows/go.yml failure push main "${commit}" 2)" \
-  "${cross_ok}" "${vuln_ok}" >"${fixture}"
+  "${cross_ok}" "${vuln_ok}" "${release_ok}" >"${fixture}"
 expect_failure "${commit}" "${fixture}"
 grep -qF "Required workflow .github/workflows/go.yml did not succeed" "${stderr_file}"
 grep -qF "(failure)" "${stderr_file}"
 
 # A decoy workflow that merely calls itself "Go" must not satisfy the gate.
-printf '[%s,%s,%s]\n' \
-  "$(run .github/workflows/decoy.yml success)" "${cross_ok}" "${vuln_ok}" >"${fixture}"
+printf '[%s,%s,%s,%s]\n' \
+  "$(run .github/workflows/decoy.yml success)" "${cross_ok}" "${vuln_ok}" "${release_ok}" >"${fixture}"
 expect_failure "${commit}" "${fixture}"
 grep -qF "Required workflow .github/workflows/go.yml has no qualifying run" "${stderr_file}"
 
 # A pull_request run tests GitHub's merge ref, not this commit on its own.
-printf '[%s,%s,%s]\n' \
-  "$(run .github/workflows/go.yml success pull_request feature)" "${cross_ok}" "${vuln_ok}" >"${fixture}"
+printf '[%s,%s,%s,%s]\n' \
+  "$(run .github/workflows/go.yml success pull_request feature)" "${cross_ok}" "${vuln_ok}" "${release_ok}" >"${fixture}"
 expect_failure "${commit}" "${fixture}"
 grep -qF "no qualifying run" "${stderr_file}"
 
 # A push run on some other branch is not evidence that main accepted it.
-printf '[%s,%s,%s]\n' \
-  "$(run .github/workflows/go.yml success push feature)" "${cross_ok}" "${vuln_ok}" >"${fixture}"
+printf '[%s,%s,%s,%s]\n' \
+  "$(run .github/workflows/go.yml success push feature)" "${cross_ok}" "${vuln_ok}" "${release_ok}" >"${fixture}"
 expect_failure "${commit}" "${fixture}"
 grep -qF "no qualifying run" "${stderr_file}"
 
 # A run reporting a different head_sha must be ignored.
-printf '[%s,%s,%s]\n' \
-  "$(run .github/workflows/go.yml success push main "${other_commit}")" "${cross_ok}" "${vuln_ok}" >"${fixture}"
+printf '[%s,%s,%s,%s]\n' \
+  "$(run .github/workflows/go.yml success push main "${other_commit}")" "${cross_ok}" "${vuln_ok}" "${release_ok}" >"${fixture}"
 expect_failure "${commit}" "${fixture}"
 grep -qF "no qualifying run" "${stderr_file}"
 

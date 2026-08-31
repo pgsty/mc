@@ -1,5 +1,10 @@
 name: Publish Docker Image
 
+# Repackages the Linux archives of an already published Release into
+# pgsty/mc images. Everything it consumes is re-verified here against the
+# Sigstore provenance the Release workflow recorded: same workflow identity,
+# same tag, same commit, same filename, same bytes, GitHub-hosted runner.
+
 on:
   workflow_dispatch:
     inputs:
@@ -62,7 +67,16 @@ jobs:
           ref: ${{ inputs.tag }}
           fetch-depth: 0
 
-      - name: Prepare verified Docker contexts
+      - name: Verify the release tag is annotated and signed
+        env:
+          RELEASE_SIGNING_FINGERPRINT: ${{ vars.RELEASE_SIGNING_FINGERPRINT }}
+          RELEASE_SIGNING_KEY_URL: ${{ vars.RELEASE_SIGNING_KEY_URL }}
+        run: |
+          set -euo pipefail
+          buildscripts/verify-release-tag.sh "${RELEASE_TAG}"
+          echo "RELEASE_REVISION=$(git rev-parse HEAD)" >> "${GITHUB_ENV}"
+
+      - name: Download and verify attested release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -79,20 +93,18 @@ jobs:
             --pattern "${arm64_archive}" \
             --pattern "${checksums}"
 
+          # The checksums file lives in the same Release as the archives, so
+          # agreeing with it proves nothing on its own; it is verified as an
+          # attested subject like the archives. The attestation binds each
+          # file to the Release workflow run for this tag and commit, and to
+          # its own filename and digest, so a valid arm64 archive renamed as
+          # amd64 is refused.
+          buildscripts/verify-release-attestation.sh "${RELEASE_TAG}" "${RELEASE_REVISION}" \
+            "${assets_dir}/${checksums}" "${assets_dir}/${amd64_archive}" "${assets_dir}/${arm64_archive}"
+
           cd "${assets_dir}"
           grep -F "  ${amd64_archive}" "${checksums}" | sha256sum --check
           grep -F "  ${arm64_archive}" "${checksums}" | sha256sum --check
-
-          # The checksums file lives in the same mutable Release as the
-          # archives, so agreeing with it proves nothing on its own. Require
-          # the build-provenance attestation the Release workflow produced,
-          # bound to that workflow so an attestation from any other source
-          # is rejected.
-          for archive in "${amd64_archive}" "${arm64_archive}"; do
-            gh attestation verify "${archive}" \
-              --repo "${GITHUB_REPOSITORY}" \
-              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml"
-          done
           cd "${GITHUB_WORKSPACE}"
 
           for arch in amd64 arm64; do
@@ -100,11 +112,11 @@ jobs:
             archive="${assets_dir}/mcli_${PKG_VERSION}_linux_${arch}.tar.gz"
             mkdir -p "${context}"
             tar -xzf "${archive}" -C "${context}" mcli
+            # The archive name says which architecture; the binary must agree.
+            buildscripts/verify-elf-arch.sh "${context}/mcli" "${arch}"
             mv "${context}/mcli" "${context}/mc"
             cp Dockerfile.goreleaser LICENSE NOTICE CREDITS "${context}/"
           done
-
-          echo "RELEASE_REVISION=$(git rev-parse HEAD)" >> "${GITHUB_ENV}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
@@ -129,7 +141,6 @@ jobs:
           push: true
           tags: |
             pgsty/mc:${{ env.RELEASE_TAG }}-amd64
-            pgsty/mc:latest-amd64
           labels: |
             org.opencontainers.image.version=${{ env.RELEASE_TAG }}
             org.opencontainers.image.created=${{ env.PUBLISHED_AT }}
@@ -144,11 +155,26 @@ jobs:
           push: true
           tags: |
             pgsty/mc:${{ env.RELEASE_TAG }}-arm64
-            pgsty/mc:latest-arm64
           labels: |
             org.opencontainers.image.version=${{ env.RELEASE_TAG }}
             org.opencontainers.image.created=${{ env.PUBLISHED_AT }}
             org.opencontainers.image.revision=${{ env.RELEASE_REVISION }}
+
+      # Each per-architecture image is pulled back, run, and its labels read,
+      # before anything is promoted to the version tag or to latest.
+      - name: Run each architecture image before promotion
+        run: |
+          set -euo pipefail
+          for arch in amd64 arm64; do
+            image="pgsty/mc:${RELEASE_TAG}-${arch}"
+            docker pull --platform "linux/${arch}" "${image}"
+            version_output="$(docker run --rm --platform "linux/${arch}" "${image}" --version)"
+            echo "${version_output}"
+            grep -qF "${RELEASE_TAG}" <<< "${version_output}"
+            test "$(docker image inspect "${image}" --format '{{ index .Config.Labels "org.opencontainers.image.version" }}')" = "${RELEASE_TAG}"
+            test "$(docker image inspect "${image}" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "${RELEASE_REVISION}"
+            test "$(docker image inspect "${image}" --format '{{ .Architecture }}')" = "${arch}"
+          done
 
       - name: Publish multi-architecture manifests
         run: |
@@ -159,7 +185,14 @@ jobs:
             "pgsty/mc:${RELEASE_TAG}-arm64"
           docker buildx imagetools create \
             --tag "pgsty/mc:latest" \
-            "pgsty/mc:latest-amd64" \
-            "pgsty/mc:latest-arm64"
+            --tag "pgsty/mc:latest-amd64" \
+            "pgsty/mc:${RELEASE_TAG}-amd64"
+          docker buildx imagetools create \
+            --tag "pgsty/mc:latest-arm64" \
+            "pgsty/mc:${RELEASE_TAG}-arm64"
+          docker buildx imagetools create \
+            --tag "pgsty/mc:latest" \
+            "pgsty/mc:${RELEASE_TAG}-amd64" \
+            "pgsty/mc:${RELEASE_TAG}-arm64"
           docker buildx imagetools inspect "pgsty/mc:${RELEASE_TAG}"
           docker buildx imagetools inspect "pgsty/mc:latest"

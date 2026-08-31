@@ -87,7 +87,7 @@ Changes are kept narrow and tested where practical. Maintenance is best effort; 
 
 ## Governance
 
-The client is maintained together with the [Silo server](https://github.com/pgsty/silo) under one release process: DCO-signed commits, reviewed pull requests, and versioned `RELEASE.YYYY-MM-DDTHH-MM-SSZ` tags with checksummed artifacts. Each release is announced with a [release note](https://silo.pgsty.com/tags/mcli/) on the portal; security advisories follow the [security policy](https://silo.pgsty.com/about/security/). Upstream copyright, license, and third-party notices are preserved in [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), and [`CREDITS`](CREDITS).
+The client is maintained together with the [Silo server](https://github.com/pgsty/silo) under one release process: DCO-signed commits, pull requests gated by required CI checks (a solo-maintained project: there is no independent human reviewer to enforce), signed and immutable `RELEASE.YYYY-MM-DDTHH-MM-SSZ` tags with checksummed artifacts. Each release is announced with a [release note](https://silo.pgsty.com/tags/mcli/) on the portal; security advisories follow the [security policy](https://silo.pgsty.com/about/security/). Upstream copyright, license, and third-party notices are preserved in [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), and [`CREDITS`](CREDITS).
 
 ## Compatibility
 
