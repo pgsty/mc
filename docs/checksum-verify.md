@@ -16,7 +16,10 @@ certainty, inspect `xl.meta`, repair metadata, or write object data.
 
 The command is intentionally not under `admin`: version one uses only S3 data
 plane operations and should work with SILO, inherited MinIO data, and other
-compatible endpoints when the caller has sufficient object permissions.
+compatible endpoints when the caller has sufficient object permissions. The
+endpoint must report the checksum type (`x-amz-checksum-type`) alongside the
+checksum; on one that does not, every checksummed object is classified
+`UNKNOWN_CHECKSUM_TYPE` rather than guessed at.
 
 ## Historical problem
 

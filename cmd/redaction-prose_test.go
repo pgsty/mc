@@ -36,6 +36,7 @@ func TestScrubCredentialTextKeepsProse(t *testing.T) {
 		"cannot be combined with AWS role authentication",
 		"access token not found in response",
 		"The provided token has expired",
+		"The security token included in the request is invalid",
 		"Content-MD5 digest mismatch for part 3",
 		"Basic auth is disabled",
 		"AWS4-HMAC-SHA256 is required for this region",

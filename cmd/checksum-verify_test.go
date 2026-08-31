@@ -529,9 +529,10 @@ func TestChecksumVerifySummaryFailOn(t *testing.T) {
 func TestApplyChecksumVerifyError(t *testing.T) {
 	base := checksumVerifyResult{SchemaVersion: 1, Type: "object", Bucket: "archive", Key: "object", Size: 42}
 	tests := []struct {
-		name string
-		err  error
-		want string
+		name        string
+		err         error
+		sseSupplied bool
+		want        string
 	}{
 		{
 			name: "access denied",
@@ -567,10 +568,22 @@ func TestApplyChecksumVerifyError(t *testing.T) {
 			},
 			want: checksumResultUnknownSSECKeyMissing,
 		},
+		{
+			// A key was supplied; the server refused the request itself
+			// (SSE-C over plain HTTP). That is not a missing key.
+			name: "SSE-C request refused although a key was supplied",
+			err: minio.ErrorResponse{
+				Code:       "InvalidRequest",
+				StatusCode: http.StatusBadRequest,
+				Message:    "Requests specifying Server Side Encryption with Customer provided keys must be made over a secure connection.",
+			},
+			sseSupplied: true,
+			want:        checksumResultUnknownReadError,
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := applyChecksumVerifyError(base, tc.err)
+			got := applyChecksumVerifyError(base, tc.err, tc.sseSupplied)
 			if got.Result != tc.want {
 				t.Fatalf("result %q, want %q", got.Result, tc.want)
 			}
