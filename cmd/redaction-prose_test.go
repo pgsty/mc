@@ -214,9 +214,10 @@ func TestRegisterKeyValueSecretsCoversEmbeddedCredentials(t *testing.T) {
 		"connection_string=host=db password='sp ace0123' sslmode=disable",
 		"connection_string=host=db user=u password=password sslmode=disable",
 		"connection_string=host=db password=a;b,c&d0123 dbname=x",
+		"conn=Server=x;Password=Str0ngP4ss0123;Database=z",
 	})
 	joined := strings.Join(redacted, " ")
-	for _, secret := range []string{"pgSecret0123", "amqpSecret0123", "hookToken0123", "p%40ss%3Aw0rd", "p@ss:w0rd", "sp ace0123", "a;b,c&d0123"} {
+	for _, secret := range []string{"pgSecret0123", "amqpSecret0123", "hookToken0123", "p%40ss%3Aw0rd", "p@ss:w0rd", "sp ace0123", "a;b,c&d0123", "Str0ngP4ss0123"} {
 		if strings.Contains(joined, secret) {
 			t.Errorf("redacted arguments still carry %q: %s", secret, joined)
 		}

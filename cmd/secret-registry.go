@@ -164,8 +164,18 @@ func embeddedSecrets(value string) []string {
 	}
 	for _, pattern := range embeddedSecretRegexps {
 		for _, match := range pattern.FindAllStringSubmatch(value, -1) {
-			if secret := strings.Trim(match[2], `"'`); !strings.EqualFold(secret, match[1]) {
-				secrets = append(secrets, secret)
+			secret := strings.Trim(match[2], `"'`)
+			if strings.EqualFold(secret, match[1]) {
+				continue
+			}
+			secrets = append(secrets, secret)
+			// An ODBC-style string ("Password=x;Database=z") has no whitespace,
+			// so the whole tail was captured; the part before the first
+			// separator is what a later echo would carry.
+			if unquoted := match[2] == secret; unquoted {
+				if i := strings.IndexAny(secret, ";,"); i > 0 {
+					secrets = append(secrets, secret[:i])
+				}
 			}
 		}
 	}
