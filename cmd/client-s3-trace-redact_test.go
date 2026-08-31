@@ -73,8 +73,8 @@ func TestRedactRequestForTraceHidesLowercaseAccessKey(t *testing.T) {
 		if strings.Contains(dump, "bbfaa693c626021bcb5f911cd898a1a30206c1fad6bad1e0eb89e282173bd24c") {
 			t.Errorf("signature leaked into trace: %s", dump)
 		}
-		if !strings.Contains(dump, "Credential="+redactedMarker+"/20260830/us-east-1/s3/aws4_request") {
-			t.Errorf("credential scope should survive redaction: %s", dump)
+		if !strings.Contains(dump, "Authorization: AWS4-HMAC-SHA256 "+redactedMarker) {
+			t.Errorf("only the scheme should survive redaction: %s", dump)
 		}
 	}
 }
@@ -87,7 +87,7 @@ func TestRedactRequestForTraceHidesSignatureV2Authorization(t *testing.T) {
 	if strings.Contains(dump, "minioadmin") || strings.Contains(dump, "Y10YHUZ0DTUterAUI6w3XKX7Iqk=") {
 		t.Fatalf("signature v2 credentials leaked into trace: %s", dump)
 	}
-	if !strings.Contains(dump, "AWS "+redactedMarker+":"+redactedMarker) {
+	if !strings.Contains(dump, "Authorization: AWS "+redactedMarker) {
 		t.Fatalf("signature v2 header not redacted: %s", dump)
 	}
 }

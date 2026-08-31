@@ -186,16 +186,53 @@ func TestAdversarialResponseRedaction(t *testing.T) {
 	}
 }
 
-// A key that holds a scope-shaped fragment must not have its tail mistaken for
-// the real scope; the real scope is the last one.
-func TestRedactAuthorizationKeepsOnlyTheRealScope(t *testing.T) {
-	got := redactAuthorization("AWS4-HMAC-SHA256 Credential=a/20200101/x/y/aws4_request/tail/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=ab12")
-	want := "AWS4-HMAC-SHA256 Credential=" + redactedMarker + "/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=" + redactedMarker
-	if got != want {
-		t.Fatalf("got  %q\nwant %q", got, want)
+// Nothing of a signed value survives except its scheme: every preserved field
+// - a scope, a SignedHeaders list - is a place a secret can be put.
+func TestRedactAuthorizationKeepsOnlyTheScheme(t *testing.T) {
+	for value, want := range map[string]string{
+		"AWS4-HMAC-SHA256 Credential=k/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=ab12":                                            "AWS4-HMAC-SHA256 " + redactedMarker,
+		"AWS4-HMAC-SHA256 Credential=k/20260831/" + strings.ToLower(adversarialSecret) + "/s3/aws4_request, Signature=ab12":                               "AWS4-HMAC-SHA256 " + redactedMarker,
+		"AWS4-HMAC-SHA256 Credential=k/20260831/us-east-1/s3/aws4_request, SignedHeaders=host;" + strings.ToLower(adversarialSecret) + ", Signature=ab12": "AWS4-HMAC-SHA256 " + redactedMarker,
+		"AWS4-HMAC-SHA256 Credential=nope": "AWS4-HMAC-SHA256 " + redactedMarker,
+		"AWS key:sig":                      "AWS " + redactedMarker,
+		"Bearer " + adversarialSecret:      "Bearer " + redactedMarker,
+		"Basic dXNlcjpwYXNz":               "Basic " + redactedMarker,
+		"opaque":                           redactedMarker,
+		"":                                 "",
+	} {
+		if got := redactAuthorization(value); got != want {
+			t.Errorf("redactAuthorization(%q) = %q, want %q", value, got, want)
+		}
 	}
-	if got := redactAuthorization("AWS4-HMAC-SHA256 Credential=nope"); got != "AWS4-HMAC-SHA256 "+redactedMarker {
-		t.Fatalf("unparseable SigV4 should keep only the algorithm: %q", got)
+}
+
+// A header the caller attached with --custom-header is a secret whatever it
+// is called.
+func TestArbitraryCustomHeaderIsRedacted(t *testing.T) {
+	saved := globalCustomHeader
+	globalCustomHeader = http.Header{}
+	globalCustomHeader.Add("X-Whatever", adversarialSecret)
+	t.Cleanup(func() { globalCustomHeader = saved })
+
+	req := adversarialRequest(t)
+	req.Header.Set("X-Whatever", adversarialSecret)
+	req.Header.Set("X-Request-Id", "keep-this")
+	dump := adversarialDump(t, req)
+	if strings.Contains(dump, adversarialSecret) {
+		t.Fatalf("custom header value leaked:\n%s", dump)
+	}
+	if !strings.Contains(dump, "X-Request-Id: keep-this") {
+		t.Fatalf("a header the caller did not supply must stay visible:\n%s", dump)
+	}
+
+	resp := adversarialResponse(t, http.Header{}, "<Error><Message>bad "+adversarialSecret+"</Message></Error>")
+	resp.Request.Header.Set("X-Whatever", adversarialSecret)
+	out, err := dumpResponseForTrace(resp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(out), adversarialSecret) {
+		t.Fatalf("reflected custom header value leaked:\n%s", out)
 	}
 }
 
@@ -227,13 +264,4 @@ func trailerResponse(t *testing.T) *http.Response {
 	resp.ContentLength = -1
 	resp.Trailer = http.Header{"X-Auth-Token": {adversarialSecret}}
 	return resp
-}
-
-// The rebuilt SigV4 value keeps exactly the recognized fields.
-func TestRedactSigV4RebuildsFromRecognizedFields(t *testing.T) {
-	got := redactAuthorization("AWS4-HMAC-SHA256 Credential=k/20260831/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-date, Signature=NOTHEX, Extra=x, " + adversarialSecret + "=y")
-	want := "AWS4-HMAC-SHA256 Credential=" + redactedMarker + "/20260831/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-date, Signature=" + redactedMarker + ", " + redactedMarker + ", " + redactedMarker
-	if got != want {
-		t.Fatalf("got  %q\nwant %q", got, want)
-	}
 }

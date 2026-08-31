@@ -227,9 +227,9 @@ func setGlobalsFromContext(ctx *cli.Context) error {
 			if !httpguts.ValidHeaderFieldValue(hv) {
 				return fmt.Errorf("invalid custom header entry #%d (%s): header value contains characters that are not allowed", n+1, h)
 			}
-			if isSecretHeaderName(h) {
-				registerAuthorizationSecrets(hv)
-			}
+			// Every custom header value is treated as a secret, whatever the
+			// header is called: this is where a proxy token or a WAF key goes.
+			registerAuthorizationSecrets(hv)
 			globalCustomHeader.Add(h, hv)
 		}
 	}

@@ -18,11 +18,14 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/minio/cli"
 )
 
 // The secret registry is the last line of defense for output this client
@@ -30,31 +33,27 @@ import (
 // into, a trace annotation that carried an argument, a report line. Every
 // credential the process learns - alias secret keys and session tokens, SSE-C
 // keys, tier and service-principal secrets, passwords and tokens supplied on
-// the command line - is registered as it is read, and final error output is
-// scrubbed against the registry before it reaches the terminal or a file.
+// the command line, prompted for, or returned by an identity service - is
+// registered as it is read, before it is validated or sent anywhere, and
+// final error output is scrubbed against the registry before it reaches the
+// terminal or a file.
 //
 // Per-request redaction in the tracer stays the primary control. The registry
 // exists so that a path nobody thought to redact still cannot print a secret
 // the process was handed.
 
-// Secrets at or above this length are replaced wherever they occur. Shorter
-// ones are replaced only as whole tokens, so a three-letter "secret" cannot
-// turn every word containing it into a marker. Anything under three
-// characters is not treated as a secret at all.
+// Secrets at or above secretRegistrySubstringAt are replaced wherever they
+// occur. Shorter ones are replaced only as whole tokens, so a three-letter
+// "secret" cannot turn every word containing it into a marker. Anything under
+// secretRegistryMinLen is not treated as a secret at all.
 const (
 	secretRegistryMinLen      = 3
 	secretRegistrySubstringAt = 8
 )
 
-type registeredSecret struct {
-	value   string
-	escaped string // the value as encoding/json renders it, without quotes
-	token   *regexp.Regexp
-}
-
 var (
 	secretRegistryMu sync.RWMutex
-	secretRegistry   []registeredSecret
+	secretRegistry   []string
 )
 
 // registerSecret records credential material so scrubKnownSecrets can remove
@@ -68,32 +67,17 @@ func registerSecret(values ...string) {
 		}
 		duplicate := false
 		for _, existing := range secretRegistry {
-			if existing.value == value {
+			if existing == value {
 				duplicate = true
 				break
 			}
 		}
-		if duplicate {
-			continue
+		if !duplicate {
+			secretRegistry = append(secretRegistry, value)
 		}
-		entry := registeredSecret{value: value}
-		// JSON output escapes quotes, backslashes and HTML characters, so a
-		// secret holding any of those never appears verbatim in --json
-		// error output. Match the escaped rendering as well.
-		if encoded, err := json.Marshal(value); err == nil && len(encoded) >= 2 {
-			if escaped := string(encoded[1 : len(encoded)-1]); escaped != value {
-				entry.escaped = escaped
-			}
-		}
-		if len(value) < secretRegistrySubstringAt {
-			entry.token = regexp.MustCompile(`(^|[^A-Za-z0-9_])` + regexp.QuoteMeta(value) + `($|[^A-Za-z0-9_])`)
-		}
-		secretRegistry = append(secretRegistry, entry)
 	}
-	// Longest first, so a secret that contains another is replaced whole
-	// instead of leaving fragments around a shorter match.
 	sort.SliceStable(secretRegistry, func(i, j int) bool {
-		return len(secretRegistry[i].value) > len(secretRegistry[j].value)
+		return len(secretRegistry[i]) > len(secretRegistry[j])
 	})
 }
 
@@ -104,43 +88,204 @@ func registerAuthorizationSecrets(value string) {
 	registerSecret(authorizationSecretValues(value)...)
 }
 
-// registerCredentialsJSON registers a credentials file such as a GCS service
-// account key: the whole document, and the private key on its own since that
-// is the part a server would most plausibly echo.
-func registerCredentialsJSON(data []byte) {
-	registerSecret(strings.TrimSpace(string(data)))
-	var fields map[string]any
-	if json.Unmarshal(data, &fields) != nil {
-		return
+// registerSecretFlags registers the values of the named flags, looking at the
+// command level and the app level, so a flag given before the command name is
+// covered too.
+func registerSecretFlags(ctx *cli.Context, names ...string) {
+	for _, name := range names {
+		registerSecret(ctx.String(name), ctx.GlobalString(name))
 	}
-	for _, name := range []string{"private_key", "private_key_id", "client_secret", "secret", "password", "token"} {
-		if value, ok := fields[name].(string); ok {
-			registerSecret(value)
+}
+
+// registerTierSecretFlags registers every credential a remote tier command
+// accepts, before validation or network activity. Shared by add and edit so
+// the two cannot drift.
+func registerTierSecretFlags(ctx *cli.Context) {
+	registerSecretFlags(ctx, "secret-key", "account-key", "az-sp-client-secret", "api-key", "ldap-password")
+}
+
+// secretKeyValueFragments marks the keys in a key=value argument list whose
+// values are credential material: admin config, LDAP and OpenID settings all
+// carry bind passwords and client secrets this way.
+var secretKeyValueFragments = []string{"secret", "password", "token", "passwd", "credential", "private_key", "api_key", "apikey"}
+
+func isSecretKeyValueName(key string) bool {
+	lower := strings.ToLower(key)
+	for _, fragment := range secretKeyValueFragments {
+		if strings.Contains(lower, fragment) {
+			return true
 		}
 	}
+	return false
+}
+
+// registerKeyValueSecrets registers the value of every key=value argument
+// whose key names a secret, and returns the arguments with those values
+// replaced, for use in an error message that would otherwise echo them.
+func registerKeyValueSecrets(args []string) []string {
+	redacted := make([]string, 0, len(args))
+	for _, arg := range args {
+		key, value, ok := strings.Cut(arg, "=")
+		if ok && isSecretKeyValueName(key) {
+			registerSecret(strings.Trim(value, `"'`), value)
+			redacted = append(redacted, key+"="+redactedMarker)
+			continue
+		}
+		redacted = append(redacted, arg)
+	}
+	return redacted
+}
+
+// registerCredentialsJSON registers a credentials file such as a GCS service
+// account key: the whole document, the private key on its own since that is
+// the part a server would most plausibly echo, and the base64 form madmin
+// sends over the admin API.
+func registerCredentialsJSON(data []byte) {
+	trimmed := strings.TrimSpace(string(data))
+	registerSecret(trimmed, string(data))
+	var fields map[string]any
+	if json.Unmarshal(data, &fields) == nil {
+		for name, value := range fields {
+			if text, ok := value.(string); ok && isSecretKeyValueName(name) {
+				registerSecret(text)
+			}
+		}
+	}
+	registerSecret(base64.StdEncoding.EncodeToString(data))
+}
+
+// occurrenceIntervals returns the [start,end) spans where secret occurs in
+// text. Short secrets count only as whole tokens.
+func occurrenceIntervals(text, secret string) [][2]int {
+	var spans [][2]int
+	whole := len(secret) >= secretRegistrySubstringAt
+	from := 0
+	for {
+		i := strings.Index(text[from:], secret)
+		if i < 0 {
+			return spans
+		}
+		start := from + i
+		end := start + len(secret)
+		if whole || (isTokenBoundary(text, start-1) && isTokenBoundary(text, end)) {
+			spans = append(spans, [2]int{start, end})
+		}
+		// Advance one byte, not len(secret): "abc abc" must yield both.
+		from = start + 1
+		if from > len(text) {
+			return spans
+		}
+	}
+}
+
+func isTokenBoundary(text string, i int) bool {
+	if i < 0 || i >= len(text) {
+		return true
+	}
+	c := text[i]
+	isWord := c == '_' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+	return !isWord
+}
+
+// replaceSecretOccurrences replaces every occurrence of every secret in text
+// with the marker. Occurrences are collected first and merged, so overlapping
+// secrets and adjacent repeats are each replaced exactly once.
+func replaceSecretOccurrences(text string, secrets []string) string {
+	var spans [][2]int
+	for _, secret := range secrets {
+		if len(secret) < secretRegistryMinLen || secret == redactedMarker {
+			continue
+		}
+		spans = append(spans, occurrenceIntervals(text, secret)...)
+		// The JSON rendering of the secret, for text that is itself JSON.
+		if encoded, err := json.Marshal(secret); err == nil {
+			if escaped := string(encoded[1 : len(encoded)-1]); escaped != secret {
+				spans = append(spans, occurrenceIntervals(text, escaped)...)
+			}
+		}
+	}
+	if len(spans) == 0 {
+		return text
+	}
+	sort.Slice(spans, func(i, j int) bool { return spans[i][0] < spans[j][0] })
+	var out strings.Builder
+	cursor := 0
+	for i := 0; i < len(spans); {
+		start, end := spans[i][0], spans[i][1]
+		j := i + 1
+		for j < len(spans) && spans[j][0] <= end {
+			if spans[j][1] > end {
+				end = spans[j][1]
+			}
+			j++
+		}
+		if start >= cursor {
+			out.WriteString(text[cursor:start])
+			out.WriteString(redactedMarker)
+			cursor = end
+		}
+		i = j
+	}
+	out.WriteString(text[cursor:])
+	return out.String()
 }
 
 // scrubKnownSecrets replaces every registered secret in text.
 func scrubKnownSecrets(text string) string {
 	secretRegistryMu.RLock()
-	defer secretRegistryMu.RUnlock()
-	for _, secret := range secretRegistry {
-		if secret.token != nil {
-			text = secret.token.ReplaceAllString(text, "${1}"+redactedMarker+"${2}")
-		} else {
-			text = strings.ReplaceAll(text, secret.value, redactedMarker)
-		}
-		if secret.escaped != "" {
-			text = strings.ReplaceAll(text, secret.escaped, redactedMarker)
-		}
-	}
-	return text
+	secrets := append([]string(nil), secretRegistry...)
+	secretRegistryMu.RUnlock()
+	return replaceSecretOccurrences(text, secrets)
 }
 
 // scrubSecretsFromOutput prepares text for the terminal or a file: credential
 // shapes are removed by pattern, then every registered secret by value.
 func scrubSecretsFromOutput(text string) string {
 	return scrubKnownSecrets(scrubCredentialText(text))
+}
+
+// scrubJSONValue walks a decoded JSON document and scrubs every string leaf.
+// Object keys are left alone: they are schema, and a machine reading the
+// document must still find them even if one happens to equal a secret.
+func scrubJSONValue(v any) any {
+	switch value := v.(type) {
+	case string:
+		return scrubSecretsFromOutput(value)
+	case []any:
+		for i := range value {
+			value[i] = scrubJSONValue(value[i])
+		}
+		return value
+	case map[string]any:
+		for key := range value {
+			value[key] = scrubJSONValue(value[key])
+		}
+		return value
+	default:
+		return v
+	}
+}
+
+// scrubJSONOutput renders v as indented JSON with every string leaf scrubbed.
+// The document is re-encoded from its decoded form rather than edited as text,
+// so keys and structure survive intact. If the value cannot be round-tripped,
+// the whole document is withheld rather than printed unscrubbed.
+func scrubJSONOutput(v any) (string, error) {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	var decoded any
+	if err := json.Unmarshal(encoded, &decoded); err != nil {
+		return "", err
+	}
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetIndent("", " ")
+	if err := encoder.Encode(scrubJSONValue(decoded)); err != nil {
+		return "", err
+	}
+	return strings.TrimRight(out.String(), "\n"), nil
 }
 
 // resetSecretRegistryForTest clears the registry between tests.

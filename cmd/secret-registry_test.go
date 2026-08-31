@@ -221,3 +221,66 @@ func TestInvalidAPISignatureErrorDoesNotEchoCredentials(t *testing.T) {
 		t.Fatalf("errInvalidAPISignature echoed the secret: %s", msg)
 	}
 }
+
+// Adjacent repeats share one delimiter; both must go.
+func TestSecretRegistryScrubsAdjacentRepeats(t *testing.T) {
+	resetSecretRegistryForTest()
+	t.Cleanup(resetSecretRegistryForTest)
+	registerSecret("abc")
+	if got := scrubKnownSecrets("abc abc"); got != redactedMarker+" "+redactedMarker {
+		t.Fatalf("adjacent repeats: %q", got)
+	}
+	if got := scrubKnownSecrets("abc,abc;abc"); got != redactedMarker+","+redactedMarker+";"+redactedMarker {
+		t.Fatalf("adjacent repeats with punctuation: %q", got)
+	}
+	registerSecret("longsecretvalue1")
+	if got := scrubKnownSecrets("longsecretvalue1longsecretvalue1 x"); got != redactedMarker+" x" {
+		t.Fatalf("overlapping long secrets must merge into one marker: %q", got)
+	}
+}
+
+// Scrubbing JSON must never rewrite a key: a machine reading the document
+// still needs its schema even when a secret happens to equal a key name.
+func TestScrubJSONOutputKeepsKeys(t *testing.T) {
+	resetSecretRegistryForTest()
+	t.Cleanup(resetSecretRegistryForTest)
+	registerSecret("status", "tok<en>&0123456789")
+
+	got, err := scrubJSONOutput(map[string]any{
+		"status": "error",
+		"error": map[string]any{
+			"message": "server said tok<en>&0123456789 and status",
+			"list":    []any{"status", 1, true},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, `"status": "error"`) {
+		t.Fatalf("key rewritten: %s", got)
+	}
+	if strings.Contains(got, "tok") || strings.Contains(got, "u003cen") {
+		t.Fatalf("value not scrubbed: %s", got)
+	}
+	if !strings.Contains(got, `"`+redactedMarker+`",`) {
+		t.Fatalf("string leaf inside a list not scrubbed: %s", got)
+	}
+	if strings.Contains(got, "and status\"") {
+		t.Fatalf("whole-token short secret in a value not scrubbed: %s", got)
+	}
+}
+
+func TestRegisterKeyValueSecrets(t *testing.T) {
+	resetSecretRegistryForTest()
+	t.Cleanup(resetSecretRegistryForTest)
+	redacted := registerKeyValueSecrets([]string{"server_addr=ldap:389", "lookup_bind_password=bindpass0123", `client_secret="quoted0123"`, "enable=on"})
+	want := []string{"server_addr=ldap:389", "lookup_bind_password=" + redactedMarker, "client_secret=" + redactedMarker, "enable=on"}
+	if strings.Join(redacted, "|") != strings.Join(want, "|") {
+		t.Fatalf("redacted args = %v, want %v", redacted, want)
+	}
+	for _, secret := range []string{"bindpass0123", "quoted0123"} {
+		if got := scrubKnownSecrets("[" + secret + "]"); got != "["+redactedMarker+"]" {
+			t.Errorf("%q was not registered: %q", secret, got)
+		}
+	}
+}
