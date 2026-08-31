@@ -137,11 +137,15 @@ func isSecretKeyValueName(key string) bool {
 	return false
 }
 
-// embeddedSecretRegexp finds a credential assignment inside a composite
-// value whose own key names nothing secret: a DSN ("host=db user=u
-// password=s"), a connection string, a webhook endpoint with "?token=s".
-// The payload may be quoted ("password='p@ss word'").
-var embeddedSecretRegexp = regexp.MustCompile(`(?i)(?:^|[\s;,&?])(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key|client[_-]?secret|private[_-]?key)=("[^"]*"|'[^']*'|[^\s;,&]+)`)
+// embeddedSecretRegexps find a credential assignment inside a composite
+// value whose own key names nothing secret. In a DSN or connection string
+// ("host=db user=u password=s") the payload runs to the next whitespace -
+// libpq allows ";", "," and "&" in an unquoted value - or is quoted
+// ("password='p@ss word'"); in a URL query ("?token=s&x=1") it stops at "&".
+var embeddedSecretRegexps = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(?:^|[\s;,])(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key|client[_-]?secret|private[_-]?key)=("[^"]*"|'[^']*'|[^\s]+)`),
+	regexp.MustCompile(`(?i)[?&](password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key|client[_-]?secret|private[_-]?key)=([^\s&]+)`),
+}
 
 // embeddedSecrets returns the credential material a value carries inside it:
 // the password of a URL's userinfo - decoded, and exactly as written, since
@@ -158,9 +162,11 @@ func embeddedSecrets(value string) []string {
 			}
 		}
 	}
-	for _, match := range embeddedSecretRegexp.FindAllStringSubmatch(value, -1) {
-		if secret := strings.Trim(match[2], `"'`); !strings.EqualFold(secret, match[1]) {
-			secrets = append(secrets, secret)
+	for _, pattern := range embeddedSecretRegexps {
+		for _, match := range pattern.FindAllStringSubmatch(value, -1) {
+			if secret := strings.Trim(match[2], `"'`); !strings.EqualFold(secret, match[1]) {
+				secrets = append(secrets, secret)
+			}
 		}
 	}
 	return secrets

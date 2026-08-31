@@ -65,6 +65,8 @@ func TestScrubCredentialTextStillRedactsCredentialShapes(t *testing.T) {
 		"AWS a/b:frJIUN8DYpKDtOLCwo//yllqDzg=":                  "AWS " + redactedMarker,
 		"Token 0123456789abcdef":                                "Token " + redactedMarker,
 		"Negotiate YIIFmQYGKwYBBQUCoIIFjTCCBYmgJDAi":            "Negotiate " + redactedMarker,
+		"invalid bearer eyJhbGciOiJIUzI1NiJ9.payload.sig":       "invalid bearer " + redactedMarker,
+		"BASIC dXNlcjpwYXNz":                                    "BASIC " + redactedMarker,
 		"AWS4-HMAC-SHA256 Credential=k/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=ab12": "AWS4-HMAC-SHA256 " + redactedMarker,
 		"AWS4-HMAC-SHA256 SECRETVALUE0123 Credential=k/20260831/us-east-1/s3/aws4_request":                     "AWS4-HMAC-SHA256 " + redactedMarker,
 		"scope Credential=k/20260831/us-east-1/s3/aws4_request only":                                           "scope Credential=" + redactedMarker + " only",
@@ -211,9 +213,10 @@ func TestRegisterKeyValueSecretsCoversEmbeddedCredentials(t *testing.T) {
 		"broker=amqps://svc:p%40ss%3Aw0rd@broker.example:5671/vhost",
 		"connection_string=host=db password='sp ace0123' sslmode=disable",
 		"connection_string=host=db user=u password=password sslmode=disable",
+		"connection_string=host=db password=a;b,c&d0123 dbname=x",
 	})
 	joined := strings.Join(redacted, " ")
-	for _, secret := range []string{"pgSecret0123", "amqpSecret0123", "hookToken0123", "p%40ss%3Aw0rd", "p@ss:w0rd", "sp ace0123"} {
+	for _, secret := range []string{"pgSecret0123", "amqpSecret0123", "hookToken0123", "p%40ss%3Aw0rd", "p@ss:w0rd", "sp ace0123", "a;b,c&d0123"} {
 		if strings.Contains(joined, secret) {
 			t.Errorf("redacted arguments still carry %q: %s", secret, joined)
 		}
@@ -221,7 +224,7 @@ func TestRegisterKeyValueSecretsCoversEmbeddedCredentials(t *testing.T) {
 			t.Errorf("%q was not registered: %q", secret, got)
 		}
 	}
-	for _, keep := range []string{"notify_postgres:1", "host=db user=u password=" + redactedMarker + " dbname=x", "amqp://user:" + redactedMarker + "@host:5672", "https://h/hook?token=" + redactedMarker, "queue_dir=/var/queue", "amqps://svc:" + redactedMarker + "@broker.example:5671/vhost", "password='" + redactedMarker + "'", "password=password sslmode=disable"} {
+	for _, keep := range []string{"notify_postgres:1", "host=db user=u password=" + redactedMarker + " dbname=x", "amqp://user:" + redactedMarker + "@host:5672", "https://h/hook?token=" + redactedMarker, "queue_dir=/var/queue", "amqps://svc:" + redactedMarker + "@broker.example:5671/vhost", "password='" + redactedMarker + "'", "password=password sslmode=disable", "host=db password=" + redactedMarker + " dbname=x"} {
 		if !strings.Contains(joined, keep) {
 			t.Errorf("redacted arguments lost %q: %s", keep, joined)
 		}

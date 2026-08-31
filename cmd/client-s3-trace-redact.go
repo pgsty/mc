@@ -73,9 +73,12 @@ var traceTextShapes = []struct {
 	// the base64 signature separate it from prose such as "AWS S3 compatible"
 	// or "AWS https://s3.amazonaws.com".
 	{pattern: regexp.MustCompile(`\bAWS [^\s:"'<>]+:[A-Za-z0-9+/]{20,}={0,2}`), replacement: "AWS " + redactedMarker},
-	// Scheme-prefixed tokens, in the canonical spelling a header uses, when
-	// the payload looks like a token rather than the next word of a sentence.
-	{pattern: regexp.MustCompile(`\b(Bearer|Basic|Digest|Negotiate|NTLM|Token) ([^\s"'<>,]+)`), replacement: "$1 " + redactedMarker, accept: func(groups []string) bool { return looksLikeCredentialPayload(groups[2]) }},
+	// Scheme-prefixed tokens, when the payload looks like a token rather than
+	// the next word of a sentence. Scheme names are case-insensitive on the
+	// wire, so a proxy may echo "bearer <jwt>"; "Digest" and "Token" are also
+	// English words ("digest mismatch", "token has expired") and match only in
+	// the spelling a header uses.
+	{pattern: regexp.MustCompile(`\b((?i:Bearer|Basic|Negotiate|NTLM)|Digest|Token) ([^\s"'<>,]+)`), replacement: "$1 " + redactedMarker, accept: func(groups []string) bool { return looksLikeCredentialPayload(groups[2]) }},
 	// Credential-bearing query parameters wherever a URL appears, matched by
 	// name fragment so a parameter this client never sends is still caught.
 	{pattern: regexp.MustCompile(`([?&]([^=&\s"'<>]*(?i:token|signature|credential|secret|password|api[-_]?key|auth|sig|key)[^=&\s"'<>]*)=)[^&\s"'<>]+`), replacement: "${1}" + redactedMarker, accept: func(groups []string) bool { return !isListingQueryParam(groups[2]) }},
