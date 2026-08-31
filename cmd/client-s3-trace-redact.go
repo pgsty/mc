@@ -392,9 +392,12 @@ func dumpResponseForTrace(resp *http.Response) ([]byte, error) {
 	}
 
 	// The body and any reflected header are server-controlled text: scrub
-	// credential shapes generically, then the literal values this request
-	// sent, then everything else the process knows to be secret.
-	text := scrubCredentialText(string(dump))
-	text = redactSecretValues(text, requestSecretValues(resp.Request))
+	// literal values before broad credential-shape matching can split them,
+	// then repeat the exact-value sweep as a fail-closed final pass.
+	secrets := requestSecretValues(resp.Request)
+	text := redactSecretValues(string(dump), secrets)
+	text = scrubKnownSecrets(text)
+	text = scrubCredentialText(text)
+	text = redactSecretValues(text, secrets)
 	return []byte(scrubKnownSecrets(text)), nil
 }

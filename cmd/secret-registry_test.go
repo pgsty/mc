@@ -189,6 +189,22 @@ func TestSecretRegistryScrubsJSONEscapedForms(t *testing.T) {
 	}
 }
 
+// Exact values must be removed before the broad credential-shape sweep. If
+// the sweep sees a quote first it can otherwise consume only a prefix and
+// leave the rest of a registered secret behind.
+func TestScrubSecretsFromOutputRemovesKnownValueBeforeShapeSweep(t *testing.T) {
+	resetSecretRegistryForTest()
+	t.Cleanup(resetSecretRegistryForTest)
+
+	const secret = `json"secret-token`
+	registerSecret(secret)
+	text := `reflected: auth=[AWS4-HMAC-SHA256 Credential=x/20260831/r/s/aws4_request, Signature=abc] token=[` + secret + `]`
+	got := scrubSecretsFromOutput(text)
+	if strings.Contains(got, "secret-token") || strings.Contains(got, secret) {
+		t.Fatalf("known secret was split by the shape sweep: %s", got)
+	}
+}
+
 func TestAuthorizationSecretValuesCoverEchoableParts(t *testing.T) {
 	values := authorizationSecretValues("Basic " + base64.StdEncoding.EncodeToString([]byte("user:hunter2pass")))
 	joined := strings.Join(values, "|")

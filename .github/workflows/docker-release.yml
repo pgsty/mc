@@ -184,7 +184,6 @@ jobs:
             "pgsty/mc:${RELEASE_TAG}-amd64" \
             "pgsty/mc:${RELEASE_TAG}-arm64"
           docker buildx imagetools create \
-            --tag "pgsty/mc:latest" \
             --tag "pgsty/mc:latest-amd64" \
             "pgsty/mc:${RELEASE_TAG}-amd64"
           docker buildx imagetools create \

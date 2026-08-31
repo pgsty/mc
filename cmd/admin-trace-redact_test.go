@@ -126,3 +126,33 @@ func TestRedactHeaderMapHandlesEveryValueAndCopies(t *testing.T) {
 		t.Fatal("nil map should stay nil")
 	}
 }
+
+func TestAdminTraceScrubsKnownQuotedSecretBeforeShapeSweep(t *testing.T) {
+	const secret = `json"admin-trace-secret`
+	msg := traceMessage{
+		Status: "success",
+		ServiceTraceInfo: madmin.ServiceTraceInfo{Trace: madmin.TraceInfo{
+			TraceType: madmin.TraceS3,
+			NodeName:  "node1",
+			FuncName:  "s3.GetObject",
+			Time:      time.Unix(100, 0).UTC(),
+			Path:      "/bucket/object",
+			HTTP: &madmin.TraceHTTPStats{
+				ReqInfo: madmin.TraceRequestInfo{
+					Time:    time.Unix(100, 0).UTC(),
+					Proto:   "HTTP/1.1",
+					Method:  http.MethodGet,
+					Path:    "/bucket/object",
+					Headers: http.Header{"X-Auth-Token": {secret}},
+					Body:    []byte("AWS4-HMAC-SHA256 Credential=x/20260831/r/s/aws4_request, Signature=abc token=[" + secret + "]"),
+				},
+				RespInfo: madmin.TraceResponseInfo{Time: time.Unix(101, 0).UTC(), StatusCode: http.StatusForbidden},
+			},
+		}},
+	}
+	for name, rendered := range map[string]string{"human": msg.String(), "json": msg.JSON()} {
+		if strings.Contains(rendered, "admin-trace-secret") || strings.Contains(rendered, secret) {
+			t.Fatalf("%s trace leaked suffix of a known quoted secret:\n%s", name, rendered)
+		}
+	}
+}

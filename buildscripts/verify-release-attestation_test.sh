@@ -109,11 +109,18 @@ printf '[%s,%s]\n' "$(attestation "$(basename "${asset}")" "${digest}")" "$(atte
 expect_failure "${tag}" "${commit}" "${asset}"
 grep -qF "(1/2 attestations agree)" "${work}/err"
 
-# A statement with several subjects is not the one-file provenance this
-# workflow produces.
+# The Release workflow attests all release files in one multi-subject
+# statement. It is valid when this file's exact name+digest pair is present.
 printf '[{"verificationResult":{"statement":{"subject":[{"name":"%s","digest":{"sha256":"%s"}},{"name":"x","digest":{"sha256":"%s"}}]}}}]\n' \
   "$(basename "${asset}")" "${digest}" "${digest}" >"${RESPONSE_FILE}"
+expect_success "${tag}" "${commit}" "${asset}"
+
+# A multi-subject statement with the right name and digest only on different
+# subjects must fail: an arm64 archive renamed as amd64 has this shape.
+printf '[{"verificationResult":{"statement":{"subject":[{"name":"%s","digest":{"sha256":"%s"}},{"name":"other.tar.gz","digest":{"sha256":"%s"}}]}}}]\n' \
+  "$(basename "${asset}")" "0000000000000000000000000000000000000000000000000000000000000000" "${digest}" >"${RESPONSE_FILE}"
 expect_failure "${tag}" "${commit}" "${asset}"
+grep -qF "attested subject does not match" "${work}/err"
 
 # Empty, malformed, or not an array.
 printf '[]\n' >"${RESPONSE_FILE}"

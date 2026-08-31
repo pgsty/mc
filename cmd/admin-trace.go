@@ -1069,5 +1069,9 @@ func traceEventSecrets(headers ...map[string][]string) []string {
 // redactTraceText scrubs server-supplied trace text: credential shapes, the
 // event's own header values, and everything this process knows to be secret.
 func redactTraceText(text string, eventSecrets []string) string {
-	return scrubKnownSecrets(redactSecretValues(scrubCredentialText(text), eventSecrets))
+	text = redactSecretValues(text, eventSecrets)
+	text = scrubKnownSecrets(text)
+	text = scrubCredentialText(text)
+	text = redactSecretValues(text, eventSecrets)
+	return scrubKnownSecrets(text)
 }

@@ -81,9 +81,8 @@ for file in "$@"; do
 
   matching="$(jq --arg name "${name}" --arg digest "${digest}" '
     [ .[] | .verificationResult.statement.subject
-      | select(type == "array" and length == 1)
-      | .[0]
-      | select(.name == $name and .digest.sha256 == $digest) ] | length' <<<"${result}")"
+      | select(type == "array")
+      | select(any(.[]; .name == $name and .digest.sha256 == $digest)) ] | length' <<<"${result}")"
   [ "${matching}" -eq "${count}" ] || fail "attested subject does not match ${name} sha256:${digest} (${matching}/${count} attestations agree)"
 
   echo "verified ${name} sha256:${digest} against ${count} attestation(s) from ${identity}"

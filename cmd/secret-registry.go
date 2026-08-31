@@ -241,7 +241,12 @@ func scrubKnownSecrets(text string) string {
 // scrubSecretsFromOutput prepares text for the terminal or a file: credential
 // shapes are removed by pattern, then every registered secret by value.
 func scrubSecretsFromOutput(text string) string {
-	return scrubKnownSecrets(scrubCredentialText(text))
+	// Remove exact values first. A broad shape matcher can otherwise consume a
+	// prefix of a known value (for example up to a quote) and leave a suffix the
+	// registry can no longer recognize.
+	text = scrubKnownSecrets(text)
+	text = scrubCredentialText(text)
+	return scrubKnownSecrets(text)
 }
 
 // scrubJSONValue walks a decoded JSON document and scrubs every string leaf.
