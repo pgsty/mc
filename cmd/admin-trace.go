@@ -700,21 +700,29 @@ func shortTrace(ti madmin.ServiceTraceInfo) shortTraceMsg {
 	s := shortTraceMsg{}
 	t := ti.Trace
 
+	// The server supplies every text field verbatim for other clients'
+	// requests; the short rendering must withhold credentials exactly like
+	// the verbose one. Work on redacted copies - the event is shared.
+	var eventSecrets []string
+	if t.HTTP != nil {
+		eventSecrets = traceEventSecrets(t.HTTP.ReqInfo.Headers, t.HTTP.RespInfo.Headers)
+	}
+
 	s.trcType = t.TraceType
 	s.Type = t.TraceType.String()
 	s.FuncName = t.FuncName
 	s.Time = t.Time
 	s.Path = t.Path
-	s.Error = t.Error
+	s.Error = redactTraceText(t.Error, eventSecrets)
 	s.Host = t.NodeName
 	s.Duration = t.Duration
-	s.StatusMsg = t.Message
-	s.Extra = t.Custom
+	s.StatusMsg = redactTraceText(t.Message, eventSecrets)
+	s.Extra = redactTraceCustom(t.Custom, eventSecrets)
 	s.Size = t.Bytes
 
 	switch t.TraceType {
 	case madmin.TraceS3, madmin.TraceInternal:
-		s.Query = t.HTTP.ReqInfo.RawQuery
+		s.Query = redactTraceQuery(t.HTTP.ReqInfo.RawQuery, eventSecrets)
 		s.StatusCode = t.HTTP.RespInfo.StatusCode
 		s.StatusMsg = http.StatusText(t.HTTP.RespInfo.StatusCode)
 		s.Client = t.HTTP.ReqInfo.Client
@@ -819,6 +827,10 @@ func colorizedNodeName(nodeName string) string {
 }
 
 func (t traceMessage) JSON() string {
+	var eventSecrets []string
+	if t.Trace.HTTP != nil {
+		eventSecrets = traceEventSecrets(t.Trace.HTTP.ReqInfo.Headers, t.Trace.HTTP.RespInfo.Headers)
+	}
 	trc := verboseTrace{
 		trcType:    t.Trace.TraceType,
 		Type:       t.Trace.TraceType.String(),
@@ -827,10 +839,10 @@ func (t traceMessage) JSON() string {
 		Time:       t.Trace.Time,
 		Duration:   t.Trace.Duration,
 		Path:       t.Trace.Path,
-		Error:      t.Trace.Error,
+		Error:      redactTraceText(t.Trace.Error, eventSecrets),
 		HealResult: t.Trace.HealResult,
-		Message:    t.Trace.Message,
-		Extra:      t.Trace.Custom,
+		Message:    redactTraceText(t.Trace.Message, eventSecrets),
+		Extra:      redactTraceCustom(t.Trace.Custom, eventSecrets),
 	}
 
 	if t.Trace.HTTP != nil {
@@ -850,14 +862,13 @@ func (t traceMessage) JSON() string {
 		for k, v := range redactHeaderMap(rs.Headers) {
 			rspHdrs[k] = strings.Join(v, " ")
 		}
-		eventSecrets := traceEventSecrets(rq.Headers, rs.Headers)
 
 		trc.RequestInfo = &requestInfo{
 			Time:     rq.Time,
 			Proto:    rq.Proto,
 			Method:   rq.Method,
 			Path:     rq.Path,
-			RawQuery: redactTraceText(rq.RawQuery, eventSecrets),
+			RawQuery: redactTraceQuery(rq.RawQuery, eventSecrets),
 			Body:     redactTraceText(string(rq.Body), eventSecrets),
 			Headers:  rqHdrs,
 		}
@@ -889,13 +900,23 @@ func (t traceMessage) String() string {
 	var nodeNameStr string
 	b := &strings.Builder{}
 
+	// Render a redacted copy: the server supplies the error, message and
+	// annotations verbatim for other clients' requests, and the event is
+	// shared with the JSON path.
 	trc := t.Trace
+	var eventSecrets []string
+	if trc.HTTP != nil {
+		eventSecrets = traceEventSecrets(trc.HTTP.ReqInfo.Headers, trc.HTTP.RespInfo.Headers)
+	}
+	trc.Error = redactTraceText(trc.Error, eventSecrets)
+	trc.Message = redactTraceText(trc.Message, eventSecrets)
+	trc.Custom = redactTraceCustom(trc.Custom, eventSecrets)
 	if trc.NodeName != "" {
 		nodeNameStr = fmt.Sprintf("%s ", colorizedNodeName(trc.NodeName))
 	}
 	extra := ""
-	if len(t.Trace.Custom) > 0 {
-		for k, v := range t.Trace.Custom {
+	if len(trc.Custom) > 0 {
+		for k, v := range trc.Custom {
 			extra = fmt.Sprintf("%s %s=%s", extra, k, v)
 		}
 		extra = console.Colorize("Extra", extra)
@@ -927,12 +948,11 @@ func (t traceMessage) String() string {
 	// is shared with the JSON path and must not be mutated.
 	reqHeaders := redactHeaderMap(ri.Headers)
 	respHeaders := redactHeaderMap(rs.Headers)
-	eventSecrets := traceEventSecrets(ri.Headers, rs.Headers)
 	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Request", fmt.Sprintf("[REQUEST %s] ", trc.FuncName)))
 	fmt.Fprintf(b, "[%s] %s\n", ri.Time.Local().Format(traceTimeFormat), console.Colorize("Host", fmt.Sprintf("[Client IP: %s]", ri.Client)))
 	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Method", fmt.Sprintf("%s %s", ri.Method, ri.Path)))
 	if ri.RawQuery != "" {
-		fmt.Fprintf(b, "?%s", redactTraceText(ri.RawQuery, eventSecrets))
+		fmt.Fprintf(b, "?%s", redactTraceQuery(ri.RawQuery, eventSecrets))
 	}
 	fmt.Fprint(b, "\n")
 	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Method", fmt.Sprintf("Proto: %s\n", ri.Proto)))
@@ -1074,4 +1094,28 @@ func redactTraceText(text string, eventSecrets []string) string {
 	text = scrubCredentialText(text)
 	text = redactSecretValues(text, eventSecrets)
 	return scrubKnownSecrets(text)
+}
+
+// redactTraceQuery redacts a raw query string. The query shape keys on the
+// "?" or "&" in front of a parameter name, so the "?" the trace strips is put
+// back for the scan; a credential in the first parameter is then caught too.
+func redactTraceQuery(rawQuery string, eventSecrets []string) string {
+	if rawQuery == "" {
+		return ""
+	}
+	redacted := redactTraceText("?"+rawQuery, eventSecrets)
+	return strings.TrimPrefix(redacted, "?")
+}
+
+// redactTraceCustom returns a redacted copy of an event's custom annotations;
+// the event is shared with the other rendering and is left untouched.
+func redactTraceCustom(custom map[string]string, eventSecrets []string) map[string]string {
+	if len(custom) == 0 {
+		return custom
+	}
+	redacted := make(map[string]string, len(custom))
+	for key, value := range custom {
+		redacted[key] = redactTraceText(value, eventSecrets)
+	}
+	return redacted
 }

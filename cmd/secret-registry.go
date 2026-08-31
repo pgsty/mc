@@ -21,6 +21,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -56,13 +58,29 @@ var (
 	secretRegistry   []string
 )
 
+// secretPlaceholders are values that turn up under secret-named keys without
+// being secrets - "auth_token=off", "client_secret=true". Registering them
+// would turn every later "off" or "true" in an error message into a marker.
+var secretPlaceholders = map[string]struct{}{
+	"on": {}, "off": {}, "true": {}, "false": {}, "yes": {}, "no": {},
+	"none": {}, "null": {}, "nil": {}, "auto": {}, "default": {}, "empty": {},
+	"enable": {}, "enabled": {}, "disable": {}, "disabled": {},
+	"required": {}, "optional": {}, "unset": {},
+}
+
+func isSecretPlaceholder(value string) bool {
+	_, ok := secretPlaceholders[strings.ToLower(value)]
+	return ok
+}
+
 // registerSecret records credential material so scrubKnownSecrets can remove
-// it from any later output. Empty and very short values are ignored.
+// it from any later output. Empty, very short and placeholder values are
+// ignored.
 func registerSecret(values ...string) {
 	secretRegistryMu.Lock()
 	defer secretRegistryMu.Unlock()
 	for _, value := range values {
-		if len(value) < secretRegistryMinLen || value == redactedMarker {
+		if len(value) < secretRegistryMinLen || value == redactedMarker || isSecretPlaceholder(value) {
 			continue
 		}
 		duplicate := false
@@ -119,8 +137,30 @@ func isSecretKeyValueName(key string) bool {
 	return false
 }
 
+// embeddedSecretRegexp finds a credential assignment inside a composite
+// value whose own key names nothing secret: a DSN ("host=db user=u
+// password=s"), a connection string, a webhook endpoint with "?token=s".
+var embeddedSecretRegexp = regexp.MustCompile(`(?i)(?:^|[\s;,&?])(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key|client[_-]?secret|private[_-]?key)=([^\s;,&]+)`)
+
+// embeddedSecrets returns the credential material a value carries inside it:
+// the password of a URL's userinfo and the value of every password=/token=
+// style assignment.
+func embeddedSecrets(value string) []string {
+	var secrets []string
+	if parsed, err := url.Parse(value); err == nil && parsed.User != nil {
+		if password, ok := parsed.User.Password(); ok {
+			secrets = append(secrets, password)
+		}
+	}
+	for _, match := range embeddedSecretRegexp.FindAllStringSubmatch(value, -1) {
+		secrets = append(secrets, strings.Trim(match[1], `"'`))
+	}
+	return secrets
+}
+
 // registerKeyValueSecrets registers the value of every key=value argument
-// whose key names a secret, and returns the arguments with those values
+// whose key names a secret, and the credentials embedded in the other values
+// (a DSN, a URL with userinfo), and returns the arguments with those values
 // replaced, for use in an error message that would otherwise echo them.
 func registerKeyValueSecrets(args []string) []string {
 	redacted := make([]string, 0, len(args))
@@ -129,6 +169,17 @@ func registerKeyValueSecrets(args []string) []string {
 		if ok && isSecretKeyValueName(key) {
 			registerSecret(strings.Trim(value, `"'`), value)
 			redacted = append(redacted, key+"="+redactedMarker)
+			continue
+		}
+		if embedded := embeddedSecrets(value); len(embedded) > 0 {
+			registerSecret(embedded...)
+			masked := arg
+			for _, secret := range embedded {
+				if len(secret) >= secretRegistryMinLen && !isSecretPlaceholder(secret) {
+					masked = strings.ReplaceAll(masked, secret, redactedMarker)
+				}
+			}
+			redacted = append(redacted, masked)
 			continue
 		}
 		redacted = append(redacted, arg)
