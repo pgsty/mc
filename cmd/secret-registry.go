@@ -140,22 +140,52 @@ func isSecretKeyValueName(key string) bool {
 // embeddedSecretRegexp finds a credential assignment inside a composite
 // value whose own key names nothing secret: a DSN ("host=db user=u
 // password=s"), a connection string, a webhook endpoint with "?token=s".
-var embeddedSecretRegexp = regexp.MustCompile(`(?i)(?:^|[\s;,&?])(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key|client[_-]?secret|private[_-]?key)=([^\s;,&]+)`)
+// The payload may be quoted ("password='p@ss word'").
+var embeddedSecretRegexp = regexp.MustCompile(`(?i)(?:^|[\s;,&?])(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key|client[_-]?secret|private[_-]?key)=("[^"]*"|'[^']*'|[^\s;,&]+)`)
 
 // embeddedSecrets returns the credential material a value carries inside it:
-// the password of a URL's userinfo and the value of every password=/token=
-// style assignment.
+// the password of a URL's userinfo - decoded, and exactly as written, since
+// a password with "@" or ":" travels percent-encoded - and the value of every
+// password=/token= style assignment. A placeholder equal to its own key
+// ("password=password", the documentation's example) is not a secret.
 func embeddedSecrets(value string) []string {
 	var secrets []string
 	if parsed, err := url.Parse(value); err == nil && parsed.User != nil {
 		if password, ok := parsed.User.Password(); ok {
 			secrets = append(secrets, password)
+			if raw := rawURLPassword(value); raw != "" {
+				secrets = append(secrets, raw)
+			}
 		}
 	}
 	for _, match := range embeddedSecretRegexp.FindAllStringSubmatch(value, -1) {
-		secrets = append(secrets, strings.Trim(match[1], `"'`))
+		if secret := strings.Trim(match[2], `"'`); !strings.EqualFold(secret, match[1]) {
+			secrets = append(secrets, secret)
+		}
 	}
 	return secrets
+}
+
+// rawURLPassword returns the password of a URL's userinfo as it is written,
+// without decoding: "amqp://user:p%40ss@host" yields "p%40ss".
+func rawURLPassword(value string) string {
+	_, rest, ok := strings.Cut(value, "://")
+	if !ok {
+		return ""
+	}
+	end := strings.IndexAny(rest, "/?#")
+	if end < 0 {
+		end = len(rest)
+	}
+	at := strings.LastIndex(rest[:end], "@")
+	if at < 0 {
+		return ""
+	}
+	_, password, ok := strings.Cut(rest[:at], ":")
+	if !ok {
+		return ""
+	}
+	return password
 }
 
 // registerKeyValueSecrets registers the value of every key=value argument

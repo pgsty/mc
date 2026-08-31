@@ -44,6 +44,10 @@ func TestScrubCredentialTextKeepsProse(t *testing.T) {
 		"Token expired",
 		"TOKEN EXPIRED",
 		"NTLM is deprecated",
+		"Invalid endpoint for AWS https://s3.amazonaws.com",
+		"AWS us-east-1:GetObject denied",
+		"Content digest SHA256:0123abcd mismatch for part 3",
+		"?list-type=2&max-keys=1000&prefix=foo&continuation-token=abc0123&key-marker=obj",
 	} {
 		if got := scrubSecretsFromOutput(text); got != text {
 			t.Errorf("scrubSecretsFromOutput(%q) = %q, want it unchanged", text, got)
@@ -58,7 +62,7 @@ func TestScrubCredentialTextStillRedactsCredentialShapes(t *testing.T) {
 		"Basic dXNlcjpwYXNz":                                    "Basic " + redactedMarker,
 		"Proxy-Authorization: Basic dXNlcjpodW50ZXIy":           "Proxy-Authorization: Basic " + redactedMarker,
 		"AWS AKIAIOSFODNN7EXAMPLE:frJIUN8DYpKDtOLCwo//yllqDzg=": "AWS " + redactedMarker,
-		"AWS a/b:sig0123456789":                                 "AWS " + redactedMarker,
+		"AWS a/b:frJIUN8DYpKDtOLCwo//yllqDzg=":                  "AWS " + redactedMarker,
 		"Token 0123456789abcdef":                                "Token " + redactedMarker,
 		"Negotiate YIIFmQYGKwYBBQUCoIIFjTCCBYmgJDAi":            "Negotiate " + redactedMarker,
 		"AWS4-HMAC-SHA256 Credential=k/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=ab12": "AWS4-HMAC-SHA256 " + redactedMarker,
@@ -100,6 +104,7 @@ func TestRedactTraceQueryRedactsFirstParameter(t *testing.T) {
 		"token=abc0123&x=1":          "token=" + redactedMarker + "&x=1",
 		"AWSAccessKeyId=AKIA0123":    "AWSAccessKeyId=" + redactedMarker,
 		"versionId=keep&list-type=2": "versionId=keep&list-type=2",
+		"max-keys=1000&key-marker=obj&continuation-token=abc0123&x-amz-security-token=tok0123": "max-keys=1000&key-marker=obj&continuation-token=abc0123&x-amz-security-token=" + redactedMarker,
 	} {
 		if got := redactTraceQuery(raw, nil); got != want {
 			t.Errorf("redactTraceQuery(%q) = %q, want %q", raw, got, want)
@@ -203,9 +208,12 @@ func TestRegisterKeyValueSecretsCoversEmbeddedCredentials(t *testing.T) {
 		"endpoint=https://h/hook?token=hookToken0123",
 		"dsn_string=user:mysqlSecret0123@tcp(db:3306)/db",
 		"queue_dir=/var/queue",
+		"broker=amqps://svc:p%40ss%3Aw0rd@broker.example:5671/vhost",
+		"connection_string=host=db password='sp ace0123' sslmode=disable",
+		"connection_string=host=db user=u password=password sslmode=disable",
 	})
 	joined := strings.Join(redacted, " ")
-	for _, secret := range []string{"pgSecret0123", "amqpSecret0123", "hookToken0123"} {
+	for _, secret := range []string{"pgSecret0123", "amqpSecret0123", "hookToken0123", "p%40ss%3Aw0rd", "p@ss:w0rd", "sp ace0123"} {
 		if strings.Contains(joined, secret) {
 			t.Errorf("redacted arguments still carry %q: %s", secret, joined)
 		}
@@ -213,7 +221,7 @@ func TestRegisterKeyValueSecretsCoversEmbeddedCredentials(t *testing.T) {
 			t.Errorf("%q was not registered: %q", secret, got)
 		}
 	}
-	for _, keep := range []string{"notify_postgres:1", "host=db user=u password=" + redactedMarker + " dbname=x", "amqp://user:" + redactedMarker + "@host:5672", "https://h/hook?token=" + redactedMarker, "queue_dir=/var/queue"} {
+	for _, keep := range []string{"notify_postgres:1", "host=db user=u password=" + redactedMarker + " dbname=x", "amqp://user:" + redactedMarker + "@host:5672", "https://h/hook?token=" + redactedMarker, "queue_dir=/var/queue", "amqps://svc:" + redactedMarker + "@broker.example:5671/vhost", "password='" + redactedMarker + "'", "password=password sslmode=disable"} {
 		if !strings.Contains(joined, keep) {
 			t.Errorf("redacted arguments lost %q: %s", keep, joined)
 		}
@@ -222,6 +230,10 @@ func TestRegisterKeyValueSecretsCoversEmbeddedCredentials(t *testing.T) {
 	// still reported as given, without breaking anything else.
 	if !strings.Contains(joined, "dsn_string=user:mysqlSecret0123@tcp(db:3306)/db") {
 		t.Errorf("unrecognized DSN form was altered: %s", joined)
+	}
+	// The documentation's own placeholder must not poison later output.
+	if got := scrubKnownSecrets("invalid password for user u"); got != "invalid password for user u" {
+		t.Errorf("the literal word password was registered: %q", got)
 	}
 }
 
