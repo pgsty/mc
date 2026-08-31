@@ -10,6 +10,9 @@ on:
 
 permissions:
   contents: read
+  # gh attestation verify reads the Sigstore provenance the Release workflow
+  # recorded for the archives this job repackages.
+  attestations: read
 
 concurrency:
   group: docker-release
@@ -79,6 +82,17 @@ jobs:
           cd "${assets_dir}"
           grep -F "  ${amd64_archive}" "${checksums}" | sha256sum --check
           grep -F "  ${arm64_archive}" "${checksums}" | sha256sum --check
+
+          # The checksums file lives in the same mutable Release as the
+          # archives, so agreeing with it proves nothing on its own. Require
+          # the build-provenance attestation the Release workflow produced,
+          # bound to that workflow so an attestation from any other source
+          # is rejected.
+          for archive in "${amd64_archive}" "${arm64_archive}"; do
+            gh attestation verify "${archive}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/release.yml"
+          done
           cd "${GITHUB_WORKSPACE}"
 
           for arch in amd64 arm64; do
