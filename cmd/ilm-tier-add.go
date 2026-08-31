@@ -408,6 +408,7 @@ func (msg *tierMessage) SetTierConfig(sCfg *madmin.TierConfig) {
 }
 
 func mainAdminTierAdd(ctx *cli.Context) error {
+	registerTierSecretFlags(ctx)
 	checkAdminTierAddSyntax(ctx)
 
 	console.SetColor("TierMessage", color.New(color.FgGreen))

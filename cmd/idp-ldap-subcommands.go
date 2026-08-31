@@ -80,6 +80,8 @@ func mainIDPLDAPAdd(ctx *cli.Context) error {
 			"Bad LDAP IDP configuration")
 	}
 
+	// Bind passwords and client secrets travel as key=value arguments.
+	registerKeyValueSecrets(input)
 	inputCfg := strings.Join(input, " ")
 
 	restart, e := client.AddOrUpdateIDPConfig(globalContext, madmin.LDAPIDPCfg, cfgName, inputCfg, false)
@@ -143,6 +145,8 @@ func mainIDPLDAPUpdate(ctx *cli.Context) error {
 			"Bad LDAP IDP configuration")
 	}
 
+	// Bind passwords and client secrets travel as key=value arguments.
+	registerKeyValueSecrets(input)
 	inputCfg := strings.Join(input, " ")
 
 	restart, e := client.AddOrUpdateIDPConfig(globalContext, madmin.LDAPIDPCfg, cfgName, inputCfg, true)

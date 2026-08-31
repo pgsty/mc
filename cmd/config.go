@@ -186,7 +186,7 @@ func getAliasConfig(alias string) (*aliasConfigV10, *probe.Error) {
 	if _, ok := mcCfg.Aliases[alias]; ok {
 		hostCfg := mcCfg.Aliases[alias]
 		hostCfg.Src = mustGetMcConfigPath()
-		registerSecret(hostCfg.SecretKey, hostCfg.SessionToken)
+		registerSecret(hostCfg.SecretKey, hostCfg.SessionToken, hostCfg.APIKey, hostCfg.License)
 		return &hostCfg, nil
 	}
 

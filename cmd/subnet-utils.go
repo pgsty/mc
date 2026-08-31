@@ -549,6 +549,7 @@ func subnetLogin() (string, error) {
 	bytepw, _ := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
+	registerSecret(string(bytepw))
 	loginReq := map[string]string{
 		"username": username,
 		"password": string(bytepw),
@@ -565,6 +566,7 @@ func subnetLogin() (string, error) {
 		byteotp, _ := term.ReadPassword(int(os.Stdin.Fd()))
 		fmt.Println()
 
+		registerSecret(string(byteotp), mfaToken)
 		mfaLoginReq := SubnetMFAReq{Username: username, OTP: string(byteotp), Token: mfaToken}
 		respStr, e = SubnetPostReq(subnetMFAURL(), mfaLoginReq, nil)
 		if e != nil {
@@ -574,6 +576,7 @@ func subnetLogin() (string, error) {
 
 	token := gjson.Get(respStr, "token_info.access_token")
 	if token.Exists() {
+		registerSecret(token.String())
 		return token.String(), nil
 	}
 	return "", fmt.Errorf("access token not found in response")

@@ -837,29 +837,33 @@ func (t traceMessage) JSON() string {
 		rq := t.Trace.HTTP.ReqInfo
 		rs := t.Trace.HTTP.RespInfo
 
+		// The server supplies these maps and bodies verbatim, including
+		// other clients' Authorization headers, tokens and SSE-C keys.
+		// Redact copies; the event itself is left untouched.
 		var (
 			rqHdrs  = make(map[string]string)
 			rspHdrs = make(map[string]string)
 		)
-		for k, v := range rq.Headers {
+		for k, v := range redactHeaderMap(rq.Headers) {
 			rqHdrs[k] = strings.Join(v, " ")
 		}
-		for k, v := range rs.Headers {
+		for k, v := range redactHeaderMap(rs.Headers) {
 			rspHdrs[k] = strings.Join(v, " ")
 		}
+		eventSecrets := traceEventSecrets(rq.Headers, rs.Headers)
 
 		trc.RequestInfo = &requestInfo{
 			Time:     rq.Time,
 			Proto:    rq.Proto,
 			Method:   rq.Method,
 			Path:     rq.Path,
-			RawQuery: rq.RawQuery,
-			Body:     string(rq.Body),
+			RawQuery: redactTraceText(rq.RawQuery, eventSecrets),
+			Body:     redactTraceText(string(rq.Body), eventSecrets),
 			Headers:  rqHdrs,
 		}
 		trc.ResponseInfo = &responseInfo{
 			Time:       rs.Time,
-			Body:       string(rs.Body),
+			Body:       redactTraceText(string(rs.Body), eventSecrets),
 			Headers:    rspHdrs,
 			StatusCode: rs.StatusCode,
 		}
@@ -919,26 +923,31 @@ func (t traceMessage) String() string {
 
 	ri := trc.HTTP.ReqInfo
 	rs := trc.HTTP.RespInfo
+	// Work on redacted copies of the server-supplied header maps; the event
+	// is shared with the JSON path and must not be mutated.
+	reqHeaders := redactHeaderMap(ri.Headers)
+	respHeaders := redactHeaderMap(rs.Headers)
+	eventSecrets := traceEventSecrets(ri.Headers, rs.Headers)
 	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Request", fmt.Sprintf("[REQUEST %s] ", trc.FuncName)))
 	fmt.Fprintf(b, "[%s] %s\n", ri.Time.Local().Format(traceTimeFormat), console.Colorize("Host", fmt.Sprintf("[Client IP: %s]", ri.Client)))
 	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Method", fmt.Sprintf("%s %s", ri.Method, ri.Path)))
 	if ri.RawQuery != "" {
-		fmt.Fprintf(b, "?%s", ri.RawQuery)
+		fmt.Fprintf(b, "?%s", redactTraceText(ri.RawQuery, eventSecrets))
 	}
 	fmt.Fprint(b, "\n")
 	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Method", fmt.Sprintf("Proto: %s\n", ri.Proto)))
-	host, ok := ri.Headers["Host"]
+	host, ok := reqHeaders["Host"]
 	if ok {
-		delete(ri.Headers, "Host")
+		delete(reqHeaders, "Host")
 	}
 	hostStr := strings.Join(host, "")
 	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Host", fmt.Sprintf("Host: %s\n", hostStr)))
-	for k, v := range ri.Headers {
+	for k, v := range reqHeaders {
 		fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("ReqHeaderKey",
 			fmt.Sprintf("%s: ", k))+console.Colorize("HeaderValue", fmt.Sprintf("%s\n", strings.Join(v, ""))))
 	}
 
-	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Body", fmt.Sprintf("%s\n", string(ri.Body))))
+	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Body", fmt.Sprintf("%s\n", redactTraceText(string(ri.Body), eventSecrets))))
 	fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("Response", "[RESPONSE] "))
 	fmt.Fprintf(b, "[%s] ", rs.Time.Local().Format(traceTimeFormat))
 	fmt.Fprint(b, console.Colorize("Stat", fmt.Sprintf("[ Duration %2s TTFB %2s ↑ %s  ↓ %s ]\n", trc.Duration.Round(time.Microsecond), trc.HTTP.CallStats.TimeToFirstByte.Round(time.Nanosecond),
@@ -950,14 +959,14 @@ func (t traceMessage) String() string {
 	}
 	fmt.Fprintf(b, "%s%s\n", nodeNameStr, statusStr)
 
-	for k, v := range rs.Headers {
+	for k, v := range respHeaders {
 		fmt.Fprintf(b, "%s%s", nodeNameStr, console.Colorize("RespHeaderKey",
 			fmt.Sprintf("%s: ", k))+console.Colorize("HeaderValue", fmt.Sprintf("%s\n", strings.Join(v, ","))))
 	}
 	if len(extra) > 0 {
 		fmt.Fprintf(b, "%s%s\n", nodeNameStr, extra)
 	}
-	fmt.Fprintf(b, "%s%s\n", nodeNameStr, console.Colorize("Body", string(rs.Body)))
+	fmt.Fprintf(b, "%s%s\n", nodeNameStr, console.Colorize("Body", redactTraceText(string(rs.Body), eventSecrets)))
 	fmt.Fprint(b, nodeNameStr)
 	return b.String()
 }
@@ -1044,4 +1053,21 @@ func (s *statTrace) add(t madmin.ServiceTraceInfo) {
 		}
 	}
 	s.Calls[id] = got
+}
+
+// traceEventSecrets collects the literal credential values a trace event's
+// own headers carry, so a body that echoes one of them can be scrubbed even
+// though the client never held that credential itself.
+func traceEventSecrets(headers ...map[string][]string) []string {
+	var secrets []string
+	for _, header := range headers {
+		secrets = append(secrets, headerSecretValues(http.Header(header))...)
+	}
+	return secrets
+}
+
+// redactTraceText scrubs server-supplied trace text: credential shapes, the
+// event's own header values, and everything this process knows to be secret.
+func redactTraceText(text string, eventSecrets []string) string {
+	return scrubKnownSecrets(redactSecretValues(scrubCredentialText(text), eventSecrets))
 }

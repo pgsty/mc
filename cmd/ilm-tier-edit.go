@@ -114,6 +114,7 @@ func checkAdminTierEditSyntax(ctx *cli.Context) {
 }
 
 func mainAdminTierEdit(ctx *cli.Context) error {
+	registerTierSecretFlags(ctx)
 	checkAdminTierEditSyntax(ctx)
 
 	console.SetColor("TierMessage", color.New(color.FgGreen))

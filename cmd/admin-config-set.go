@@ -108,6 +108,9 @@ func mainAdminConfigSet(ctx *cli.Context) error {
 	client, err := newAdminClient(aliasedURL)
 	fatalIf(err, "Unable to initialize admin connection.")
 
+	// Register secret-bearing values before anything can fail, and keep a
+	// redacted rendering for the error message.
+	redactedInput := strings.Join(registerKeyValueSecrets(args.Tail()), " ")
 	input := strings.Join(args.Tail(), " ")
 
 	if !strings.Contains(input, madmin.KvSeparator) {
@@ -127,7 +130,7 @@ func mainAdminConfigSet(ctx *cli.Context) error {
 
 	// Call set config API
 	restart, e := client.SetConfigKV(globalContext, input)
-	fatalIf(probe.NewError(e), "Unable to set '%s' to server", input)
+	fatalIf(probe.NewError(e), "Unable to set '%s' to server", redactedInput)
 
 	// Print set config result
 	printMsg(configSetMessage{

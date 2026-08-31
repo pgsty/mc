@@ -126,6 +126,7 @@ func loginLDAPAccesskey(ctx *cli.Context) (*madmin.AdminClient, madmin.AddServic
 		password = string(bytePassword)
 	}
 
+	registerSecret(password)
 	stsCreds, e := credentials.NewLDAPIdentity(urlStr, username, password)
 	fatalIf(probe.NewError(e), "unable to initialize LDAP identity")
 
@@ -133,6 +134,7 @@ func loginLDAPAccesskey(ctx *cli.Context) (*madmin.AdminClient, madmin.AddServic
 		Client: http.DefaultClient,
 	})
 	fatalIf(probe.NewError(e), "unable to create a temporary account from LDAP identity")
+	registerSecret(tempCreds.SecretAccessKey, tempCreds.SessionToken)
 
 	client, e := madmin.NewWithOptions(u.Host, &madmin.Options{
 		Creds:  stsCreds,

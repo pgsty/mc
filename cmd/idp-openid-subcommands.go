@@ -88,6 +88,8 @@ func mainIDPOpenIDAddOrUpdate(ctx *cli.Context, update bool) error {
 		input = args[2:]
 	}
 
+	// Bind passwords and client secrets travel as key=value arguments.
+	registerKeyValueSecrets(input)
 	inputCfg := strings.Join(input, " ")
 
 	restart, e := client.AddOrUpdateIDPConfig(globalContext, madmin.OpenidIDPCfg, cfgName, inputCfg, update)
