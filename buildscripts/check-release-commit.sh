@@ -57,9 +57,10 @@ if [ -z "${fixture}" ]; then
 
   error_file="$(mktemp)"
   trap 'rm -f "${error_file}"' EXIT
-  # exclude_pull_requests: a pull_request run checks out GitHub's synthetic
-  # merge ref, so a green run proves the merge result was good, not that this
-  # commit was ever built on its own.
+  # A pull_request run checks out GitHub's synthetic merge ref, so a green
+  # run proves the merge result was good, not that this commit was ever built
+  # on its own. exclude_pull_requests only trims the pull_requests field of
+  # each run; the event/head_branch filter below is what drops those runs.
   if ! runs_json="$(
     gh api --paginate \
       "repos/${repository}/actions/runs?head_sha=${release_commit}&exclude_pull_requests=true&per_page=100" \

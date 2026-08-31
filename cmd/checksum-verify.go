@@ -101,7 +101,7 @@ var checksumVerifyFlags = []cli.Flag{
 	},
 	cli.StringFlag{
 		Name:  "max-size",
-		Usage: "skip objects larger than this size (e.g. 10GiB)",
+		Usage: "skip objects larger than this size (e.g. 10GiB); 0 or empty means no limit",
 	},
 	cli.StringFlag{
 		Name:  "manifest",
@@ -400,7 +400,7 @@ func parseChecksumVerifyMaximumSize(value string) (int64, error) {
 	}
 	size, err := humanize.ParseBytes(value)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("%q is not a size; use a value such as 10GiB, or 0 for no limit", value)
 	}
 	if size > uint64(^uint64(0)>>1) {
 		return 0, fmt.Errorf("maximum size is too large")
@@ -596,11 +596,13 @@ func checksumVerifyResultFor(candidate checksumVerifyCandidate) checksumVerifyRe
 	}
 }
 
-func checksumVerifyErrorResult(candidate checksumVerifyCandidate, err error) checksumVerifyResult {
-	return applyChecksumVerifyError(checksumVerifyResultFor(candidate), err)
+func checksumVerifyErrorResult(candidate checksumVerifyCandidate, err error, sseSupplied bool) checksumVerifyResult {
+	return applyChecksumVerifyError(checksumVerifyResultFor(candidate), err, sseSupplied)
 }
 
-func applyChecksumVerifyError(result checksumVerifyResult, err error) checksumVerifyResult {
+// sseSupplied tells an SSE-C rejection with a key from one without: with a
+// key the server's complaint is about the request, not a missing key.
+func applyChecksumVerifyError(result checksumVerifyResult, err error, sseSupplied bool) checksumVerifyResult {
 	response := minio.ToErrorResponse(err)
 	result.ErrorCode = response.Code
 	// Server-controlled text, printed and written to --report: an endpoint
@@ -618,10 +620,10 @@ func applyChecksumVerifyError(result checksumVerifyResult, err error) checksumVe
 		result.Result = checksumResultUnknownObjectChanged
 	case strings.Contains(code, "kms") || strings.Contains(message, "kms"):
 		result.Result = checksumResultUnknownKMSError
-	case strings.Contains(code, "sse") ||
+	case !sseSupplied && (strings.Contains(code, "sse") ||
 		strings.Contains(message, "server side encryption") ||
 		strings.Contains(message, "customer key") ||
-		strings.Contains(message, "sse-c"):
+		strings.Contains(message, "sse-c")):
 		result.Result = checksumResultUnknownSSECKeyMissing
 	default:
 		result.Result = checksumResultUnknownReadError
@@ -675,7 +677,7 @@ func verifyChecksumCandidate(ctx context.Context, backend checksumVerifyBackend,
 	sse := getSSE(resource, opts.Encryption[candidate.Alias])
 	info, err := backend.statObjectForChecksumVerify(ctx, candidate.Bucket, candidate.Key, candidate.VersionID, sse)
 	if err != nil {
-		return checksumVerifyErrorResult(candidate, err)
+		return checksumVerifyErrorResult(candidate, err, sse != nil)
 	}
 	result.Size = info.Size
 	result.ETag = info.ETag
@@ -745,19 +747,19 @@ func verifyChecksumCandidate(ctx context.Context, backend checksumVerifyBackend,
 	}
 	reader, err := backend.getObjectForChecksumVerify(ctx, candidate.Bucket, candidate.Key, readVersionID, ifMatch, sse)
 	if err != nil {
-		return applyChecksumVerifyError(result, err)
+		return applyChecksumVerifyError(result, err, sse != nil)
 	}
 	read, readErr := io.Copy(io.MultiWriter(writers...), reader)
 	closeErr := reader.Close()
 	result.BytesRead = read
 	if readErr != nil {
 		result.Result = checksumResultUnknownReadError
-		result.ErrorMessage = readErr.Error()
+		result.ErrorMessage = scrubSecretsFromOutput(readErr.Error())
 		return result
 	}
 	if closeErr != nil {
 		result.Result = checksumResultUnknownReadError
-		result.ErrorMessage = closeErr.Error()
+		result.ErrorMessage = scrubSecretsFromOutput(closeErr.Error())
 		return result
 	}
 	if read != info.Size {
@@ -769,7 +771,7 @@ func verifyChecksumCandidate(ctx context.Context, backend checksumVerifyBackend,
 	if mutableVersion {
 		after, statErr := backend.statObjectForChecksumVerify(ctx, candidate.Bucket, candidate.Key, readVersionID, sse)
 		if statErr != nil {
-			return applyChecksumVerifyError(result, statErr)
+			return applyChecksumVerifyError(result, statErr, sse != nil)
 		}
 		if checksumVerifyObjectChanged(info, after) {
 			result.Result = checksumResultUnknownObjectChanged

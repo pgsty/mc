@@ -33,6 +33,9 @@ var _ func(policy.Resource) bool = policy.Resource.IsBareARN
 // parsePolicyForWrite applies the strict validation required for new and
 // updated policy documents while read paths remain backward-compatible.
 func parsePolicyForWrite(policyBytes []byte) (*policy.Policy, error) {
+	if len(bytes.TrimSpace(policyBytes)) == 0 {
+		return nil, errors.New("policy input cannot be empty")
+	}
 	return policy.ParseConfigStrict(bytes.NewReader(policyBytes))
 }
 

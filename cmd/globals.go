@@ -35,6 +35,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/minio/cli"
 	"github.com/minio/madmin-go/v3"
+	"github.com/minio/mc/pkg/probe"
 	"github.com/muesli/termenv"
 	"github.com/pgsty/silo-pkg/v3/console"
 	"golang.org/x/net/http/httpguts"
@@ -122,8 +123,19 @@ func parsePagerDisableFlag(args []string) {
 	}
 }
 
-// Set global states. NOTE: It is deliberately kept monolithic to ensure we dont miss out any flags.
+// setGlobalsFromContext applies the global flags and stops the command on a
+// malformed value. Reporting through fatalIf prints the error once, on stderr
+// or as a JSON document; returning it would have the CLI library echo it to
+// stdout first and the process print it again.
 func setGlobalsFromContext(ctx *cli.Context) error {
+	if e := applyGlobalsFromContext(ctx); e != nil {
+		fatalIf(probe.NewError(e), "Unable to apply global flags.")
+	}
+	return nil
+}
+
+// Set global states. NOTE: It is deliberately kept monolithic to ensure we dont miss out any flags.
+func applyGlobalsFromContext(ctx *cli.Context) error {
 	quiet := ctx.Bool("quiet") || ctx.GlobalBool("quiet")
 	debug := ctx.Bool("debug") || ctx.GlobalBool("debug")
 	json := ctx.Bool("json") || ctx.GlobalBool("json")

@@ -21,6 +21,8 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -56,13 +58,29 @@ var (
 	secretRegistry   []string
 )
 
+// secretPlaceholders are values that turn up under secret-named keys without
+// being secrets - "auth_token=off", "client_secret=true". Registering them
+// would turn every later "off" or "true" in an error message into a marker.
+var secretPlaceholders = map[string]struct{}{
+	"on": {}, "off": {}, "true": {}, "false": {}, "yes": {}, "no": {},
+	"none": {}, "null": {}, "nil": {}, "auto": {}, "default": {}, "empty": {},
+	"enable": {}, "enabled": {}, "disable": {}, "disabled": {},
+	"required": {}, "optional": {}, "unset": {},
+}
+
+func isSecretPlaceholder(value string) bool {
+	_, ok := secretPlaceholders[strings.ToLower(value)]
+	return ok
+}
+
 // registerSecret records credential material so scrubKnownSecrets can remove
-// it from any later output. Empty and very short values are ignored.
+// it from any later output. Empty, very short and placeholder values are
+// ignored.
 func registerSecret(values ...string) {
 	secretRegistryMu.Lock()
 	defer secretRegistryMu.Unlock()
 	for _, value := range values {
-		if len(value) < secretRegistryMinLen || value == redactedMarker {
+		if len(value) < secretRegistryMinLen || value == redactedMarker || isSecretPlaceholder(value) {
 			continue
 		}
 		duplicate := false
@@ -119,8 +137,76 @@ func isSecretKeyValueName(key string) bool {
 	return false
 }
 
+// embeddedSecretRegexps find a credential assignment inside a composite
+// value whose own key names nothing secret. In a DSN or connection string
+// ("host=db user=u password=s") the payload runs to the next whitespace -
+// libpq allows ";", "," and "&" in an unquoted value - or is quoted
+// ("password='p@ss word'"); in a URL query ("?token=s&x=1") it stops at "&".
+var embeddedSecretRegexps = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(?:^|[\s;,])(password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key|client[_-]?secret|private[_-]?key)=("[^"]*"|'[^']*'|[^\s]+)`),
+	regexp.MustCompile(`(?i)[?&](password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key|secret[_-]?key|client[_-]?secret|private[_-]?key)=([^\s&]+)`),
+}
+
+// embeddedSecrets returns the credential material a value carries inside it:
+// the password of a URL's userinfo - decoded, and exactly as written, since
+// a password with "@" or ":" travels percent-encoded - and the value of every
+// password=/token= style assignment. A placeholder equal to its own key
+// ("password=password", the documentation's example) is not a secret.
+func embeddedSecrets(value string) []string {
+	var secrets []string
+	if parsed, err := url.Parse(value); err == nil && parsed.User != nil {
+		if password, ok := parsed.User.Password(); ok {
+			secrets = append(secrets, password)
+			if raw := rawURLPassword(value); raw != "" {
+				secrets = append(secrets, raw)
+			}
+		}
+	}
+	for _, pattern := range embeddedSecretRegexps {
+		for _, match := range pattern.FindAllStringSubmatch(value, -1) {
+			secret := strings.Trim(match[2], `"'`)
+			if strings.EqualFold(secret, match[1]) {
+				continue
+			}
+			secrets = append(secrets, secret)
+			// An ODBC-style string ("Password=x;Database=z") has no whitespace,
+			// so the whole tail was captured; the part before the first
+			// separator is what a later echo would carry.
+			if unquoted := match[2] == secret; unquoted {
+				if i := strings.IndexAny(secret, ";,"); i > 0 {
+					secrets = append(secrets, secret[:i])
+				}
+			}
+		}
+	}
+	return secrets
+}
+
+// rawURLPassword returns the password of a URL's userinfo as it is written,
+// without decoding: "amqp://user:p%40ss@host" yields "p%40ss".
+func rawURLPassword(value string) string {
+	_, rest, ok := strings.Cut(value, "://")
+	if !ok {
+		return ""
+	}
+	end := strings.IndexAny(rest, "/?#")
+	if end < 0 {
+		end = len(rest)
+	}
+	at := strings.LastIndex(rest[:end], "@")
+	if at < 0 {
+		return ""
+	}
+	_, password, ok := strings.Cut(rest[:at], ":")
+	if !ok {
+		return ""
+	}
+	return password
+}
+
 // registerKeyValueSecrets registers the value of every key=value argument
-// whose key names a secret, and returns the arguments with those values
+// whose key names a secret, and the credentials embedded in the other values
+// (a DSN, a URL with userinfo), and returns the arguments with those values
 // replaced, for use in an error message that would otherwise echo them.
 func registerKeyValueSecrets(args []string) []string {
 	redacted := make([]string, 0, len(args))
@@ -129,6 +215,17 @@ func registerKeyValueSecrets(args []string) []string {
 		if ok && isSecretKeyValueName(key) {
 			registerSecret(strings.Trim(value, `"'`), value)
 			redacted = append(redacted, key+"="+redactedMarker)
+			continue
+		}
+		if embedded := embeddedSecrets(value); len(embedded) > 0 {
+			registerSecret(embedded...)
+			masked := arg
+			for _, secret := range embedded {
+				if len(secret) >= secretRegistryMinLen && !isSecretPlaceholder(secret) {
+					masked = strings.ReplaceAll(masked, secret, redactedMarker)
+				}
+			}
+			redacted = append(redacted, masked)
 			continue
 		}
 		redacted = append(redacted, arg)

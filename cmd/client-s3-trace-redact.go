@@ -51,24 +51,69 @@ const redactedMarker = "**REDACTED**"
 var traceAuthSchemeRegexp = regexp.MustCompile(`^[A-Za-z0-9!#$%&'*+.^_` + "`" + `|~-]+`)
 
 // Credential shapes in free text. Each replacement keeps at most the token
-// that identifies the shape and withholds the rest.
+// that identifies the shape and withholds the rest. A shape that could also
+// match ordinary prose - "Basic auth is disabled", "AWS S3 compatible",
+// "the token has expired" - is anchored on something only a credential
+// carries, so the error messages this client composes keep their meaning.
 var traceTextShapes = []struct {
 	pattern     *regexp.Regexp
 	replacement string
+	// accept, when set, must approve the submatch groups before the match is
+	// replaced.
+	accept func(groups []string) bool
 }{
-	// A whole Signature v4 value echoed into text.
-	{regexp.MustCompile(`\bAWS4-HMAC-SHA256\b[^\n"'<>]*`), "AWS4-HMAC-SHA256 " + redactedMarker},
+	// A whole Signature v4 value echoed into text: the scheme followed, on the
+	// same line, by its Credential field.
+	{pattern: regexp.MustCompile(`\bAWS4-HMAC-SHA256\b[^\n"'<>]*?\bCredential=[^\n"'<>]*`), replacement: "AWS4-HMAC-SHA256 " + redactedMarker},
 	// Its fields on their own.
-	{regexp.MustCompile(`\bCredential=[^,\s"'<>]+`), "Credential=" + redactedMarker},
-	{regexp.MustCompile(`\bSignedHeaders=[^,\s"'<>]+`), "SignedHeaders=" + redactedMarker},
-	{regexp.MustCompile(`\bSignature=[^,\s"'<>&]+`), "Signature=" + redactedMarker},
-	// Signature v2: "AWS <access-key-id>:<signature>".
-	{regexp.MustCompile(`\bAWS [^\s"'<>]+`), "AWS " + redactedMarker},
-	// Scheme-prefixed tokens.
-	{regexp.MustCompile(`\b((?i:Bearer|Basic|Digest|Negotiate|NTLM|Token)) [^\s"'<>,]+`), "$1 " + redactedMarker},
+	{pattern: regexp.MustCompile(`\bCredential=[^,\s"'<>]+`), replacement: "Credential=" + redactedMarker},
+	{pattern: regexp.MustCompile(`\bSignedHeaders=[^,\s"'<>]+`), replacement: "SignedHeaders=" + redactedMarker},
+	{pattern: regexp.MustCompile(`\bSignature=[^,\s"'<>&]+`), replacement: "Signature=" + redactedMarker},
+	// Signature v2: "AWS <access-key-id>:<base64 HMAC-SHA1>". The colon and
+	// the base64 signature separate it from prose such as "AWS S3 compatible"
+	// or "AWS https://s3.amazonaws.com".
+	{pattern: regexp.MustCompile(`\bAWS [^\s:"'<>]+:[A-Za-z0-9+/]{20,}={0,2}`), replacement: "AWS " + redactedMarker},
+	// Scheme-prefixed tokens, when the payload looks like a token rather than
+	// the next word of a sentence. Scheme names are case-insensitive on the
+	// wire, so a proxy may echo "bearer <jwt>"; "Digest" and "Token" are also
+	// English words ("digest mismatch", "token has expired") and match only in
+	// the spelling a header uses.
+	{pattern: regexp.MustCompile(`\b((?i:Bearer|Basic|Negotiate|NTLM)|Digest|Token) ([^\s"'<>,]+)`), replacement: "$1 " + redactedMarker, accept: func(groups []string) bool { return looksLikeCredentialPayload(groups[2]) }},
 	// Credential-bearing query parameters wherever a URL appears, matched by
 	// name fragment so a parameter this client never sends is still caught.
-	{regexp.MustCompile(`([?&][^=&\s"'<>]*(?i:token|signature|credential|secret|password|api[-_]?key|auth|sig|key)[^=&\s"'<>]*=)[^&\s"'<>]+`), "${1}" + redactedMarker},
+	{pattern: regexp.MustCompile(`([?&]([^=&\s"'<>]*(?i:token|signature|credential|secret|password|api[-_]?key|auth|sig|key)[^=&\s"'<>]*)=)[^&\s"'<>]+`), replacement: "${1}" + redactedMarker, accept: func(groups []string) bool { return !isListingQueryParam(groups[2]) }},
+}
+
+// listingQueryParams are S3 parameters whose names carry a secret-looking
+// fragment ("key", "token") but never a secret: hiding them would blank
+// every ListObjects trace line.
+var listingQueryParams = map[string]struct{}{
+	"max-keys": {}, "key-marker": {}, "continuation-token": {},
+	"next-key-marker": {}, "next-continuation-token": {}, "start-after": {},
+}
+
+func isListingQueryParam(name string) bool {
+	_, ok := listingQueryParams[strings.ToLower(name)]
+	return ok
+}
+
+// looksLikeCredentialPayload tells a token after a scheme word from the next
+// word of a sentence. Tokens are long and mix character classes; a sentence
+// continues with a short word or a lowercase one ("Basic auth is disabled",
+// "token has expired", "Negotiate authentication").
+func looksLikeCredentialPayload(payload string) bool {
+	if len(payload) < 8 {
+		return false
+	}
+	for i, r := range payload {
+		switch {
+		case r >= '0' && r <= '9', strings.ContainsRune("+/=._~-", r):
+			return true
+		case r >= 'A' && r <= 'Z' && i > 0:
+			return true
+		}
+	}
+	return false
 }
 
 // isSecretHeaderName reports whether a header's value is credential material.
@@ -109,6 +154,9 @@ func isCustomHeaderName(name string) bool {
 // material, for presigned URLs of either signature version and for anything a
 // proxy in front of the endpoint might expect.
 func isSecretQueryParam(name string) bool {
+	if isListingQueryParam(name) {
+		return false
+	}
 	lower := strings.ToLower(name)
 	for _, fragment := range []string{"token", "signature", "credential", "secret", "password", "api-key", "apikey", "api_key", "auth", "sig", "awsaccesskeyid", "key"} {
 		if strings.Contains(lower, fragment) {
@@ -225,7 +273,18 @@ func redactURLString(raw string) string {
 // endpoint echoed back with different spacing or framing.
 func scrubCredentialText(text string) string {
 	for _, shape := range traceTextShapes {
-		text = shape.pattern.ReplaceAllString(text, shape.replacement)
+		if shape.accept == nil {
+			text = shape.pattern.ReplaceAllString(text, shape.replacement)
+			continue
+		}
+		pattern, replacement, accept := shape.pattern, shape.replacement, shape.accept
+		text = pattern.ReplaceAllStringFunc(text, func(match string) string {
+			groups := pattern.FindStringSubmatch(match)
+			if len(groups) < 3 || !accept(groups) {
+				return match
+			}
+			return pattern.ReplaceAllString(match, replacement)
+		})
 	}
 	return text
 }
@@ -260,7 +319,10 @@ func authorizationSecretValues(value string) []string {
 			secrets = append(secrets, key, signature)
 		}
 	}
-	if scheme, payload, ok := strings.Cut(value, " "); ok && payload != "" {
+	// A doubled space after the scheme ("Bearer  token") must not leave the
+	// payload registered with a leading space it is never echoed with.
+	if scheme, payload, ok := strings.Cut(value, " "); ok && strings.TrimSpace(payload) != "" {
+		payload = strings.TrimSpace(payload)
 		secrets = append(secrets, payload)
 		if strings.EqualFold(scheme, "Basic") {
 			if decoded, err := base64.StdEncoding.DecodeString(payload); err == nil {
