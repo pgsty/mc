@@ -137,6 +137,9 @@ func TestBlackboxUserInputErrorsDoNotEchoSecrets(t *testing.T) {
 	for name, tc := range map[string]struct {
 		env  []string
 		args []string
+		// want, when set, must appear in the output: it pins the failure to
+		// the validation under test rather than to the mock's 400.
+		want string
 	}{
 		"MC_HOST with a path": {
 			env:  []string{"MC_HOST_bad=http://blackboxaccess:" + blackboxSecretKey + "@" + host + "/path"},
@@ -155,11 +158,17 @@ func TestBlackboxUserInputErrorsDoNotEchoSecrets(t *testing.T) {
 		"alias set with too many arguments": {
 			args: []string{"alias", "set", "x", "http://" + host, "blackboxaccess", blackboxSecretKey, "extra"},
 		},
-		"custom header without a colon": {
+		"custom header without a colon, app level": {
 			args: []string{"--custom-header", "Authorization Bearer " + blackboxTokenHeader, "ls", "b4/"},
+			want: "invalid custom header entry #1: expected name:value",
 		},
-		"custom header with an invalid value": {
+		"custom header with an invalid value, app level": {
 			args: []string{"--custom-header", "Authorization: Bearer " + blackboxTokenHeader + "\x01", "ls", "b4/"},
+			want: "invalid custom header entry #1 (Authorization)",
+		},
+		"custom header without a colon, command level": {
+			args: []string{"ls", "--custom-header", "Authorization Bearer " + blackboxTokenHeader, "b4/"},
+			want: "invalid custom header entry #1: expected name:value",
 		},
 		"replication target with credentials": {
 			env:  []string{"MC_HOST_b4=http://blackboxaccess:" + blackboxSecretKey + "@" + host},
@@ -171,6 +180,9 @@ func TestBlackboxUserInputErrorsDoNotEchoSecrets(t *testing.T) {
 			combined := string(result.stdout) + "\n" + string(result.stderr)
 			if result.exitCode == 0 {
 				t.Fatalf("expected a failure, got exit 0:\n%s", combined)
+			}
+			if tc.want != "" && !strings.Contains(combined, tc.want) {
+				t.Fatalf("expected %q in the output:\n%s", tc.want, combined)
 			}
 			for name, secret := range map[string]string{
 				"secret key":   blackboxSecretKey,

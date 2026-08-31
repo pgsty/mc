@@ -364,8 +364,12 @@ func registerBefore(ctx *cli.Context) error {
 		setMcConfigDir(ctx.GlobalString("config-dir"))
 	}
 
-	// Set global flags.
-	setGlobalsFromContext(ctx)
+	// Set global flags. Propagate a parse failure: dropping it here meant a
+	// malformed app-level --custom-header, --resolve or --limit-* value was
+	// silently ignored and the command ran without it.
+	if e := setGlobalsFromContext(ctx); e != nil {
+		return e
+	}
 
 	// Migrate any old version of config / state files to newer format.
 	migrate()
