@@ -280,6 +280,7 @@ func mainAdminUserSvcAcctAdd(ctx *cli.Context) error {
 
 	accessKey := ctx.String("access-key")
 	secretKey := ctx.String("secret-key")
+	registerSecret(secretKey)
 	policyPath := ctx.String("policy")
 	name := ctx.String("name")
 	description := ctx.String("description")

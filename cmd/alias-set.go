@@ -108,7 +108,9 @@ func checkAliasSetSyntax(ctx *cli.Context, accessKey, secretKey string, deprecat
 	}
 
 	if argsNr > 4 || argsNr < 2 {
-		fatalIf(errInvalidArgument().Trace(ctx.Args().Tail()...),
+		// Not Trace(args...): the tail of a well-formed invocation is the
+		// secret key.
+		fatalIf(errInvalidArgument().Trace(),
 			"Incorrect number of arguments for alias set command.")
 	}
 
@@ -123,7 +125,7 @@ func checkAliasSetSyntax(ctx *cli.Context, accessKey, secretKey string, deprecat
 	}
 
 	if !isValidHostURL(url) {
-		fatalIf(errInvalidURL(url), "Invalid URL.")
+		fatalIf(errInvalidURL(redactCredentialURL(url)), "Invalid URL.")
 	}
 
 	if !isValidAccessKey(accessKey) {
@@ -258,7 +260,7 @@ func BuildS3Config(ctx context.Context, alias, url, accessKey, secretKey, api, p
 	// Probe S3 signature version
 	api, err := probeS3Signature(ctx, accessKey, secretKey, url, peerCert)
 	if err != nil {
-		return nil, err.Trace(url, accessKey, api, path)
+		return nil, err.Trace(redactCredentialURL(url), accessKey, api, path)
 	}
 
 	s3Config.Signature = api
@@ -331,6 +333,7 @@ func mainAliasSet(cli *cli.Context, deprecated bool) error {
 	}
 
 	accessKey, secretKey := fetchAliasKeys(args)
+	registerSecret(secretKey)
 	checkAliasSetSyntax(cli, accessKey, secretKey, deprecated)
 
 	ctx, cancelAliasAdd := context.WithCancel(globalContext)

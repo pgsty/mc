@@ -77,7 +77,7 @@ func fatal(err *probe.Error, msg string, data ...any) {
 		if e != nil {
 			console.Fatalln(probe.NewError(e))
 		}
-		console.Println(string(json))
+		console.Println(scrubSecretsFromOutput(string(json)))
 		console.Fatalln()
 	}
 
@@ -115,7 +115,9 @@ func fatal(err *probe.Error, msg string, data ...any) {
 		}
 	}
 
-	console.Fatalln(fmt.Sprintf("%s %s", msg, errmsg))
+	// Both halves can carry text this client did not compose: a server
+	// message, a trace annotation. Scrub before it reaches the terminal.
+	console.Fatalln(scrubSecretsFromOutput(fmt.Sprintf("%s %s", msg, errmsg)))
 }
 
 // Exit coder wraps cli new exit error with a
@@ -155,7 +157,7 @@ func errorIf(err *probe.Error, msg string, data ...any) {
 		if e != nil {
 			console.Fatalln(probe.NewError(e))
 		}
-		console.Println(string(json))
+		console.Println(scrubSecretsFromOutput(string(json)))
 		return
 	}
 	msg = fmt.Sprintf(msg, data...)
@@ -167,10 +169,10 @@ func errorIf(err *probe.Error, msg string, data ...any) {
 		} else {
 			e = err.ToGoError()
 		}
-		console.Errorln(fmt.Sprintf("%s %s", msg, e))
+		console.Errorln(scrubSecretsFromOutput(fmt.Sprintf("%s %s", msg, e)))
 		return
 	}
-	console.Errorln(fmt.Sprintf("%s %s", msg, err))
+	console.Errorln(scrubSecretsFromOutput(fmt.Sprintf("%s %s", msg, err)))
 }
 
 // deprecatedError function for deprecated commands

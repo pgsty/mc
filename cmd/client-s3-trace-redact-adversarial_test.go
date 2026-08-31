@@ -1,0 +1,172 @@
+// Copyright (c) 2026 PGSTY
+//
+// This file is part of the Silo object storage client.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+package cmd
+
+// Adversarial cases for credential redaction. Each one is a shape that the
+// first, pattern-matching redactor let through. The rule they enforce is
+// fail-closed: a value the redactor cannot parse is withheld whole, never
+// passed on in the hope that it holds nothing sensitive.
+
+import (
+	"io"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
+	"testing"
+)
+
+const adversarialSecret = "SUPERSECRETVALUE0123456789"
+
+func adversarialRequest(t *testing.T) *http.Request {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, "https://silo.example.com/bucket/object", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return req
+}
+
+func adversarialDump(t *testing.T, req *http.Request) string {
+	t.Helper()
+	dump, err := httputil.DumpRequestOut(redactRequestForTrace(req), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(dump)
+}
+
+func adversarialResponse(t *testing.T, header http.Header, body string) *http.Response {
+	t.Helper()
+	req := adversarialRequest(t)
+	req.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential="+adversarialSecret+"/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=deadbeef")
+	return &http.Response{
+		Status: "400 Bad Request", StatusCode: http.StatusBadRequest,
+		Proto: "HTTP/1.1", ProtoMajor: 1, ProtoMinor: 1,
+		Header: header, Body: io.NopCloser(strings.NewReader(body)),
+		ContentLength: int64(len(body)), Request: req,
+	}
+}
+
+func TestAdversarialRequestRedaction(t *testing.T) {
+	for name, build := range map[string]func(*http.Request){
+		"duplicate Authorization, first value empty": func(r *http.Request) {
+			r.Header.Add("Authorization", "")
+			r.Header.Add("Authorization", "AWS4-HMAC-SHA256 Credential="+adversarialSecret+"/20260831/us-east-1/s3/aws4_request, Signature=abc")
+		},
+		"duplicate Authorization, both real": func(r *http.Request) {
+			r.Header.Add("Authorization", "Bearer "+adversarialSecret)
+			r.Header.Add("Authorization", "AWS4-HMAC-SHA256 Credential="+adversarialSecret+"/20260831/us-east-1/s3/aws4_request, Signature=abc")
+		},
+		"access key containing a space": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=key "+adversarialSecret+"/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=abc")
+		},
+		"access key containing a comma": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=key,"+adversarialSecret+"/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=abc")
+		},
+		"access key containing a date fragment": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=abc/20200101/"+adversarialSecret+"/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=abc")
+		},
+		"access key containing a fake scope": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=x/20200101/r/s/aws4_request/"+adversarialSecret+"/20260831/us-east-1/s3/aws4_request, Signature=abc")
+		},
+		"malformed SigV4 without a scope": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=key "+adversarialSecret)
+		},
+		"SigV2 with a colon in the key": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS a:"+adversarialSecret+":sig")
+		},
+		"Proxy-Authorization": func(r *http.Request) {
+			r.Header.Set("Proxy-Authorization", "Basic "+adversarialSecret)
+		},
+		"Cookie": func(r *http.Request) {
+			r.Header.Set("Cookie", "session="+adversarialSecret)
+		},
+		"custom token header": func(r *http.Request) {
+			r.Header.Set("X-Auth-Token", adversarialSecret)
+		},
+		"custom password header": func(r *http.Request) {
+			r.Header.Set("X-Proxy-Password", adversarialSecret)
+		},
+		"SSE-KMS context": func(r *http.Request) {
+			r.Header.Set("X-Amz-Server-Side-Encryption-Context", adversarialSecret)
+		},
+		"userinfo in the request URL": func(r *http.Request) {
+			r.URL.User = url.UserPassword("user", adversarialSecret)
+		},
+		"custom token query parameter": func(r *http.Request) {
+			r.URL.RawQuery = "x-session-token=" + adversarialSecret
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			req := adversarialRequest(t)
+			build(req)
+			if dump := adversarialDump(t, req); strings.Contains(dump, adversarialSecret) {
+				t.Fatalf("secret leaked:\n%s", dump)
+			}
+		})
+	}
+}
+
+func TestAdversarialResponseRedaction(t *testing.T) {
+	for name, resp := range map[string]*http.Response{
+		"server reflects Authorization into body": adversarialResponse(t, http.Header{},
+			"<Error><Message>got Authorization: AWS4-HMAC-SHA256 Credential="+adversarialSecret+"/20260831/us-east-1/s3/aws4_request, Signature=deadbeef</Message></Error>"),
+		"server reflects only the access key": adversarialResponse(t, http.Header{},
+			"<Error><Message>unknown key "+adversarialSecret+"</Message></Error>"),
+		"server reflects a SigV2 header": adversarialResponse(t, http.Header{},
+			"<Error><Message>AWS "+adversarialSecret+":YXNkZmFzZGZhc2RmYXNkZmFzZGY=</Message></Error>"),
+		"server reflects a presigned URL": adversarialResponse(t, http.Header{},
+			"<Error><Message>https://h/b/o?X-Amz-Signature="+adversarialSecret+"&x=1</Message></Error>"),
+		"Set-Cookie":                   adversarialResponse(t, http.Header{"Set-Cookie": {"sid=" + adversarialSecret}}, ""),
+		"Location with userinfo":       adversarialResponse(t, http.Header{"Location": {"https://user:" + adversarialSecret + "@host/x"}}, ""),
+		"Location that fails to parse": adversarialResponse(t, http.Header{"Location": {"http://[::1/x?X-Amz-Signature=" + adversarialSecret}}, ""),
+		"Authorization echoed as a response header": adversarialResponse(t,
+			http.Header{"Authorization": {"AWS4-HMAC-SHA256 Credential=" + adversarialSecret + "/20260831/us-east-1/s3/aws4_request"}}, ""),
+	} {
+		t.Run(name, func(t *testing.T) {
+			dump, err := dumpResponseForTrace(resp)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(dump), adversarialSecret) {
+				t.Fatalf("secret leaked:\n%s", string(dump))
+			}
+		})
+	}
+}
+
+// A key that holds a scope-shaped fragment must not have its tail mistaken for
+// the real scope; the real scope is the last one.
+func TestRedactAuthorizationKeepsOnlyTheRealScope(t *testing.T) {
+	got := redactAuthorization("AWS4-HMAC-SHA256 Credential=a/20200101/x/y/aws4_request/tail/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=ab12")
+	want := "AWS4-HMAC-SHA256 Credential=" + redactedMarker + "/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=" + redactedMarker
+	if got != want {
+		t.Fatalf("got  %q\nwant %q", got, want)
+	}
+	if got := redactAuthorization("AWS4-HMAC-SHA256 Credential=nope"); got != "AWS4-HMAC-SHA256 "+redactedMarker {
+		t.Fatalf("unparseable SigV4 should keep only the algorithm: %q", got)
+	}
+}
+
+func TestScrubCredentialTextCoversEchoedShapes(t *testing.T) {
+	text := "a Credential=" + adversarialSecret + "/20260831/us-east-1/s3/aws4_request b Signature=deadbeef01 c AWS " + adversarialSecret + ":YXNkZmFzZGZhc2RmYXNkZmFzZGY= d ?X-Amz-Security-Token=" + adversarialSecret + "&e=1"
+	if got := scrubCredentialText(text); strings.Contains(got, adversarialSecret) || strings.Contains(got, "deadbeef01") {
+		t.Fatalf("credential shape survived: %s", got)
+	}
+}

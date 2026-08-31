@@ -114,6 +114,7 @@ func accessKeyEditOpts(ctx *cli.Context) madmin.UpdateServiceAccountReq {
 	expVal := ctx.String("expiry")
 	policyPath := ctx.String("policy")
 	secretKey := ctx.String("secret-key")
+	registerSecret(secretKey)
 	description := ctx.String("description")
 	expDurVal := ctx.Duration("expiry-duration")
 

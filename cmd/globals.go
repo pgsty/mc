@@ -211,15 +211,24 @@ func setGlobalsFromContext(ctx *cli.Context) error {
 	customHeaders := ctx.StringSlice("custom-header")
 	if len(customHeaders) > 0 {
 		globalCustomHeader = make(http.Header)
-		for _, header := range customHeaders {
+		for n, header := range customHeaders {
+			// Never echo the entry: a custom header is where a caller puts a
+			// Bearer token or a proxy password, and a typo in it must not
+			// print the value.
 			i := strings.IndexByte(header, ':')
 			if i <= 0 {
-				return fmt.Errorf("invalid custom header entry %s", header)
+				return fmt.Errorf("invalid custom header entry #%d: expected name:value", n+1)
 			}
 			h := strings.TrimSpace(header[:i])
 			hv := strings.TrimSpace(header[i+1:])
-			if !httpguts.ValidHeaderFieldName(h) || !httpguts.ValidHeaderFieldValue(hv) {
-				return fmt.Errorf("invalid custom header entry %s", header)
+			if !httpguts.ValidHeaderFieldName(h) {
+				return fmt.Errorf("invalid custom header entry #%d: header name contains characters that are not allowed", n+1)
+			}
+			if !httpguts.ValidHeaderFieldValue(hv) {
+				return fmt.Errorf("invalid custom header entry #%d (%s): header value contains characters that are not allowed", n+1, h)
+			}
+			if isSecretHeaderName(h) {
+				registerSecret(hv)
 			}
 			globalCustomHeader.Add(h, hv)
 		}

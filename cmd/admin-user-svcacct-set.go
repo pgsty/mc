@@ -97,6 +97,7 @@ func mainAdminUserSvcAcctSet(ctx *cli.Context) error {
 	svcAccount := args.Get(1)
 
 	secretKey := ctx.String("secret-key")
+	registerSecret(secretKey)
 	policyPath := ctx.String("policy")
 	name := ctx.String("name")
 	description := ctx.String("description")

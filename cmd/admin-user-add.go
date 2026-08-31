@@ -196,6 +196,7 @@ func mainAdminUserAdd(ctx *cli.Context) error {
 	args := ctx.Args()
 	aliasedURL := args.Get(0)
 	accessKey, secretKey := fetchUserKeys(args)
+	registerSecret(secretKey)
 
 	// Create a new MinIO Admin Client
 	client, err := newAdminClient(aliasedURL)

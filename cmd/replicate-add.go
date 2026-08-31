@@ -193,6 +193,7 @@ func extractCredentialURL(argURL string) (accessKey, secretKey string, u *url.UR
 			}
 			accessKey = parts[2]
 			secretKey = parts[3]
+			registerSecret(secretKey)
 			parsedURL = fmt.Sprintf("%s%s", parts[1], parts[4])
 		}
 	} else {

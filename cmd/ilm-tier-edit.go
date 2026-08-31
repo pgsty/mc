@@ -129,6 +129,7 @@ func mainAdminTierEdit(ctx *cli.Context) error {
 	var creds madmin.TierCreds
 	accessKey := ctx.String("access-key")
 	secretKey := ctx.String("secret-key")
+	registerSecret(secretKey)
 	credsPath := ctx.String("credentials-file")
 	useAwsRole := ctx.IsSet("use-aws-role")
 

@@ -181,6 +181,7 @@ func fetchTierConfig(ctx *cli.Context, tierName string, tierType madmin.TierType
 	case madmin.MinIO:
 		accessKey := ctx.String("access-key")
 		secretKey := ctx.String("secret-key")
+		registerSecret(secretKey)
 		if accessKey == "" || secretKey == "" {
 			fatalIf(errInvalidArgument().Trace(), fmt.Sprintf("%s remote tier requires access credentials", tierType))
 		}

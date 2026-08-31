@@ -603,7 +603,10 @@ func checksumVerifyErrorResult(candidate checksumVerifyCandidate, err error) che
 func applyChecksumVerifyError(result checksumVerifyResult, err error) checksumVerifyResult {
 	response := minio.ToErrorResponse(err)
 	result.ErrorCode = response.Code
-	result.ErrorMessage = err.Error()
+	// Server-controlled text, printed and written to --report: an endpoint
+	// that echoes a request header into its message must not put an SSE-C
+	// key or a token there.
+	result.ErrorMessage = scrubSecretsFromOutput(err.Error())
 	code := strings.ToLower(response.Code)
 	message := strings.ToLower(response.Message)
 	switch {

@@ -263,6 +263,10 @@ func parseSSEKey(sseKey string, keyType sseKeyType) (
 		err = errSSEClientKeyFormat("SSE-C key was neither base64 raw encoded nor hex encoded.").Trace(redactSSEKeySpec(sseKey, keyType))
 	}
 
+	// The header carries standard base64 with padding; the user may have
+	// supplied raw base64 or hex. Register every form so a reflected header
+	// or an echoed argument is scrubbed from any later output.
+	registerSecret(encodedKey, base64.StdEncoding.EncodeToString(keyB), hex.EncodeToString(keyB))
 	key = string(keyB)
 	if len(key) != 32 {
 		err = errSSEClientKeyFormat(fmt.Sprintf("Decoded SSE-C key is %d bytes, but should be 32 bytes.", len(key))).Trace(redactSSEKeySpec(sseKey, keyType))

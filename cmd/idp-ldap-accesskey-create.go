@@ -145,6 +145,7 @@ func accessKeyCreateOpts(ctx *cli.Context, targetUser string) madmin.AddServiceA
 	policyPath := ctx.String("policy")
 	accessKey := ctx.String("access-key")
 	secretKey := ctx.String("secret-key")
+	registerSecret(secretKey)
 	description := ctx.String("description")
 	expDurVal := ctx.Duration("expiry-duration")
 
