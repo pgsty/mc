@@ -1057,11 +1057,13 @@ function test_checksum_verify() {
 
 	# ...and explicit quiet must still silence stdout while --report keeps working.
 	report="${WORK_DIR}/checksum-report-$RANDOM.jsonl"
-	quiet_out=$(mc_cmd checksum verify --recursive --fail-on none --report "${report}" \
-		"${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/")
-	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "checksum verify failed under --quiet"
-	diff -bB <(echo "") <(echo "$quiet_out") >/dev/null 2>&1
-	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "explicit --quiet must silence checksum verify stdout"
+	# mc_cmd swallows stdout, so the command line is built here as well: the
+	# assertion must see the command's own stdout, and nothing else.
+	quiet_out=$("${MC_CMD[@]}" checksum verify --recursive --fail-on none --report "${report}" \
+		"${SERVER_ALIAS}/${BUCKET_NAME}/${prefix}/" 2>"${report}.stderr")
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "checksum verify failed under --quiet: $(cat "${report}.stderr")"
+	[ -z "$quiet_out" ]
+	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "explicit --quiet must silence checksum verify stdout, got: ${quiet_out}"
 	diff -bB <(echo "1") <(jq -s -r '[.[] | select(.type == "summary")] | length' "${report}") >/dev/null 2>&1
 	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "--report must contain exactly one summary under --quiet"
 

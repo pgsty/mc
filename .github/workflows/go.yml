@@ -41,8 +41,11 @@ jobs:
 
       - name: Build on ${{ matrix.os }}
         if: matrix.os == 'windows-latest'
+        # bash, not pwsh: pwsh only propagates the last command's exit code,
+        # and %GOPATH% is a cmd.exe form that pwsh leaves unexpanded.
+        shell: bash
         run: |
-          go build --ldflags="-s -w" -o %GOPATH%\bin\mc.exe
+          go build --ldflags="-s -w" -o "$(go env GOPATH)/bin/mc.exe"
           go test -v -race --timeout 30m ./...
       - name: Build on ${{ matrix.os }}
         if: matrix.os == 'macos-latest'

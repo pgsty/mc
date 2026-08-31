@@ -752,12 +752,12 @@ func verifyChecksumCandidate(ctx context.Context, backend checksumVerifyBackend,
 	result.BytesRead = read
 	if readErr != nil {
 		result.Result = checksumResultUnknownReadError
-		result.ErrorMessage = readErr.Error()
+		result.ErrorMessage = scrubSecretsFromOutput(readErr.Error())
 		return result
 	}
 	if closeErr != nil {
 		result.Result = checksumResultUnknownReadError
-		result.ErrorMessage = closeErr.Error()
+		result.ErrorMessage = scrubSecretsFromOutput(closeErr.Error())
 		return result
 	}
 	if read != info.Size {
