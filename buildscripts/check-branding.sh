@@ -42,9 +42,16 @@ if grep -q 'app.Author = "MinIO' cmd/main.go; then
 	err "cmd/main.go app.Author reverted to MinIO"
 fi
 
-# 4. Example aliases stay de-branded.
+# 4. Example aliases stay de-branded. 'play' is a MinIO-operated alias this fork
+#    no longer pre-seeds, so command help must not tell users to type it; the
+#    convention is 'mysilo'. config-old.go and config-migrate.go still name the
+#    bare host for legacy config migration, which is why this looks for the
+#    'play/' path form used in examples.
 if git grep -nw 'myminio' -- 'cmd/*.go' ':!cmd/*_test.go'; then
 	err "'myminio' example alias reappeared"
+fi
+if git grep -n 'play/' -- 'cmd/*.go' ':!cmd/*_test.go'; then
+	err "'play' example alias reappeared; use 'mysilo'"
 fi
 
 # 5. SUBNET connectivity must stay hard-disabled at compile time.

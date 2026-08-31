@@ -24,7 +24,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 
 	json "github.com/minio/colorjson"
 	yaml "gopkg.in/yaml.v2"

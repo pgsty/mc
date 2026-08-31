@@ -18,3 +18,4 @@ mc.gz
 .bin/
 .release-sign/
 dist/
+.codex-review-consumer/

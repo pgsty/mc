@@ -73,7 +73,9 @@ var errInvalidAlias = func(alias string) *probe.Error {
 type invalidURLErr error
 
 var errInvalidURL = func(URL string) *probe.Error {
-	msg := "URL `" + URL + "` should be of the form scheme://host[:port]/ without resource component."
+	// The rejected URL is user input and may carry userinfo; withhold it here
+	// so no call site can print credentials by accident.
+	msg := "URL `" + redactCredentialURL(URL) + "` should be of the form scheme://host[:port]/ without resource component."
 	return probe.NewError(invalidURLErr(errors.New(msg)))
 }
 
@@ -82,7 +84,7 @@ type invalidAPISignatureErr error
 var errInvalidAPISignature = func(api, url string) *probe.Error {
 	msg := fmt.Sprintf(
 		"Unrecognized API signature %s for host %s. Valid options are `[%s]`",
-		api, url, strings.Join(validAPIs, ", "))
+		api, redactCredentialURL(url), strings.Join(validAPIs, ", "))
 	return probe.NewError(invalidAPISignatureErr(errors.New(msg)))
 }
 

@@ -30,7 +30,7 @@ import (
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 	"golang.org/x/term"
 )
 
@@ -126,6 +126,7 @@ func loginLDAPAccesskey(ctx *cli.Context) (*madmin.AdminClient, madmin.AddServic
 		password = string(bytePassword)
 	}
 
+	registerSecret(password)
 	stsCreds, e := credentials.NewLDAPIdentity(urlStr, username, password)
 	fatalIf(probe.NewError(e), "unable to initialize LDAP identity")
 
@@ -133,6 +134,7 @@ func loginLDAPAccesskey(ctx *cli.Context) (*madmin.AdminClient, madmin.AddServic
 		Client: http.DefaultClient,
 	})
 	fatalIf(probe.NewError(e), "unable to create a temporary account from LDAP identity")
+	registerSecret(tempCreds.SecretAccessKey, tempCreds.SessionToken)
 
 	client, e := madmin.NewWithOptions(u.Host, &madmin.Options{
 		Creds:  stsCreds,

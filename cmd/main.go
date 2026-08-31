@@ -37,10 +37,10 @@ import (
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/minio-go/v7/pkg/set"
-	"github.com/minio/pkg/v3/console"
-	"github.com/minio/pkg/v3/env"
-	"github.com/minio/pkg/v3/trie"
-	"github.com/minio/pkg/v3/words"
+	"github.com/pgsty/silo-pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/env"
+	"github.com/pgsty/silo-pkg/v3/trie"
+	"github.com/pgsty/silo-pkg/v3/words"
 	"golang.org/x/term"
 
 	completeinstall "github.com/posener/complete/cmd/install"
@@ -364,8 +364,12 @@ func registerBefore(ctx *cli.Context) error {
 		setMcConfigDir(ctx.GlobalString("config-dir"))
 	}
 
-	// Set global flags.
-	setGlobalsFromContext(ctx)
+	// Set global flags. Propagate a parse failure: dropping it here meant a
+	// malformed app-level --custom-header, --resolve or --limit-* value was
+	// silently ignored and the command ran without it.
+	if e := setGlobalsFromContext(ctx); e != nil {
+		return e
+	}
 
 	// Migrate any old version of config / state files to newer format.
 	migrate()

@@ -32,7 +32,7 @@ import (
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/minio-go/v7/pkg/replication"
 	"github.com/minio/minio-go/v7/pkg/s3utils"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 var replicateUpdateFlags = []cli.Flag{
@@ -202,7 +202,7 @@ func modifyRemoteTarget(cli *cli.Context, targets []madmin.BucketTarget, arnStr 
 		if u.Path != "" {
 			tgtBucket = path.Clean(u.Path[1:])
 		}
-		fatalIf(probe.NewError(s3utils.CheckValidBucketName(tgtBucket)).Trace(tgtURL), "invalid target bucket")
+		fatalIf(probe.NewError(s3utils.CheckValidBucketName(tgtBucket)).Trace(redactCredentialURL(tgtURL)), "invalid target bucket")
 
 		secure := u.Scheme == "https"
 		host := u.Host

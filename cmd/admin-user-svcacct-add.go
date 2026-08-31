@@ -31,7 +31,7 @@ import (
 	json "github.com/minio/colorjson"
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 var adminUserSvcAcctAddFlags = []cli.Flag{
@@ -280,6 +280,7 @@ func mainAdminUserSvcAcctAdd(ctx *cli.Context) error {
 
 	accessKey := ctx.String("access-key")
 	secretKey := ctx.String("secret-key")
+	registerSecret(secretKey)
 	policyPath := ctx.String("policy")
 	name := ctx.String("name")
 	description := ctx.String("description")

@@ -39,7 +39,7 @@ import (
 
 	jwtgo "github.com/golang-jwt/jwt/v4"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 func isErrIgnored(err *probe.Error) (ignored bool) {

@@ -27,7 +27,7 @@ import (
 	"github.com/minio/cli"
 	json "github.com/minio/colorjson"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 	"golang.org/x/term"
 )
 
@@ -196,12 +196,15 @@ func mainAdminUserAdd(ctx *cli.Context) error {
 	args := ctx.Args()
 	aliasedURL := args.Get(0)
 	accessKey, secretKey := fetchUserKeys(args)
+	registerSecret(secretKey)
 
 	// Create a new MinIO Admin Client
 	client, err := newAdminClient(aliasedURL)
 	fatalIf(err, "Unable to initialize admin connection.")
 
-	fatalIf(probe.NewError(client.AddUser(globalContext, accessKey, secretKey)).Trace(args...), "Unable to add new user")
+	// Trace the alias and access key only: args carries the secret key when it
+	// is supplied positionally, and --debug prints the whole trace.
+	fatalIf(probe.NewError(client.AddUser(globalContext, accessKey, secretKey)).Trace(aliasedURL, accessKey), "Unable to add new user")
 
 	printMsg(userMessage{
 		op:         ctx.Command.Name,

@@ -23,8 +23,8 @@ import (
 	"strings"
 
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
-	"github.com/minio/pkg/v3/quick"
+	"github.com/pgsty/silo-pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/quick"
 )
 
 // migrate config files from the any older version to the latest.

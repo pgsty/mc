@@ -85,7 +85,7 @@ func checkAliasImportSyntax(ctx *cli.Context) {
 
 func checkCredentialsSyntax(credentials aliasConfigV10) {
 	if !isValidHostURL(credentials.URL) {
-		fatalIf(errInvalidURL(credentials.URL), "Invalid URL.")
+		fatalIf(errInvalidURL(redactCredentialURL(credentials.URL)), "Invalid URL.")
 	}
 
 	if !isValidAccessKey(credentials.AccessKey) {

@@ -24,7 +24,7 @@ import (
 	"github.com/minio/cli"
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 var adminTierEditFlags = []cli.Flag{
@@ -114,6 +114,7 @@ func checkAdminTierEditSyntax(ctx *cli.Context) {
 }
 
 func mainAdminTierEdit(ctx *cli.Context) error {
+	registerTierSecretFlags(ctx)
 	checkAdminTierEditSyntax(ctx)
 
 	console.SetColor("TierMessage", color.New(color.FgGreen))
@@ -129,6 +130,7 @@ func mainAdminTierEdit(ctx *cli.Context) error {
 	var creds madmin.TierCreds
 	accessKey := ctx.String("access-key")
 	secretKey := ctx.String("secret-key")
+	registerSecret(secretKey)
 	credsPath := ctx.String("credentials-file")
 	useAwsRole := ctx.IsSet("use-aws-role")
 
@@ -137,6 +139,7 @@ func mainAdminTierEdit(ctx *cli.Context) error {
 	azSPTenantID := ctx.String("az-sp-tenant-id")
 	azSPClientID := ctx.String("az-sp-client-id")
 	azSPClientSecret := ctx.String("az-sp-client-secret")
+	registerSecret(accountKey, azSPClientSecret)
 
 	switch {
 	case accessKey != "" && secretKey != "" && !useAwsRole: // S3 tier
@@ -155,6 +158,7 @@ func mainAdminTierEdit(ctx *cli.Context) error {
 	case credsPath != "": // GCS tier
 		credsBytes, e := os.ReadFile(credsPath)
 		fatalIf(probe.NewError(e), "Unable to read credentials file at %s", credsPath)
+		registerCredentialsJSON(credsBytes)
 
 		creds.CredsJSON = credsBytes
 	default:

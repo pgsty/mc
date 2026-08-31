@@ -20,11 +20,9 @@ package cmd
 import (
 	"net/http"
 	"net/http/httputil"
-	"regexp"
-	"strings"
 
 	"github.com/minio/mc/pkg/httptracer"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 // traceV4 - tracing structure for signature version '4'.
@@ -36,66 +34,26 @@ func newTraceV4() httptracer.HTTPTracer {
 }
 
 // Request - Trace HTTP Request
-func (t traceV4) Request(req *http.Request) (err error) {
-	origAuth := req.Header.Get("Authorization")
-	sseKey := req.Header.Get("X-Amz-Server-Side-Encryption-Customer-Key")
-
-	printTrace := func() error {
-		reqTrace, rerr := httputil.DumpRequestOut(req, false) // Only display header
-		if rerr == nil {
-			console.Debug(string(reqTrace))
-		}
-		return rerr
+func (t traceV4) Request(req *http.Request) error {
+	reqTrace, err := httputil.DumpRequestOut(redactRequestForTrace(req), false) // Only display header
+	if err != nil {
+		return err
 	}
-
-	if strings.TrimSpace(sseKey) != "" {
-		// Stripe out SSE-C key from: X-Amz-Server-Side-Encryption-Customer-Key=<key>
-		req.Header.Set("X-Amz-Server-Side-Encryption-Customer-Key", "**REDACTED**")
-	}
-
-	if strings.TrimSpace(origAuth) != "" {
-		// Authorization (S3 v4 signature) Format:
-		// Authorization: AWS4-HMAC-SHA256 Credential=AKIAJNACEGBGMXBHLEZA/20150524/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=bbfaa693c626021bcb5f911cd898a1a30206c1fad6bad1e0eb89e282173bd24c
-
-		// Strip out accessKeyID from: Credential=<access-key-id>/<date>/<aws-region>/<aws-service>/aws4_request
-		regCred := regexp.MustCompile("Credential=([A-Z0-9]+)/")
-		newAuth := regCred.ReplaceAllString(origAuth, "Credential=**REDACTED**/")
-
-		// Strip out 256-bit signature from: Signature=<256-bit signature>
-		regSign := regexp.MustCompile("Signature=([[0-9a-f]+)")
-		newAuth = regSign.ReplaceAllString(newAuth, "Signature=**REDACTED**")
-
-		// Set a temporary redacted auth
-		req.Header.Set("Authorization", newAuth)
-
-		err = printTrace()
-
-		// Undo
-		req.Header.Set("Authorization", origAuth)
-	} else {
-		err = printTrace()
-	}
-	return err
+	console.Debug(string(reqTrace))
+	return nil
 }
 
 // Response - Trace HTTP Response
-func (t traceV4) Response(resp *http.Response) (err error) {
-	var respTrace []byte
-	// For errors we make sure to dump response body as well.
-	if resp.StatusCode != http.StatusOK &&
-		resp.StatusCode != http.StatusPartialContent &&
-		resp.StatusCode != http.StatusNoContent {
-		respTrace, err = httputil.DumpResponse(resp, true)
-	} else {
-		respTrace, err = httputil.DumpResponse(resp, false)
+func (t traceV4) Response(resp *http.Response) error {
+	respTrace, err := dumpResponseForTrace(resp)
+	if err != nil {
+		return err
 	}
-	if err == nil {
-		console.Debug(string(respTrace))
-	}
+	console.Debug(string(respTrace))
 
 	if resp.TLS != nil {
 		printTLSCertInfo(resp.TLS)
 	}
 
-	return err
+	return nil
 }

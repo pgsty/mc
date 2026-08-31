@@ -37,8 +37,8 @@ import (
 	"github.com/minio/cli"
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/licverifier"
-	"github.com/minio/pkg/v3/subnet"
+	"github.com/pgsty/silo-pkg/v3/licverifier"
+	"github.com/pgsty/silo-pkg/v3/subnet"
 	"github.com/tidwall/gjson"
 	"golang.org/x/term"
 )
@@ -549,6 +549,7 @@ func subnetLogin() (string, error) {
 	bytepw, _ := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
 
+	registerSecret(string(bytepw))
 	loginReq := map[string]string{
 		"username": username,
 		"password": string(bytepw),
@@ -565,6 +566,7 @@ func subnetLogin() (string, error) {
 		byteotp, _ := term.ReadPassword(int(os.Stdin.Fd()))
 		fmt.Println()
 
+		registerSecret(string(byteotp), mfaToken)
 		mfaLoginReq := SubnetMFAReq{Username: username, OTP: string(byteotp), Token: mfaToken}
 		respStr, e = SubnetPostReq(subnetMFAURL(), mfaLoginReq, nil)
 		if e != nil {
@@ -574,6 +576,7 @@ func subnetLogin() (string, error) {
 
 	token := gjson.Get(respStr, "token_info.access_token")
 	if token.Exists() {
+		registerSecret(token.String())
 		return token.String(), nil
 	}
 	return "", fmt.Errorf("access token not found in response")
@@ -770,6 +773,7 @@ func prepareSubnetUploadURL(uploadURL, alias, apiKey string) (string, map[string
 
 func getAPIKeyFlag(ctx *cli.Context) (string, error) {
 	apiKey := ctx.String("api-key")
+	registerSecret(apiKey)
 
 	if len(apiKey) == 0 {
 		return "", nil

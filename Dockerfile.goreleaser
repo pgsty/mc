@@ -1,11 +1,18 @@
-FROM registry.access.redhat.com/ubi9/ubi:latest AS certs
+# Base images are pinned by digest so a rebuild of the same release tag starts
+# from the same bytes instead of whatever "latest" points at that day.
+# Dependabot's docker ecosystem keeps the pins current; do not replace them
+# with a floating tag.
+#
+# This is not full reproducibility: the dnf install below still resolves
+# whatever the Red Hat repositories serve at build time.
+FROM registry.access.redhat.com/ubi9/ubi:latest@sha256:b8c53f907b7ea8934d6bb23b319ca7b5ab567e61a0806ffc80170631cabc7563 AS certs
 RUN dnf -y install ca-certificates && \
     update-ca-trust && \
     cp /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /tmp/ca-certificates.crt && \
     dnf clean all && \
     rm -rf /var/cache/dnf
 
-FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest@sha256:f332c99eb8f798a8486821c91937f10ad64ee83d7e739303be2df051040918f6
 
 LABEL maintainer="Ruohang Feng (@Vonng) <rh@vonng.com>" \
       vendor="PGSTY" \

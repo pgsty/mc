@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/env"
+	"github.com/pgsty/silo-pkg/v3/env"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -186,6 +186,7 @@ func getAliasConfig(alias string) (*aliasConfigV10, *probe.Error) {
 	if _, ok := mcCfg.Aliases[alias]; ok {
 		hostCfg := mcCfg.Aliases[alias]
 		hostCfg.Src = mustGetMcConfigPath()
+		registerSecret(hostCfg.SecretKey, hostCfg.SessionToken, hostCfg.APIKey, hostCfg.License)
 		return &hostCfg, nil
 	}
 
@@ -215,6 +216,30 @@ var (
 	hostKeyTokens = regexp.MustCompile("^(https?://)(.*?):(.*?):(.*)@(.*?)$")
 )
 
+// redactCredentialURL removes the userinfo of a URL so it can appear in an
+// error message or a probe trace. Remote replication targets and MC_HOST_*
+// values are written as scheme://ACCESSKEY:SECRETKEY[:TOKEN]@host, and a
+// username alone may still be an access key, so the whole userinfo goes.
+//
+// This works on the text rather than on a parsed URL. The three-part
+// key:secret:token form is not something url.Parse understands, a secret key
+// may legitimately contain "/" (hostKeys accepts it, so this must too), and a
+// value that does not parse at all is exactly the one an error is about to
+// print. Everything between the scheme and the LAST "@" is treated as
+// userinfo. That over-redacts a URL whose path or query carries an "@", which
+// is the right side to err on.
+func redactCredentialURL(rawURL string) string {
+	prefix, rest := "", rawURL
+	if i := strings.Index(rawURL, "://"); i >= 0 {
+		prefix, rest = rawURL[:i+3], rawURL[i+3:]
+	}
+	at := strings.LastIndex(rest, "@")
+	if at < 0 {
+		return rawURL
+	}
+	return prefix + redactedMarker + "@" + rest[at+1:]
+}
+
 // parse url usually obtained from env.
 func parseEnvURLStr(envURL string) (*url.URL, string, string, string, *probe.Error) {
 	var accessKey, secretKey, sessionToken string
@@ -222,7 +247,7 @@ func parseEnvURLStr(envURL string) (*url.URL, string, string, string, *probe.Err
 	if hostKeyTokens.MatchString(envURL) {
 		parts := hostKeyTokens.FindStringSubmatch(envURL)
 		if len(parts) != 6 {
-			return nil, "", "", "", errInvalidArgument().Trace(envURL)
+			return nil, "", "", "", errInvalidArgument().Trace(redactCredentialURL(envURL))
 		}
 		accessKey = parts[2]
 		secretKey = parts[3]
@@ -231,7 +256,7 @@ func parseEnvURLStr(envURL string) (*url.URL, string, string, string, *probe.Err
 	} else if hostKeys.MatchString(envURL) {
 		parts := hostKeys.FindStringSubmatch(envURL)
 		if len(parts) != 5 {
-			return nil, "", "", "", errInvalidArgument().Trace(envURL)
+			return nil, "", "", "", errInvalidArgument().Trace(redactCredentialURL(envURL))
 		}
 		accessKey = parts[2]
 		secretKey = parts[3]
@@ -245,7 +270,11 @@ func parseEnvURLStr(envURL string) (*url.URL, string, string, string, *probe.Err
 		u, e = url.Parse(envURL)
 	}
 	if e != nil {
-		return nil, "", "", "", probe.NewError(e)
+		// A *url.Error repeats the URL it failed on, credentials and all.
+		if urlErr, ok := e.(*url.Error); ok {
+			e = urlErr.Err
+		}
+		return nil, "", "", "", probe.NewError(fmt.Errorf("invalid URL %s: %w", redactCredentialURL(envURL), e))
 	}
 	// Look for if URL has invalid values and return error.
 	if (u.Scheme != "http" && u.Scheme != "https") ||
@@ -254,7 +283,8 @@ func parseEnvURLStr(envURL string) (*url.URL, string, string, string, *probe.Err
 		u.ForceQuery ||
 		u.RawQuery != "" ||
 		u.Fragment != "" {
-		return nil, "", "", "", errInvalidArgument().Trace(u.String())
+		// u.String() renders userinfo, password included.
+		return nil, "", "", "", errInvalidArgument().Trace(redactCredentialURL(u.String()))
 	}
 	if accessKey == "" && secretKey == "" {
 		if u.User != nil {
@@ -262,6 +292,7 @@ func parseEnvURLStr(envURL string) (*url.URL, string, string, string, *probe.Err
 			secretKey, _ = u.User.Password()
 		}
 	}
+	registerSecret(secretKey, sessionToken)
 	return u, accessKey, secretKey, sessionToken, nil
 }
 
@@ -279,19 +310,24 @@ func readAliasesFromFile(envConfigFile string) *probe.Error {
 	}
 	defer r.Close()
 	scanner := bufio.NewScanner(r)
+	line := 0
 	for scanner.Scan() {
+		line++
 		envLine := scanner.Text()
 		strs := strings.SplitN(envLine, "=", 2)
+		// Never echo envLine: the value half of an MC_HOST_* entry is
+		// https://ACCESSKEY:SECRETKEY[:TOKEN]@host, and this error is printed
+		// without --debug. The line number is what makes it actionable.
 		if len(strs) != 2 {
-			return probe.NewError(fmt.Errorf("parsing error at %s", envLine)).Trace(envConfigFile)
+			return probe.NewError(fmt.Errorf("parsing error at line %d", line)).Trace(envConfigFile)
 		}
 		alias := strings.TrimPrefix(strs[0], mcEnvHostPrefix)
 		if len(alias) == 0 {
-			return probe.NewError(fmt.Errorf("parsing error at %s", envLine)).Trace(envConfigFile)
+			return probe.NewError(fmt.Errorf("parsing error at line %d", line)).Trace(envConfigFile)
 		}
 		aliasConfig, err := expandAliasFromEnv(strs[1])
 		if err != nil {
-			return err.Trace(envLine)
+			return err.Trace(envConfigFile, fmt.Sprintf("line %d", line))
 		}
 		aliasConfig.Src = envConfigFile
 		aliasToConfigMap[alias] = aliasConfig
@@ -305,7 +341,7 @@ func readAliasesFromFile(envConfigFile string) *probe.Error {
 func expandAliasFromEnv(envURL string) (*aliasConfigV10, *probe.Error) {
 	u, accessKey, secretKey, sessionToken, err := parseEnvURLStr(envURL)
 	if err != nil {
-		return nil, err.Trace(envURL)
+		return nil, err.Trace(redactCredentialURL(envURL))
 	}
 
 	return &aliasConfigV10{

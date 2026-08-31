@@ -33,7 +33,7 @@ import (
 	"github.com/minio/cli"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/minio-go/v7"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 	"golang.org/x/term"
 )
 
@@ -108,7 +108,9 @@ func checkAliasSetSyntax(ctx *cli.Context, accessKey, secretKey string, deprecat
 	}
 
 	if argsNr > 4 || argsNr < 2 {
-		fatalIf(errInvalidArgument().Trace(ctx.Args().Tail()...),
+		// Not Trace(args...): the tail of a well-formed invocation is the
+		// secret key.
+		fatalIf(errInvalidArgument().Trace(),
 			"Incorrect number of arguments for alias set command.")
 	}
 
@@ -123,7 +125,7 @@ func checkAliasSetSyntax(ctx *cli.Context, accessKey, secretKey string, deprecat
 	}
 
 	if !isValidHostURL(url) {
-		fatalIf(errInvalidURL(url), "Invalid URL.")
+		fatalIf(errInvalidURL(redactCredentialURL(url)), "Invalid URL.")
 	}
 
 	if !isValidAccessKey(accessKey) {
@@ -132,8 +134,11 @@ func checkAliasSetSyntax(ctx *cli.Context, accessKey, secretKey string, deprecat
 	}
 
 	if !isValidSecretKey(secretKey) {
-		fatalIf(errInvalidArgument().Trace(secretKey),
-			"Invalid secret key `"+secretKey+"`.")
+		// Never echo the secret. It reaches the terminal, shell history through
+		// a copied error message, and CI logs, and the only actionable detail
+		// is the length requirement.
+		fatalIf(errInvalidArgument().Trace(alias),
+			fmt.Sprintf("Invalid secret key: must be at least %d characters.", secretKeyMinLen))
 	}
 
 	if api != "" && !isValidAPI(api) { // Empty value set to default "S3v4".
@@ -255,7 +260,7 @@ func BuildS3Config(ctx context.Context, alias, url, accessKey, secretKey, api, p
 	// Probe S3 signature version
 	api, err := probeS3Signature(ctx, accessKey, secretKey, url, peerCert)
 	if err != nil {
-		return nil, err.Trace(url, accessKey, api, path)
+		return nil, err.Trace(redactCredentialURL(url), accessKey, api, path)
 	}
 
 	s3Config.Signature = api
@@ -328,6 +333,7 @@ func mainAliasSet(cli *cli.Context, deprecated bool) error {
 	}
 
 	accessKey, secretKey := fetchAliasKeys(args)
+	registerSecret(secretKey)
 	checkAliasSetSyntax(cli, accessKey, secretKey, deprecated)
 
 	ctx, cancelAliasAdd := context.WithCancel(globalContext)

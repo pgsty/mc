@@ -28,7 +28,7 @@ import (
 	json "github.com/minio/colorjson"
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 var adminTierAddFlags = []cli.Flag{
@@ -181,6 +181,7 @@ func fetchTierConfig(ctx *cli.Context, tierName string, tierType madmin.TierType
 	case madmin.MinIO:
 		accessKey := ctx.String("access-key")
 		secretKey := ctx.String("secret-key")
+		registerSecret(secretKey)
 		if accessKey == "" || secretKey == "" {
 			fatalIf(errInvalidArgument().Trace(), fmt.Sprintf("%s remote tier requires access credentials", tierType))
 		}
@@ -269,18 +270,22 @@ func fetchTierConfig(ctx *cli.Context, tierName string, tierType madmin.TierType
 		if ctx.IsSet("aws-web-identity-file") {
 			s3Opts = append(s3Opts, madmin.S3AWSRoleWebIdentityTokenFile(ctx.String("aws-web-identity-file")))
 		}
-		s3Cfg, e := madmin.NewTierS3(tierName, ctx.String("access-key"), ctx.String("secret-key"), bucket, s3Opts...)
+		s3SecretKey := ctx.String("secret-key")
+		registerSecret(s3SecretKey)
+		s3Cfg, e := madmin.NewTierS3(tierName, ctx.String("access-key"), s3SecretKey, bucket, s3Opts...)
 		fatalIf(probe.NewError(e), "Invalid configuration for AWS S3 compatible remote tier")
 
 		return s3Cfg
 	case madmin.Azure:
 		accountName := ctx.String("account-name")
 		accountKey := ctx.String("account-key")
+		azSPClientSecret := ctx.String("az-sp-client-secret")
+		registerSecret(accountKey, azSPClientSecret)
 		if accountName == "" {
 			fatalIf(errDummy().Trace(), fmt.Sprintf("%s remote tier requires the storage account name", tierType))
 		}
 
-		if accountKey == "" && (ctx.String("az-sp-tenant-id") == "" || ctx.String("az-sp-client-id") == "" || ctx.String("az-sp-client-secret") == "") {
+		if accountKey == "" && (ctx.String("az-sp-tenant-id") == "" || ctx.String("az-sp-client-id") == "" || azSPClientSecret == "") {
 			fatalIf(errDummy().Trace(), fmt.Sprintf("%s remote tier requires static credentials OR service principal credentials", tierType))
 		}
 
@@ -305,8 +310,8 @@ func fetchTierConfig(ctx *cli.Context, tierName string, tierType madmin.TierType
 			azOpts = append(azOpts, madmin.AzurePrefix(prefix))
 		}
 
-		if ctx.String("az-sp-tenant-id") != "" || ctx.String("az-sp-client-id") != "" || ctx.String("az-sp-client-secret") != "" {
-			azOpts = append(azOpts, madmin.AzureServicePrincipal(ctx.String("az-sp-tenant-id"), ctx.String("az-sp-client-id"), ctx.String("az-sp-client-secret")))
+		if ctx.String("az-sp-tenant-id") != "" || ctx.String("az-sp-client-id") != "" || azSPClientSecret != "" {
+			azOpts = append(azOpts, madmin.AzureServicePrincipal(ctx.String("az-sp-tenant-id"), ctx.String("az-sp-client-id"), azSPClientSecret))
 		}
 
 		azCfg, e := madmin.NewTierAzure(tierName, accountName, accountKey, bucket, azOpts...)
@@ -333,6 +338,7 @@ func fetchTierConfig(ctx *cli.Context, tierName string, tierType madmin.TierType
 		credsPath := ctx.String("credentials-file")
 		credsBytes, e := os.ReadFile(credsPath)
 		fatalIf(probe.NewError(e), "Failed to read credentials file")
+		registerCredentialsJSON(credsBytes)
 
 		gcsCfg, e := madmin.NewTierGCS(tierName, credsBytes, bucket, gcsOpts...)
 		fatalIf(probe.NewError(e), "Invalid configuration for Google Cloud Storage remote tier")
@@ -402,6 +408,7 @@ func (msg *tierMessage) SetTierConfig(sCfg *madmin.TierConfig) {
 }
 
 func mainAdminTierAdd(ctx *cli.Context) error {
+	registerTierSecretFlags(ctx)
 	checkAdminTierAddSyntax(ctx)
 
 	console.SetColor("TierMessage", color.New(color.FgGreen))

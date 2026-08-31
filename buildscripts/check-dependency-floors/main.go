@@ -6,6 +6,14 @@
 // it under the terms of the GNU Affero General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 // Command check-dependency-floors rejects module requirements that are lower
 // than the most recent published release. It protects runtime version floors
@@ -27,10 +35,6 @@ var allowedDowngrades = map[string]string{
 	// SILO's shared portability pin. The v22.7.0 daemon package does not
 	// compile on NetBSD; do not permit this exception to drift any lower.
 	"github.com/coreos/go-systemd/v22": "v22.6.0",
-	// Keep the public module graph compatible with servers that embed mc or
-	// Console. Standalone SILO builds still select silo-pkg v3.12.2 through the
-	// top-level replacement, while downstream modules ignore that replacement.
-	"github.com/minio/pkg/v3": "v3.6.1",
 }
 
 type floorSet struct {

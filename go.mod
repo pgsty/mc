@@ -2,16 +2,6 @@ module github.com/minio/mc
 
 go 1.27.0
 
-// Use PGSTY's maintained Silo Go SDK while preserving upstream import paths.
-// Keep the required version on a real upstream tag because replace directives
-// are ignored when this module is consumed as a dependency.
-replace github.com/minio/minio-go/v7 => github.com/pgsty/silo-go/v7 v7.3.1
-
-// Use PGSTY's maintained SILO package fork while preserving upstream imports.
-// Keep the required version on a real upstream tag because replace directives
-// are ignored when this module is consumed as a dependency.
-replace github.com/minio/pkg/v3 => github.com/pgsty/silo-pkg/v3 v3.12.2
-
 // Keep SILO's shared portability pin: go-systemd v22.7.0's daemon package
 // does not compile on NetBSD, while v22.6.0 remains portable.
 replace github.com/coreos/go-systemd/v22 => github.com/coreos/go-systemd/v22 v22.6.0
@@ -39,12 +29,12 @@ require (
 	github.com/minio/colorjson v1.0.8
 	github.com/minio/filepath v1.0.0
 	github.com/minio/madmin-go/v3 v3.0.110
-	github.com/minio/minio-go/v7 v7.3.0
-	github.com/minio/pkg/v3 v3.6.1
+	github.com/minio/minio-go/v7 v7.3.1-0.20260828014306-0e78d3f18efe
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/pgsty/silo-pkg/v3 v3.13.0
 	github.com/pkg/xattr v0.4.12
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.23.2
@@ -108,6 +98,10 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
+	// Only github.com/minio/colorjson still reaches upstream minio/pkg, for its
+	// console package. colorjson itself asks for v3.0.1; hold the floor at the
+	// last version this fork shipped so the requirement never regresses.
+	github.com/minio/pkg/v3 v3.6.1 // indirect
 	github.com/muesli/ansi v0.0.0-20230316100256-276c6243b2f6 // indirect
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

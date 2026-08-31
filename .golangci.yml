@@ -2,7 +2,7 @@ version: "2"
 linters:
   default: none
   enable:
-    - gomodguard
+    - gomodguard_v2
     - govet
     - ineffassign
     - misspell
@@ -10,6 +10,16 @@ linters:
     - staticcheck
     - unused
   settings:
+    # The fork imports the SILO package under its own path. Upstream minio/pkg
+    # survives only as an indirect dependency of github.com/minio/colorjson,
+    # and importing it here would silently reintroduce a policy parser that
+    # accepts bare ARNs. Block the path so it cannot creep back in.
+    gomodguard_v2:
+      blocked:
+        - module: github.com/minio/pkg/v3
+          recommendations:
+            - github.com/pgsty/silo-pkg/v3
+          reason: "this fork uses the SILO package under its own module path"
     misspell:
       locale: US
   exclusions:

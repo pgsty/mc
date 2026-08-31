@@ -19,6 +19,7 @@ package cmd
 
 import (
 	"context"
+	stdjson "encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -27,13 +28,15 @@ import (
 	"github.com/minio/cli"
 	json "github.com/minio/colorjson"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 // causeMessage container for golang error messages
 type causeMessage struct {
 	Message string `json:"message"`
-	Error   error  `json:"error"`
+	// The underlying error, rendered through scrubbedErrorValue: any string
+	// it carries may be server-supplied text.
+	Error any `json:"error"`
 }
 
 // errorMessage container for error messages
@@ -55,24 +58,12 @@ func fatalIf(err *probe.Error, msg string, data ...any) {
 
 func fatal(err *probe.Error, msg string, data ...any) {
 	if globalJSON {
-		errorMsg := errorMessage{
-			Message: msg,
-			Type:    "fatal",
-			Cause: causeMessage{
-				Message: err.ToGoError().Error(),
-				Error:   err.ToGoError(),
-			},
-		}
-		if globalDebug {
-			errorMsg.CallTrace = err.CallTrace
-			errorMsg.SysInfo = err.SysInfo
-		}
 		json, e := json.MarshalIndent(struct {
 			Status string       `json:"status"`
 			Error  errorMessage `json:"error"`
 		}{
 			Status: "error",
-			Error:  errorMsg,
+			Error:  scrubbedErrorMessage(msg, "fatal", err),
 		}, "", " ")
 		if e != nil {
 			console.Fatalln(probe.NewError(e))
@@ -115,7 +106,9 @@ func fatal(err *probe.Error, msg string, data ...any) {
 		}
 	}
 
-	console.Fatalln(fmt.Sprintf("%s %s", msg, errmsg))
+	// Both halves can carry text this client did not compose: a server
+	// message, a trace annotation. Scrub before it reaches the terminal.
+	console.Fatalln(scrubSecretsFromOutput(fmt.Sprintf("%s %s", msg, errmsg)))
 }
 
 // Exit coder wraps cli new exit error with a
@@ -133,24 +126,12 @@ func errorIf(err *probe.Error, msg string, data ...any) {
 		return
 	}
 	if globalJSON {
-		errorMsg := errorMessage{
-			Message: fmt.Sprintf(msg, data...),
-			Type:    "error",
-			Cause: causeMessage{
-				Message: err.ToGoError().Error(),
-				Error:   err.ToGoError(),
-			},
-		}
-		if globalDebug {
-			errorMsg.CallTrace = err.CallTrace
-			errorMsg.SysInfo = err.SysInfo
-		}
 		json, e := json.MarshalIndent(struct {
 			Status string       `json:"status"`
 			Error  errorMessage `json:"error"`
 		}{
 			Status: "error",
-			Error:  errorMsg,
+			Error:  scrubbedErrorMessage(fmt.Sprintf(msg, data...), "error", err),
 		}, "", " ")
 		if e != nil {
 			console.Fatalln(probe.NewError(e))
@@ -167,10 +148,10 @@ func errorIf(err *probe.Error, msg string, data ...any) {
 		} else {
 			e = err.ToGoError()
 		}
-		console.Errorln(fmt.Sprintf("%s %s", msg, e))
+		console.Errorln(scrubSecretsFromOutput(fmt.Sprintf("%s %s", msg, e)))
 		return
 	}
-	console.Errorln(fmt.Sprintf("%s %s", msg, err))
+	console.Errorln(scrubSecretsFromOutput(fmt.Sprintf("%s %s", msg, err)))
 }
 
 // deprecatedError function for deprecated commands
@@ -194,4 +175,68 @@ func deprecatedFlagsWarning(cliCtx *cli.Context) {
 			deprecatedFlagError("--encrypt-key", "--enc-c")
 		}
 	}
+}
+
+// scrubbedErrorMessage builds the JSON error document with every string leaf
+// scrubbed before encoding. Scrubbing the decoded values keeps the schema
+// intact: a blind replacement over the encoded text could rewrite a key.
+func scrubbedErrorMessage(msg, kind string, err *probe.Error) errorMessage {
+	cause := err.ToGoError()
+	errorMsg := errorMessage{
+		Message: scrubSecretsFromOutput(msg),
+		Type:    kind,
+		Cause: causeMessage{
+			Message: scrubSecretsFromOutput(cause.Error()),
+			Error:   scrubbedErrorValue(cause),
+		},
+	}
+	if globalDebug {
+		errorMsg.CallTrace = scrubbedCallTrace(err.CallTrace)
+		errorMsg.SysInfo = scrubbedStringMap(err.SysInfo)
+	}
+	return errorMsg
+}
+
+// scrubbedErrorValue renders an error value the way encoding/json would, then
+// scrubs its string leaves. A value that cannot be round-tripped is withheld.
+func scrubbedErrorValue(e error) any {
+	encoded, marshalErr := stdjson.Marshal(e)
+	if marshalErr != nil {
+		return redactedMarker
+	}
+	var decoded any
+	if stdjson.Unmarshal(encoded, &decoded) != nil {
+		return redactedMarker
+	}
+	return scrubJSONValue(decoded)
+}
+
+func scrubbedCallTrace(trace []probe.TracePoint) []probe.TracePoint {
+	out := make([]probe.TracePoint, len(trace))
+	for i, point := range trace {
+		out[i] = point
+		if point.Env != nil {
+			env := make(map[string][]string, len(point.Env))
+			for key, values := range point.Env {
+				scrubbed := make([]string, len(values))
+				for j, value := range values {
+					scrubbed[j] = scrubSecretsFromOutput(value)
+				}
+				env[key] = scrubbed
+			}
+			out[i].Env = env
+		}
+	}
+	return out
+}
+
+func scrubbedStringMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+	out := make(map[string]string, len(m))
+	for key, value := range m {
+		out[key] = scrubSecretsFromOutput(value)
+	}
+	return out
 }

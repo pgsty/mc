@@ -28,7 +28,7 @@ import (
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/minio-go/v7/pkg/set"
-	"github.com/minio/pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 // profile command flags.
@@ -142,18 +142,36 @@ func checkAdminProfileSyntax(ctx *cli.Context) {
 // it is possible that /tmp is mounted from a separate partition and current
 // working directory is a different partition. To allow all situations to
 // be handled appropriately use this function instead of os.Rename()
+// moveFile copies sourcePath to destPath and removes the source.
+//
+// The destination is always 0600. Every caller moves a support artifact -
+// profile, perf, inspect output, exported bucket or IAM metadata - and os.Create
+// would have produced 0644 under the usual 022 umask, publishing it to every
+// local user.
+//
+// Preserving the source mode instead would not be enough: the rotate-then-move
+// callers pass the *previous* final artifact as the source, which a version of
+// this client before the fix may well have left 0644, so the rotated backup
+// would carry that mode forward.
 func moveFile(sourcePath, destPath string) error {
 	inputFile, e := os.Open(sourcePath)
 	if e != nil {
 		return e
 	}
 
-	outputFile, e := os.Create(destPath)
+	outputFile, e := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, supportFileMode)
 	if e != nil {
 		inputFile.Close()
 		return e
 	}
 	defer outputFile.Close()
+
+	// O_CREATE applies the umask, and an existing destination keeps its own
+	// mode, so set it explicitly either way - before any bytes are written.
+	if e = outputFile.Chmod(supportFileMode); e != nil {
+		inputFile.Close()
+		return e
+	}
 
 	if _, e = io.Copy(outputFile, inputFile); e != nil {
 		inputFile.Close()
@@ -164,6 +182,11 @@ func moveFile(sourcePath, destPath string) error {
 	inputFile.Close()
 	return os.Remove(sourcePath)
 }
+
+// supportFileMode is the mode every locally saved support artifact gets. These
+// files carry deployment configuration, environment detail and object
+// metadata, so they must not be readable by other local users.
+const supportFileMode = 0o600
 
 func saveProfileFile(data io.ReadCloser) {
 	// Create profile zip file

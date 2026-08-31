@@ -23,8 +23,8 @@ import (
 	"strings"
 
 	"github.com/minio/cli"
-	"github.com/minio/pkg/v3/console"
-	"github.com/minio/pkg/v3/env"
+	"github.com/pgsty/silo-pkg/v3/console"
+	"github.com/pgsty/silo-pkg/v3/env"
 
 	"github.com/fatih/color"
 )

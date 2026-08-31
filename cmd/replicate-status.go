@@ -33,8 +33,8 @@ import (
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/minio-go/v7/pkg/replication"
-	"github.com/minio/pkg/v3/console"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 var replicateStatusFlags = []cli.Flag{

@@ -6,6 +6,11 @@ on:
   push:
     branches:
       - main
+  # A fork of an archived upstream can go weeks without a commit. Without a
+  # schedule, a vulnerability disclosed against a pinned dependency would not
+  # surface until someone happened to open a pull request.
+  schedule:
+    - cron: "17 6 * * 1"
   workflow_dispatch:
 
 permissions:

@@ -127,17 +127,37 @@ defined below; the output fix does not turn findings into transport errors or
 change fatal-error formatting. See [pgsty/mc#5](https://github.com/pgsty/mc/issues/5)
 for the reproducer and release gate.
 
-`--fail-on` accepts `mismatch`, `unknown`, `any`, or `none`. It applies to
-completed object results, not fatal argument, authentication, enumeration, or
-report-write failures. Dry-run is an inventory operation and does not apply
-`--fail-on`; unsupported objects remain visible in its counts. `NO_CHECKSUM`
-means there was no stored additional checksum to compare and does not by itself
-make the command fail. Human and JSON summaries must show this count explicitly
-so an all-`NO_CHECKSUM` run cannot be mistaken for a fully verified data set.
+`--fail-on` accepts `mismatch`, `unknown`, `no-checksum`, `any`, or `none`. It
+applies to completed object results, not fatal argument, authentication,
+enumeration, or report-write failures. Dry-run is an inventory operation and
+does not apply `--fail-on`; unsupported objects remain visible in its counts.
 `unknown` matches only `UNKNOWN_*` results. The default `any` fails on checksum
 mismatches, `UNKNOWN_*`, and `SKIPPED_TOO_LARGE`, because an explicit size cap
 leaves the audit incomplete. Time-filter and delete-marker skips do not fail by
 themselves.
+
+`NO_CHECKSUM` means there was no stored additional checksum to compare. It does
+not by itself make the command fail, because a bucket that was never written
+with additional checksums is not a defect. That leaves a trap for automation:
+a run where every object reports `NO_CHECKSUM` exits `0` with `incomplete`
+false, which reads as a clean audit even though nothing was verified. Two things
+guard against it.
+
+The summary carries an explicit `verified` count — objects whose stored checksum
+was actually recomputed and compared, that is `MATCH` plus `MISMATCH`. A caller
+that requires evidence of verification should assert `verified > 0`, or compare
+`verified` against `objects`, rather than reading the exit status alone. The
+count appears in both the human and JSON summaries alongside the per-status
+counts.
+
+`--fail-on no-checksum` is the exit-status form of the same check: it fails on
+everything `any` fails on, plus any `NO_CHECKSUM` result, plus any run whose
+`verified` count is zero. The last condition matters because an empty manifest,
+a prefix that matched nothing, a listing of only delete markers and a time
+filter that excluded everything all produce zero `NO_CHECKSUM` results and zero
+verifications. Use this value when the objects under audit are expected to carry
+checksums and their absence — or their absence from the listing — is itself the
+finding.
 
 The result means only:
 

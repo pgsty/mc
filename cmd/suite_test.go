@@ -49,9 +49,12 @@ func Test_FullSuite(t *testing.T) {
 	}
 
 	defer func() {
-		r := recover()
-		if r != nil {
+		// Recover so postRunCleanup still runs, but never let the panic pass
+		// for a success: a panic in BuildCLI or any helper used to be logged
+		// and then reported as PASS.
+		if r := recover(); r != nil {
 			log.Println(r, string(debug.Stack()))
+			t.Errorf("full suite panicked: %v", r)
 		}
 
 		postRunCleanup(t)
