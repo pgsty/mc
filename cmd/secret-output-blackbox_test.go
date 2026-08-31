@@ -63,10 +63,15 @@ func newReflectingServer(t *testing.T) *httptest.Server {
 		w.Header().Set("Location", "https://user:"+blackboxSecretKey+"@evil.example/x?X-Amz-Signature=deadbeef")
 		w.Header().Set("Authorization", r.Header.Get("Authorization"))
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, `<Error><Code>InvalidRequest</Code><Message>reflected: auth=[%s] token=[%s] ssec=[%s]</Message><Resource>%s</Resource><RequestId>1</RequestId></Error>`,
+		// Reflect the proxy credential's payload alone, the way a proxy that
+		// logs "invalid token <payload>" would.
+		_, proxyPayload, _ := strings.Cut(r.Header.Get("Proxy-Authorization"), " ")
+		fmt.Fprintf(w, `<Error><Code>InvalidRequest</Code><Message>reflected: auth=[%s] token=[%s] ssec=[%s] proxy=[%s] apikey=[%s]</Message><Resource>%s</Resource><RequestId>1</RequestId></Error>`,
 			r.Header.Get("Authorization"),
 			r.Header.Get("X-Auth-Token"),
 			r.Header.Get("X-Amz-Server-Side-Encryption-Customer-Key"),
+			proxyPayload,
+			r.Header.Get("X-Api-Key"),
 			r.URL.Path)
 	}))
 }
@@ -126,6 +131,41 @@ func TestBlackboxNoCredentialReachesOutput(t *testing.T) {
 		t.Fatalf("checksum verify did not surface the reflected server message, so this proves nothing:\n%s", combined)
 	}
 	assertNoSecretInOutput(t, "checksum verify", result)
+
+	// Second-round shapes: a secret that JSON must escape, a token shorter
+	// than the substring threshold, a Bearer payload the server echoes on its
+	// own, and an API key header this client never sends itself.
+	const (
+		escapedSecret = "tok<en>&\"q\"0123456789"
+		shortToken    = "abc123"
+		bearerToken   = "bearerpayload0123456789"
+		apiKey        = "apikeyvalue0123456789"
+	)
+	for _, jsonFlag := range [][]string{nil, {"--json"}} {
+		args := append([]string{"--debug"}, jsonFlag...)
+		args = append(args,
+			"--custom-header", "X-Auth-Token: "+escapedSecret,
+			"--custom-header", "X-Session-Token: "+shortToken,
+			"--custom-header", "Proxy-Authorization: Bearer "+bearerToken,
+			"--custom-header", "X-Api-Key: "+apiKey,
+			"stat", "b4/archive/object")
+		result := runChecksumVerifyCLI(t, server.URL, env, args...)
+		combined := string(result.stdout) + "\n" + string(result.stderr)
+		if !strings.Contains(combined, "reflected: auth=[") {
+			t.Fatalf("server message did not surface (%v):\n%s", jsonFlag, combined)
+		}
+		for name, secret := range map[string]string{
+			"escaped secret":            escapedSecret,
+			"escaped secret, JSON form": "tok\\u003cen\\u003e\\u0026\\\"q\\\"0123456789",
+			"short token":               shortToken,
+			"bearer payload":            bearerToken,
+			"api key":                   apiKey,
+		} {
+			if strings.Contains(combined, secret) {
+				t.Errorf("%s leaked (%v):\n%s", name, jsonFlag, combined)
+			}
+		}
+	}
 }
 
 // The non-debug error paths that take user input must not print it back.

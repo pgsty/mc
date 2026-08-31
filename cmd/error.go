@@ -56,10 +56,10 @@ func fatalIf(err *probe.Error, msg string, data ...any) {
 func fatal(err *probe.Error, msg string, data ...any) {
 	if globalJSON {
 		errorMsg := errorMessage{
-			Message: msg,
+			Message: scrubSecretsFromOutput(msg),
 			Type:    "fatal",
 			Cause: causeMessage{
-				Message: err.ToGoError().Error(),
+				Message: scrubSecretsFromOutput(err.ToGoError().Error()),
 				Error:   err.ToGoError(),
 			},
 		}
@@ -136,10 +136,10 @@ func errorIf(err *probe.Error, msg string, data ...any) {
 	}
 	if globalJSON {
 		errorMsg := errorMessage{
-			Message: fmt.Sprintf(msg, data...),
+			Message: scrubSecretsFromOutput(fmt.Sprintf(msg, data...)),
 			Type:    "error",
 			Cause: causeMessage{
-				Message: err.ToGoError().Error(),
+				Message: scrubSecretsFromOutput(err.ToGoError().Error()),
 				Error:   err.ToGoError(),
 			},
 		}

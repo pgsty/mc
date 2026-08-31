@@ -23,6 +23,7 @@ package cmd
 // passed on in the hope that it holds nothing sensitive.
 
 import (
+	"encoding/base64"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -112,6 +113,33 @@ func TestAdversarialRequestRedaction(t *testing.T) {
 		"custom token query parameter": func(r *http.Request) {
 			r.URL.RawQuery = "x-session-token=" + adversarialSecret
 		},
+		"valid scope, non-hex Signature": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=key/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature="+adversarialSecret)
+		},
+		"unknown trailing field": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=key/20260831/us-east-1/s3/aws4_request, SignedHeaders=host, Signature=ab12, Extra="+adversarialSecret)
+		},
+		"unknown field whose name is the secret": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=key/20260831/us-east-1/s3/aws4_request, "+adversarialSecret+"=1, Signature=ab12")
+		},
+		"secret smuggled in SignedHeaders": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 Credential=key/20260831/us-east-1/s3/aws4_request, SignedHeaders=host;"+adversarialSecret+", Signature=ab12")
+		},
+		"text before Credential=": func(r *http.Request) {
+			r.Header.Set("Authorization", "AWS4-HMAC-SHA256 "+adversarialSecret+" Credential=key/20260831/us-east-1/s3/aws4_request, Signature=ab12")
+		},
+		"X-Api-Key": func(r *http.Request) {
+			r.Header.Set("X-Api-Key", adversarialSecret)
+		},
+		"api_key query parameter": func(r *http.Request) {
+			r.URL.RawQuery = "api_key=" + adversarialSecret + "&versionId=keep"
+		},
+		"password query parameter": func(r *http.Request) {
+			r.URL.RawQuery = "password=" + adversarialSecret
+		},
+		"request trailer": func(r *http.Request) {
+			r.Trailer = http.Header{"X-Auth-Token": {adversarialSecret}}
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			req := adversarialRequest(t)
@@ -138,6 +166,13 @@ func TestAdversarialResponseRedaction(t *testing.T) {
 		"Location that fails to parse": adversarialResponse(t, http.Header{"Location": {"http://[::1/x?X-Amz-Signature=" + adversarialSecret}}, ""),
 		"Authorization echoed as a response header": adversarialResponse(t,
 			http.Header{"Authorization": {"AWS4-HMAC-SHA256 Credential=" + adversarialSecret + "/20260831/us-east-1/s3/aws4_request"}}, ""),
+		"server reflects a non-hex signature": adversarialResponse(t, http.Header{},
+			"<Error><Message>Signature="+adversarialSecret+" was rejected</Message></Error>"),
+		"server reflects a password query": adversarialResponse(t, http.Header{},
+			"<Error><Message>see https://h/x?password="+adversarialSecret+"&api_key="+adversarialSecret+"</Message></Error>"),
+		"server reflects only the Bearer payload": bearerReflectingResponse(t, "<Error><Message>bad token "+adversarialSecret+"</Message></Error>"),
+		"server reflects the Basic password":      basicReflectingResponse(t, "<Error><Message>wrong password "+adversarialSecret+"</Message></Error>"),
+		"response trailer":                        trailerResponse(t),
 	} {
 		t.Run(name, func(t *testing.T) {
 			dump, err := dumpResponseForTrace(resp)
@@ -168,5 +203,37 @@ func TestScrubCredentialTextCoversEchoedShapes(t *testing.T) {
 	text := "a Credential=" + adversarialSecret + "/20260831/us-east-1/s3/aws4_request b Signature=deadbeef01 c AWS " + adversarialSecret + ":YXNkZmFzZGZhc2RmYXNkZmFzZGY= d ?X-Amz-Security-Token=" + adversarialSecret + "&e=1"
 	if got := scrubCredentialText(text); strings.Contains(got, adversarialSecret) || strings.Contains(got, "deadbeef01") {
 		t.Fatalf("credential shape survived: %s", got)
+	}
+}
+
+func bearerReflectingResponse(t *testing.T, body string) *http.Response {
+	t.Helper()
+	resp := adversarialResponse(t, http.Header{}, body)
+	resp.Request.Header.Set("Authorization", "Bearer "+adversarialSecret)
+	return resp
+}
+
+func basicReflectingResponse(t *testing.T, body string) *http.Response {
+	t.Helper()
+	resp := adversarialResponse(t, http.Header{}, body)
+	resp.Request.Header.Set("Proxy-Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte("user:"+adversarialSecret)))
+	return resp
+}
+
+func trailerResponse(t *testing.T) *http.Response {
+	t.Helper()
+	resp := adversarialResponse(t, http.Header{"Trailer": {"X-Auth-Token"}}, "chunk")
+	resp.TransferEncoding = []string{"chunked"}
+	resp.ContentLength = -1
+	resp.Trailer = http.Header{"X-Auth-Token": {adversarialSecret}}
+	return resp
+}
+
+// The rebuilt SigV4 value keeps exactly the recognized fields.
+func TestRedactSigV4RebuildsFromRecognizedFields(t *testing.T) {
+	got := redactAuthorization("AWS4-HMAC-SHA256 Credential=k/20260831/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-date, Signature=NOTHEX, Extra=x, " + adversarialSecret + "=y")
+	want := "AWS4-HMAC-SHA256 Credential=" + redactedMarker + "/20260831/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-date, Signature=" + redactedMarker + ", " + redactedMarker + ", " + redactedMarker
+	if got != want {
+		t.Fatalf("got  %q\nwant %q", got, want)
 	}
 }

@@ -228,7 +228,7 @@ func setGlobalsFromContext(ctx *cli.Context) error {
 				return fmt.Errorf("invalid custom header entry #%d (%s): header value contains characters that are not allowed", n+1, h)
 			}
 			if isSecretHeaderName(h) {
-				registerSecret(hv)
+				registerAuthorizationSecrets(hv)
 			}
 			globalCustomHeader.Add(h, hv)
 		}

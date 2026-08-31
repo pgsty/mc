@@ -770,6 +770,7 @@ func prepareSubnetUploadURL(uploadURL, alias, apiKey string) (string, map[string
 
 func getAPIKeyFlag(ctx *cli.Context) (string, error) {
 	apiKey := ctx.String("api-key")
+	registerSecret(apiKey)
 
 	if len(apiKey) == 0 {
 		return "", nil

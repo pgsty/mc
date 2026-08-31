@@ -18,6 +18,8 @@
 package cmd
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -26,9 +28,9 @@ func TestSecretRegistryScrubsRegisteredValues(t *testing.T) {
 	resetSecretRegistryForTest()
 	t.Cleanup(resetSecretRegistryForTest)
 
-	registerSecret("longsecretvalue", "longsecretvalue-and-more", "", "short", redactedMarker)
+	registerSecret("longsecretvalue", "longsecretvalue-and-more", "", "short", "ab", redactedMarker)
 
-	got := scrubKnownSecrets("a longsecretvalue-and-more b longsecretvalue c short d")
+	got := scrubKnownSecrets("a longsecretvalue-and-more b longsecretvalue c short d shortage ab")
 	if strings.Contains(got, "longsecretvalue") {
 		t.Fatalf("registered secret survived: %s", got)
 	}
@@ -37,10 +39,13 @@ func TestSecretRegistryScrubsRegisteredValues(t *testing.T) {
 	if strings.Contains(got, "-and-more") {
 		t.Fatalf("longer secret was not replaced whole: %s", got)
 	}
-	// Values below the minimum length are never registered, so common
-	// substrings are not mangled.
-	if !strings.Contains(got, " short ") {
-		t.Fatalf("short value must not be registered: %s", got)
+	// A short value is scrubbed as a whole token only.
+	if strings.Contains(got, " short ") || !strings.Contains(got, "shortage") {
+		t.Fatalf("short value must be scrubbed as a token and nowhere else: %s", got)
+	}
+	// Two characters are never a secret.
+	if !strings.HasSuffix(got, " ab") {
+		t.Fatalf("two-character value must not be registered: %s", got)
 	}
 }
 
@@ -144,5 +149,75 @@ func TestParseEnvURLStrStillAcceptsTokenForm(t *testing.T) {
 	}
 	if ak != "ak" || sk != "sk123456" || token != "tok123456" || u.Host != "localhost:9000" {
 		t.Fatalf("unexpected parse: %s %s %s %s", ak, sk, token, u.Host)
+	}
+}
+
+// A secret shorter than eight characters is still scrubbed, but only as a
+// whole token, so a common substring is never mangled.
+func TestSecretRegistryShortSecretsMatchWholeTokens(t *testing.T) {
+	resetSecretRegistryForTest()
+	t.Cleanup(resetSecretRegistryForTest)
+	registerSecret("abc", "ab")
+
+	got := scrubKnownSecrets("token=abc, abcdef, (abc) abc\n")
+	if strings.Contains(got, "token=abc,") || strings.Contains(got, "(abc)") || !strings.HasSuffix(got, redactedMarker+"\n") {
+		t.Fatalf("short secret not scrubbed as a token: %q", got)
+	}
+	if !strings.Contains(got, "abcdef") {
+		t.Fatalf("short secret must not be scrubbed inside a longer word: %q", got)
+	}
+	if got := scrubKnownSecrets("ab cab"); strings.Contains(got, redactedMarker) {
+		t.Fatalf("two-character values must not be treated as secrets: %q", got)
+	}
+}
+
+// --json error output escapes quotes, backslashes and HTML characters, so the
+// registry must match the escaped rendering too.
+func TestSecretRegistryScrubsJSONEscapedForms(t *testing.T) {
+	resetSecretRegistryForTest()
+	t.Cleanup(resetSecretRegistryForTest)
+	const secret = "tok<en>&\"quoted\"\\back"
+	registerSecret(secret)
+
+	encoded, err := json.Marshal(map[string]string{"message": "server said " + secret})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := scrubKnownSecrets(string(encoded))
+	if strings.Contains(got, "quoted") || strings.Contains(got, "\\u003cen") || strings.Contains(got, "tok") {
+		t.Fatalf("JSON-escaped secret survived: %s", got)
+	}
+}
+
+func TestAuthorizationSecretValuesCoverEchoableParts(t *testing.T) {
+	values := authorizationSecretValues("Basic " + base64.StdEncoding.EncodeToString([]byte("user:hunter2pass")))
+	joined := strings.Join(values, "|")
+	for _, want := range []string{"user:hunter2pass", "hunter2pass", base64.StdEncoding.EncodeToString([]byte("user:hunter2pass"))} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("%q missing from %v", want, values)
+		}
+	}
+	values = authorizationSecretValues("AWS4-HMAC-SHA256 Credential=minioadmin/20260831/us-east-1/s3/aws4_request, Signature=deadbeef")
+	joined = strings.Join(values, "|")
+	for _, want := range []string{"|minioadmin|", "|deadbeef"} {
+		if !strings.Contains(joined+"|", want) {
+			t.Errorf("%q missing from %v", want, values)
+		}
+	}
+}
+
+func TestRegisterCredentialsJSON(t *testing.T) {
+	resetSecretRegistryForTest()
+	t.Cleanup(resetSecretRegistryForTest)
+	registerCredentialsJSON([]byte(`{"type":"service_account","private_key":"-----BEGIN PRIVATE KEY-----\nabcdef\n-----END PRIVATE KEY-----\n","client_email":"x@y"}`))
+	if got := scrubKnownSecrets("key: -----BEGIN PRIVATE KEY-----\nabcdef\n-----END PRIVATE KEY-----\n end"); strings.Contains(got, "abcdef") {
+		t.Fatalf("private key not registered: %q", got)
+	}
+}
+
+func TestInvalidAPISignatureErrorDoesNotEchoCredentials(t *testing.T) {
+	msg := errInvalidAPISignature("bad", "https://key:envsecretkey123@host").ToGoError().Error()
+	if strings.Contains(msg, "envsecretkey123") {
+		t.Fatalf("errInvalidAPISignature echoed the secret: %s", msg)
 	}
 }

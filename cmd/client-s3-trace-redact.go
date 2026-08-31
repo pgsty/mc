@@ -19,13 +19,15 @@ package cmd
 
 // Credential redaction for --debug traces.
 //
-// Everything here is written fail-closed: when a value cannot be parsed into
-// a shape whose safe parts are known, the whole value is withheld. Losing a
-// scope or a header from a debug line costs a little diagnostic value; a
-// leaked key costs a credential.
+// Everything here is written fail-closed. A value is rebuilt from the parts
+// that are known to be safe; whatever is not recognized is withheld, never
+// passed through on the assumption that it holds nothing sensitive. Losing a
+// field from a debug line costs a little diagnostic value; a leaked key costs
+// a credential.
 
 import (
 	"bytes"
+	"encoding/base64"
 	"io"
 	"net/http"
 	"net/http/httputil"
@@ -43,27 +45,34 @@ const redactedMarker = "**REDACTED**"
 // concatenating the raw access key with the scope, and this client only checks
 // a key's length, so a key may hold slashes, spaces, commas, or even a
 // "/YYYYMMDD/" fragment of its own. The leading group is greedy so the scope
-// captured is the LAST one on the line; whatever precedes it is the key.
-var traceCredentialRegexp = regexp.MustCompile(`Credential=(.*)/(\d{8})/([^/,\s]+)/([^/,\s]+)/aws4_request`)
+// captured is the LAST one on the line; whatever precedes it is the key. Region
+// and service are held to the character set real ones use.
+var traceCredentialRegexp = regexp.MustCompile(`Credential=(.*)/(\d{8})/([a-z0-9-]+)/([a-z0-9-]+)/aws4_request`)
 
-// Signature=<hex>, in Authorization headers, query strings and echoed text.
-var traceSignatureRegexp = regexp.MustCompile(`Signature=[0-9a-fA-F]+`)
+// SignedHeaders lists lowercase header names separated by ";".
+var traceSignedHeadersRegexp = regexp.MustCompile(`^[a-z0-9!#$%&'*+.^_` + "`" + `|~-]+(?:;[a-z0-9!#$%&'*+.^_` + "`" + `|~-]+)*$`)
 
-// Signature v2 in free text: "AWS <access-key-id>:<base64 signature>".
-var traceV2TextRegexp = regexp.MustCompile(`\bAWS [^\s:]+:[A-Za-z0-9+/=]{16,}`)
+// Signature=<anything up to a delimiter>, in headers, query strings and echoed
+// text. Not restricted to hex: the value is withheld whatever it holds.
+var traceSignatureTextRegexp = regexp.MustCompile(`Signature=[^,\s"'<>&]+`)
 
-// Credential-bearing query parameters wherever a URL appears in text.
-var traceQuerySecretTextRegexp = regexp.MustCompile(`([?&](?:X-Amz-Signature|X-Amz-Credential|X-Amz-Security-Token|X-Amz-S3session-Token|AWSAccessKeyId|Signature)=)[^&\s"'<>]+`)
+// Signature v2 in free text: "AWS <access-key-id>:<signature>".
+var traceV2TextRegexp = regexp.MustCompile(`\bAWS [^\s:]+:[^\s"'<>]+`)
+
+// Credential-bearing query parameters wherever a URL appears in text, matched
+// by name fragment so a parameter this client never sends is still caught.
+var traceQuerySecretTextRegexp = regexp.MustCompile(`([?&][^=&\s"'<>]*(?i:token|signature|credential|secret|password|api[-_]?key|auth|sig)[^=&\s"'<>]*=)[^&\s"'<>]+`)
 
 // Leading scheme token of an Authorization value: "Basic", "Bearer", ...
 var traceAuthSchemeRegexp = regexp.MustCompile(`^[A-Za-z0-9!#$%&'*+.^_` + "`" + `|~-]+`)
 
 // isSecretHeaderName reports whether a header's value is credential material.
 // It matches by fragment rather than by exact name so a custom header such as
-// X-Auth-Token or X-Proxy-Password is caught without being listed.
+// X-Auth-Token, X-Api-Key or X-Proxy-Password is caught without being listed.
+// A few harmless headers match too (a key ID, a checksum of a key); withholding
+// those costs nothing.
 func isSecretHeaderName(name string) bool {
-	canonical := http.CanonicalHeaderKey(name)
-	switch canonical {
+	switch http.CanonicalHeaderKey(name) {
 	case "Authorization", "Proxy-Authorization", "Cookie", "Set-Cookie",
 		"X-Amz-Security-Token", "X-Amz-S3session-Token",
 		"X-Amz-Server-Side-Encryption-Customer-Key",
@@ -71,8 +80,8 @@ func isSecretHeaderName(name string) bool {
 		"X-Amz-Server-Side-Encryption-Context":
 		return true
 	}
-	lower := strings.ToLower(canonical)
-	for _, fragment := range []string{"authorization", "cookie", "token", "secret", "password", "customer-key", "credential"} {
+	lower := strings.ToLower(name)
+	for _, fragment := range []string{"authorization", "cookie", "token", "secret", "password", "credential", "key", "auth", "encryption-context"} {
 		if strings.Contains(lower, fragment) {
 			return true
 		}
@@ -81,20 +90,55 @@ func isSecretHeaderName(name string) bool {
 }
 
 // isSecretQueryParam reports whether a query parameter carries credential
-// material, for presigned URLs of either signature version.
+// material, for presigned URLs of either signature version and for anything a
+// proxy in front of the endpoint might expect.
 func isSecretQueryParam(name string) bool {
-	switch name {
-	case "X-Amz-Credential", "X-Amz-Signature", "X-Amz-Security-Token", "X-Amz-S3session-Token",
-		"AWSAccessKeyId", "Signature":
-		return true
-	}
 	lower := strings.ToLower(name)
-	for _, fragment := range []string{"token", "signature", "credential", "secret", "password"} {
+	for _, fragment := range []string{"token", "signature", "credential", "secret", "password", "api-key", "apikey", "api_key", "auth", "sig", "awsaccesskeyid"} {
 		if strings.Contains(lower, fragment) {
 			return true
 		}
 	}
 	return false
+}
+
+// redactSigV4 rebuilds a Signature v4 Authorization value from the fields it
+// recognizes: the credential scope, the SignedHeaders list, and the presence
+// of a Signature. Every other field - and any field whose value does not have
+// the expected shape - is withheld, so a secret cannot ride along in a field
+// this client never sends or in a Signature that is not hex.
+func redactSigV4(value string) string {
+	algorithm, rest, _ := strings.Cut(value, " ")
+	loc := traceCredentialRegexp.FindStringSubmatchIndex(rest)
+	if loc == nil {
+		return algorithm + " " + redactedMarker
+	}
+	scope := rest[loc[4]:loc[5]] + "/" + rest[loc[6]:loc[7]] + "/" + rest[loc[8]:loc[9]] + "/aws4_request"
+	parts := []string{"Credential=" + redactedMarker + "/" + scope}
+	if strings.TrimSpace(rest[:loc[0]]) != "" {
+		parts = append([]string{redactedMarker}, parts...)
+	}
+	for _, field := range strings.Split(rest[loc[1]:], ",") {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		name, fieldValue, _ := strings.Cut(field, "=")
+		switch name {
+		case "SignedHeaders":
+			if traceSignedHeadersRegexp.MatchString(fieldValue) {
+				parts = append(parts, "SignedHeaders="+fieldValue)
+			} else {
+				parts = append(parts, "SignedHeaders="+redactedMarker)
+			}
+		case "Signature":
+			parts = append(parts, "Signature="+redactedMarker)
+		default:
+			// The name itself is not printed: it could be the secret.
+			parts = append(parts, redactedMarker)
+		}
+	}
+	return algorithm + " " + strings.Join(parts, ", ")
 }
 
 // redactAuthorization removes credential material from an Authorization or
@@ -108,13 +152,7 @@ func redactAuthorization(value string) string {
 		// Signature v2: "AWS <access-key-id>:<signature>". Nothing is safe.
 		return "AWS " + redactedMarker + ":" + redactedMarker
 	case strings.HasPrefix(value, "AWS4-"):
-		if !traceCredentialRegexp.MatchString(value) {
-			// No recognizable scope: keep only the algorithm token.
-			algorithm, _, _ := strings.Cut(value, " ")
-			return algorithm + " " + redactedMarker
-		}
-		redacted := traceCredentialRegexp.ReplaceAllString(value, "Credential="+redactedMarker+"/$2/$3/$4/aws4_request")
-		return traceSignatureRegexp.ReplaceAllString(redacted, "Signature="+redactedMarker)
+		return redactSigV4(value)
 	default:
 		// Basic, Bearer, or anything a caller attached with --custom-header.
 		if scheme := traceAuthSchemeRegexp.FindString(value); scheme != "" && scheme != value {
@@ -124,8 +162,8 @@ func redactAuthorization(value string) string {
 	}
 }
 
-// redactHeader removes credential material from a cloned header in place.
-// Every value of a header is handled, never only the first.
+// redactHeader removes credential material from a cloned header map in
+// place. Every value of a header is handled, never only the first.
 func redactHeader(header http.Header) {
 	for name, values := range header {
 		if !isSecretHeaderName(name) {
@@ -192,7 +230,7 @@ func redactURLString(raw string) string {
 // endpoint echoed back with different spacing or framing.
 func scrubCredentialText(text string) string {
 	text = traceCredentialRegexp.ReplaceAllString(text, "Credential="+redactedMarker+"/$2/$3/$4/aws4_request")
-	text = traceSignatureRegexp.ReplaceAllString(text, "Signature="+redactedMarker)
+	text = traceSignatureTextRegexp.ReplaceAllString(text, "Signature="+redactedMarker)
 	text = traceV2TextRegexp.ReplaceAllString(text, "AWS "+redactedMarker+":"+redactedMarker)
 	return traceQuerySecretTextRegexp.ReplaceAllString(text, "${1}"+redactedMarker)
 }
@@ -209,6 +247,57 @@ func redactSecretValues(text string, secrets []string) string {
 	return text
 }
 
+// authorizationSecretValues returns the pieces of an Authorization-style value
+// a server might echo on their own: the whole value, the payload after the
+// scheme, a Basic payload decoded, a SigV4 access key and signature, a SigV2
+// key and signature.
+func authorizationSecretValues(value string) []string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	secrets := []string{value}
+	if match := traceCredentialRegexp.FindStringSubmatch(value); match != nil {
+		secrets = append(secrets, match[1])
+	}
+	for _, field := range strings.Split(value, ",") {
+		if name, fieldValue, ok := strings.Cut(strings.TrimSpace(field), "="); ok && name == "Signature" {
+			secrets = append(secrets, fieldValue)
+		}
+	}
+	if strings.HasPrefix(value, "AWS ") {
+		if key, signature, ok := strings.Cut(strings.TrimPrefix(value, "AWS "), ":"); ok {
+			secrets = append(secrets, key, signature)
+		}
+	}
+	if scheme, payload, ok := strings.Cut(value, " "); ok && payload != "" {
+		secrets = append(secrets, payload)
+		if strings.EqualFold(scheme, "Basic") {
+			if decoded, err := base64.StdEncoding.DecodeString(payload); err == nil {
+				secrets = append(secrets, string(decoded))
+				if _, password, ok := strings.Cut(string(decoded), ":"); ok {
+					secrets = append(secrets, password)
+				}
+			}
+		}
+	}
+	return secrets
+}
+
+// headerSecretValues collects the literal secrets carried by a header map.
+func headerSecretValues(header http.Header) []string {
+	var secrets []string
+	for name, values := range header {
+		if !isSecretHeaderName(name) {
+			continue
+		}
+		for _, value := range values {
+			secrets = append(secrets, authorizationSecretValues(value)...)
+		}
+	}
+	return secrets
+}
+
 // redactRequestForTrace returns a copy of req with every credential removed.
 //
 // The caller's request is never touched. A tracer runs inside an
@@ -223,6 +312,10 @@ func redactRequestForTrace(req *http.Request) *http.Request {
 		redacted.Header = http.Header{}
 	}
 	redactHeader(redacted.Header)
+	if req.Trailer != nil {
+		redacted.Trailer = req.Trailer.Clone()
+		redactHeader(redacted.Trailer)
+	}
 
 	if req.URL != nil {
 		clonedURL := *req.URL
@@ -235,29 +328,13 @@ func redactRequestForTrace(req *http.Request) *http.Request {
 
 // requestSecretValues returns the literal secret strings a request carried, so
 // they can be scrubbed from server-controlled text such as an error body that
-// echoed a header back. Whole values are listed alongside the parts a server
-// is likely to echo on their own: the access key and the signature.
+// echoed a header back.
 func requestSecretValues(req *http.Request) []string {
 	if req == nil {
 		return nil
 	}
-	var secrets []string
-	for name, values := range req.Header {
-		if !isSecretHeaderName(name) {
-			continue
-		}
-		for _, value := range values {
-			secrets = append(secrets, value)
-			if match := traceCredentialRegexp.FindStringSubmatch(value); match != nil {
-				secrets = append(secrets, match[1])
-			}
-			if strings.HasPrefix(value, "AWS ") {
-				if key, signature, ok := strings.Cut(strings.TrimPrefix(value, "AWS "), ":"); ok {
-					secrets = append(secrets, key, signature)
-				}
-			}
-		}
-	}
+	secrets := headerSecretValues(req.Header)
+	secrets = append(secrets, headerSecretValues(req.Trailer)...)
 	if req.URL != nil {
 		if req.URL.User != nil {
 			secrets = append(secrets, req.URL.User.Username())
@@ -304,6 +381,11 @@ func dumpResponseForTrace(resp *http.Response) ([]byte, error) {
 		redacted.Header = http.Header{}
 	}
 	redactHeader(redacted.Header)
+	// Trailers are rendered after the body when it is dumped.
+	if resp.Trailer != nil {
+		redacted.Trailer = resp.Trailer.Clone()
+		redactHeader(redacted.Trailer)
+	}
 	if withBody {
 		redacted.Body = io.NopCloser(bytes.NewReader(body))
 	}

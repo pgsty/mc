@@ -84,7 +84,7 @@ type invalidAPISignatureErr error
 var errInvalidAPISignature = func(api, url string) *probe.Error {
 	msg := fmt.Sprintf(
 		"Unrecognized API signature %s for host %s. Valid options are `[%s]`",
-		api, url, strings.Join(validAPIs, ", "))
+		api, redactCredentialURL(url), strings.Join(validAPIs, ", "))
 	return probe.NewError(invalidAPISignatureErr(errors.New(msg)))
 }
 

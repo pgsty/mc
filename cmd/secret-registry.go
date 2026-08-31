@@ -18,6 +18,8 @@
 package cmd
 
 import (
+	"encoding/json"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -27,22 +29,32 @@ import (
 // prints but did not compose: an error message an endpoint reflected a header
 // into, a trace annotation that carried an argument, a report line. Every
 // credential the process learns - alias secret keys and session tokens, SSE-C
-// keys, passwords supplied on the command line - is registered as it is read,
-// and final error output is scrubbed against the registry before it reaches
-// the terminal or a file.
+// keys, tier and service-principal secrets, passwords and tokens supplied on
+// the command line - is registered as it is read, and final error output is
+// scrubbed against the registry before it reaches the terminal or a file.
 //
 // Per-request redaction in the tracer stays the primary control. The registry
 // exists so that a path nobody thought to redact still cannot print a secret
 // the process was handed.
 
-// secretRegistryMinLen keeps trivially short strings out of the registry.
-// Anything shorter would turn scrubbing into a search-and-replace of common
-// substrings; this client already rejects secret keys below eight characters.
-const secretRegistryMinLen = 8
+// Secrets at or above this length are replaced wherever they occur. Shorter
+// ones are replaced only as whole tokens, so a three-letter "secret" cannot
+// turn every word containing it into a marker. Anything under three
+// characters is not treated as a secret at all.
+const (
+	secretRegistryMinLen      = 3
+	secretRegistrySubstringAt = 8
+)
+
+type registeredSecret struct {
+	value   string
+	escaped string // the value as encoding/json renders it, without quotes
+	token   *regexp.Regexp
+}
 
 var (
 	secretRegistryMu sync.RWMutex
-	secretRegistry   []string
+	secretRegistry   []registeredSecret
 )
 
 // registerSecret records credential material so scrubKnownSecrets can remove
@@ -56,20 +68,56 @@ func registerSecret(values ...string) {
 		}
 		duplicate := false
 		for _, existing := range secretRegistry {
-			if existing == value {
+			if existing.value == value {
 				duplicate = true
 				break
 			}
 		}
-		if !duplicate {
-			secretRegistry = append(secretRegistry, value)
+		if duplicate {
+			continue
 		}
+		entry := registeredSecret{value: value}
+		// JSON output escapes quotes, backslashes and HTML characters, so a
+		// secret holding any of those never appears verbatim in --json
+		// error output. Match the escaped rendering as well.
+		if encoded, err := json.Marshal(value); err == nil && len(encoded) >= 2 {
+			if escaped := string(encoded[1 : len(encoded)-1]); escaped != value {
+				entry.escaped = escaped
+			}
+		}
+		if len(value) < secretRegistrySubstringAt {
+			entry.token = regexp.MustCompile(`(^|[^A-Za-z0-9_])` + regexp.QuoteMeta(value) + `($|[^A-Za-z0-9_])`)
+		}
+		secretRegistry = append(secretRegistry, entry)
 	}
 	// Longest first, so a secret that contains another is replaced whole
 	// instead of leaving fragments around a shorter match.
-	sort.Slice(secretRegistry, func(i, j int) bool {
-		return len(secretRegistry[i]) > len(secretRegistry[j])
+	sort.SliceStable(secretRegistry, func(i, j int) bool {
+		return len(secretRegistry[i].value) > len(secretRegistry[j].value)
 	})
+}
+
+// registerAuthorizationSecrets registers an Authorization-style value in every
+// form a server might echo it: whole, payload only, and for Basic the decoded
+// credentials and the password on its own.
+func registerAuthorizationSecrets(value string) {
+	registerSecret(authorizationSecretValues(value)...)
+}
+
+// registerCredentialsJSON registers a credentials file such as a GCS service
+// account key: the whole document, and the private key on its own since that
+// is the part a server would most plausibly echo.
+func registerCredentialsJSON(data []byte) {
+	registerSecret(strings.TrimSpace(string(data)))
+	var fields map[string]any
+	if json.Unmarshal(data, &fields) != nil {
+		return
+	}
+	for _, name := range []string{"private_key", "private_key_id", "client_secret", "secret", "password", "token"} {
+		if value, ok := fields[name].(string); ok {
+			registerSecret(value)
+		}
+	}
 }
 
 // scrubKnownSecrets replaces every registered secret in text.
@@ -77,7 +125,14 @@ func scrubKnownSecrets(text string) string {
 	secretRegistryMu.RLock()
 	defer secretRegistryMu.RUnlock()
 	for _, secret := range secretRegistry {
-		text = strings.ReplaceAll(text, secret, redactedMarker)
+		if secret.token != nil {
+			text = secret.token.ReplaceAllString(text, "${1}"+redactedMarker+"${2}")
+		} else {
+			text = strings.ReplaceAll(text, secret.value, redactedMarker)
+		}
+		if secret.escaped != "" {
+			text = strings.ReplaceAll(text, secret.escaped, redactedMarker)
+		}
 	}
 	return text
 }

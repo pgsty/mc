@@ -138,6 +138,7 @@ func mainAdminTierEdit(ctx *cli.Context) error {
 	azSPTenantID := ctx.String("az-sp-tenant-id")
 	azSPClientID := ctx.String("az-sp-client-id")
 	azSPClientSecret := ctx.String("az-sp-client-secret")
+	registerSecret(accountKey, azSPClientSecret)
 
 	switch {
 	case accessKey != "" && secretKey != "" && !useAwsRole: // S3 tier
@@ -156,6 +157,7 @@ func mainAdminTierEdit(ctx *cli.Context) error {
 	case credsPath != "": // GCS tier
 		credsBytes, e := os.ReadFile(credsPath)
 		fatalIf(probe.NewError(e), "Unable to read credentials file at %s", credsPath)
+		registerCredentialsJSON(credsBytes)
 
 		creds.CredsJSON = credsBytes
 	default:
