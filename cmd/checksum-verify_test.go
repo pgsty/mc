@@ -1243,3 +1243,39 @@ func TestChecksumVerifyCLIFailOnExitStatus(t *testing.T) {
 		})
 	}
 }
+
+// An SSE-C refusal is a missing key only when no key was sent for the
+// object. With a matching --enc-c prefix the server's complaint is about the
+// request itself - SSE-C over plain HTTP - and the result is a read error
+// that carries its message.
+func TestVerifyChecksumCandidateSSECRefusalDependsOnKey(t *testing.T) {
+	refusal := minio.ErrorResponse{
+		Code:       "InvalidRequest",
+		StatusCode: http.StatusBadRequest,
+		Message:    "Requests specifying Server Side Encryption with Customer provided keys must be made over a secure connection.",
+	}
+	key, err := encrypt.NewSSEC([]byte("0123456789abcdef0123456789abcdef"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	candidate := checksumVerifyCandidate{Alias: "play", Bucket: "archive", Key: "object"}
+	for name, tc := range map[string]struct {
+		encryption map[string][]prefixSSEPair
+		want       string
+	}{
+		"no key sent":            {map[string][]prefixSSEPair{}, checksumResultUnknownSSECKeyMissing},
+		"key for another prefix": {map[string][]prefixSSEPair{"play": {{Prefix: "play/other/", SSE: key}}}, checksumResultUnknownSSECKeyMissing},
+		"key sent":               {map[string][]prefixSSEPair{"play": {{Prefix: "play/archive/", SSE: key}}}, checksumResultUnknownReadError},
+	} {
+		t.Run(name, func(t *testing.T) {
+			backend := &checksumVerifyFakeBackend{statErr: refusal}
+			result := verifyChecksumCandidate(context.Background(), backend, candidate, checksumVerifyOptions{Encryption: tc.encryption})
+			if result.Result != tc.want {
+				t.Fatalf("result %q, want %q: %+v", result.Result, tc.want, result)
+			}
+			if !strings.Contains(result.ErrorMessage, "secure connection") {
+				t.Fatalf("server message was dropped: %+v", result)
+			}
+		})
+	}
+}
