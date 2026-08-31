@@ -692,6 +692,42 @@ func selectCompressionType(selOpts SelectObjectOpts, object string) minio.Select
 	return minio.SelectCompressionNONE
 }
 
+// selectResultsReadCloser gives minio-go SelectResults a safe Close contract.
+// Its background event-stream reader owns and closes the HTTP response on
+// every terminal event. Calling SelectResults.Close after Read reports EOF
+// races that background close and can double-drain a compressed response.
+//
+// Close therefore cancels the request and drains the result pipe until the
+// background reader closes it, but deliberately never calls SelectResults.Close.
+// readMu also makes an early Close wait for an in-flight Read to observe the
+// cancellation before it starts draining.
+type selectResultsReadCloser struct {
+	reader io.Reader
+	cancel context.CancelFunc
+	readMu sync.Mutex
+	once   sync.Once
+}
+
+func (r *selectResultsReadCloser) Read(p []byte) (int, error) {
+	r.readMu.Lock()
+	defer r.readMu.Unlock()
+	return r.reader.Read(p)
+}
+
+func (r *selectResultsReadCloser) Close() error {
+	r.once.Do(func() {
+		r.cancel()
+		r.readMu.Lock()
+		defer r.readMu.Unlock()
+		_, _ = io.Copy(io.Discard, r.reader)
+	})
+	return nil
+}
+
+func newSelectResultsReadCloser(reader io.Reader, cancel context.CancelFunc) io.ReadCloser {
+	return &selectResultsReadCloser{reader: reader, cancel: cancel}
+}
+
 // Select - select object content wrapper.
 func (c *S3Client) Select(ctx context.Context, expression string, sse encrypt.ServerSide, selOpts SelectObjectOpts) (io.ReadCloser, *probe.Error) {
 	opts := minio.SelectObjectOptions{
@@ -705,11 +741,13 @@ func (c *S3Client) Select(ctx context.Context, expression string, sse encrypt.Se
 
 	opts.InputSerialization = selectObjectInputOpts(selOpts, object)
 	opts.OutputSerialization = selectObjectOutputOpts(selOpts, opts.InputSerialization)
-	reader, e := c.api.SelectObjectContent(ctx, bucket, object, opts)
+	selectCtx, cancel := context.WithCancel(ctx)
+	reader, e := c.api.SelectObjectContent(selectCtx, bucket, object, opts)
 	if e != nil {
+		cancel()
 		return nil, probe.NewError(e)
 	}
-	return reader, nil
+	return newSelectResultsReadCloser(reader, cancel), nil
 }
 
 func (c *S3Client) notificationToEventsInfo(ninfo notification.Info) []EventInfo {
