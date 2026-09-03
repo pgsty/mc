@@ -25,7 +25,7 @@ import (
 func TestRequirementsApplySamePathReplacement(t *testing.T) {
 	floors := requirements("test.mod", []byte(`module example.com/test
 
-go 1.27.0
+go 1.27.1
 
 require example.com/dependency v1.2.0
 
@@ -38,21 +38,21 @@ replace example.com/dependency => example.com/dependency v1.1.0
 
 func TestCompareFloors(t *testing.T) {
 	previous := floorSet{
-		goVersion: "1.27.0",
+		goVersion: "1.27.1",
 		modules: map[string]string{
 			"example.com/dependency":           "v1.2.0",
 			"github.com/coreos/go-systemd/v22": "v22.7.0",
 		},
 	}
 	current := floorSet{
-		goVersion: "1.26.0",
+		goVersion: "1.27.0",
 		modules: map[string]string{
 			"example.com/dependency":           "v1.1.0",
 			"github.com/coreos/go-systemd/v22": "v22.6.0",
 		},
 	}
 
-	want := []string{"example.com/dependency: v1.2.0 -> v1.1.0", "go: 1.27.0 -> 1.26.0"}
+	want := []string{"example.com/dependency: v1.2.0 -> v1.1.0", "go: 1.27.1 -> 1.27.0"}
 	if got := compareFloors(current, previous); !slices.Equal(got, want) {
 		t.Fatalf("regressions = %v, want %v", got, want)
 	}
