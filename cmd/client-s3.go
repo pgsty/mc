@@ -1123,6 +1123,16 @@ func (c *S3Client) Put(ctx context.Context, reader io.Reader, size int64, progre
 
 	disableSha256 := putOpts.checksum.IsSet() // pre-emptively disable sha256 payload, if checksum is set.
 
+	// A zero-length body carries no trailer, so the SDK would silently drop an
+	// explicitly requested checksum. Such an upload is empty by construction, so send
+	// the empty-input checksum as a regular header and keep the single regular PUT.
+	if size == 0 && putOpts.checksum.IsSet() {
+		hdr := http.CanonicalHeaderKey(putOpts.checksum.Key())
+		if _, ok := metadata[hdr]; !ok {
+			metadata[hdr] = putOpts.checksum.EncodeToString(nil)
+		}
+	}
+
 	opts := minio.PutObjectOptions{
 		UserMetadata:          metadata,
 		UserTags:              tagsMap,
