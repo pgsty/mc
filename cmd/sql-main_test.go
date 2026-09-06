@@ -18,8 +18,17 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 var testParseKVArgsCases = []struct {
@@ -145,5 +154,100 @@ func TestParseSerializationOpts(t *testing.T) {
 				t.Fatalf("Test %d:Unexpected result for \"%s,\" expected %s , found %s for key %s\n", i+1, test.inp, v, actual, k)
 			}
 		}
+	}
+}
+
+const sqlCLIHelperEnv = "MC_SQL_CLI_HELPER"
+
+// TestSQLCLIHelper is re-executed as a child process by TestSQLExitStatus. It
+// runs the real mcli entry point (Main) so that a failing `sql` run exits with
+// the process code the CLI would use in production, mirroring package main's
+// `if err := mc.Main(os.Args); err != nil { console.Fatalln(err) }`.
+func TestSQLCLIHelper(_ *testing.T) {
+	if os.Getenv(sqlCLIHelperEnv) != "1" {
+		return
+	}
+	separator := -1
+	for i, arg := range os.Args {
+		if arg == "--" {
+			separator = i
+			break
+		}
+	}
+	if separator < 0 {
+		console.Fatalln("sql CLI helper is missing --")
+	}
+	args := append([]string{"mcli"}, os.Args[separator+1:]...)
+	if err := Main(args); err != nil {
+		console.Fatalln(err)
+	}
+	os.Exit(0)
+}
+
+// runSQLCLI runs `mcli <args...>` in an isolated child process against a
+// throwaway config directory and returns its exit code.
+func runSQLCLI(t *testing.T, args ...string) int {
+	t.Helper()
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	configDir := t.TempDir()
+	if err = os.WriteFile(filepath.Join(configDir, globalMCConfigFile), []byte("{\"version\":\"10\",\"aliases\":{}}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.MkdirAll(filepath.Join(configDir, globalSharedURLsDataDir), 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	helperArgs := append([]string{"-test.run=^TestSQLCLIHelper$", "--"}, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	t.Cleanup(cancel)
+	command := exec.CommandContext(ctx, executable, helperArgs...)
+	command.Args[0] = "mcli"
+
+	// Strip inherited MC_* configuration so the child only sees the temp
+	// config directory created above.
+	childEnv := make([]string, 0, len(os.Environ())+2)
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if strings.HasPrefix(strings.ToUpper(key), "MC_") {
+			continue
+		}
+		childEnv = append(childEnv, entry)
+	}
+	command.Env = append(childEnv, sqlCLIHelperEnv+"=1", "MC_CONFIG_DIR="+configDir)
+
+	var stderr bytes.Buffer
+	command.Stderr = &stderr
+	command.Stdout = &bytes.Buffer{}
+	if err = command.Run(); err == nil {
+		return 0
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("running sql CLI helper: %v (stderr: %s)", err, stderr.String())
+	}
+	return exitErr.ExitCode()
+}
+
+// TestSQLExitStatus is the regression test for issue #25: `mc sql` reported a
+// per-object failure through errorIf but always exited 0, so scripts could not
+// detect failure. A failing target must now yield a non-zero exit status while
+// a run with nothing to fail on still exits 0.
+func TestSQLExitStatus(t *testing.T) {
+	// A nonexistent local target fails in url2Stat and is reported through the
+	// same errorIf/accumulate path that a bad query in sqlSelect takes; no
+	// live server is required to exercise the failure exit status.
+	badTarget := filepath.Join(t.TempDir(), "does-not-exist.csv")
+	if code := runSQLCLI(t, "sql", "--query", "select * from s3object", badTarget); code == 0 {
+		t.Fatalf("mc sql on a failing target exited 0, want non-zero (issue #25)")
+	}
+
+	// A recursive run over an empty directory has no object to fail on and
+	// must still exit 0, guarding against a false-positive exit status.
+	emptyDir := t.TempDir()
+	if code := runSQLCLI(t, "sql", "--recursive", "--query", "select * from s3object", emptyDir+"/"); code != 0 {
+		t.Fatalf("mc sql over an empty directory exited %d, want 0", code)
 	}
 }

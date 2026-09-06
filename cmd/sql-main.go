@@ -441,6 +441,7 @@ func mainSQL(cliCtx *cli.Context) error {
 		csvHdrs []string
 		selOpts SelectObjectOpts
 		query   string
+		cErr    error
 	)
 	// Parse encryption keys per command.
 	encKeyDB, err := validateAndCreateEncryptionKeys(cliCtx)
@@ -454,12 +455,16 @@ func mainSQL(cliCtx *cli.Context) error {
 	for _, url := range URLs {
 		if _, targetContent, err := url2Stat(ctx, url2StatOptions{urlStr: url, versionID: "", fileAttr: false, encKeyDB: encKeyDB, timeRef: time.Time{}, isZip: false, ignoreBucketExistsCheck: false}); err != nil {
 			errorIf(err.Trace(url), "Unable to run sql for %s.", url)
+			cErr = exitStatus(globalErrorExitStatus) // Set the exit status.
 			continue
 		} else if !targetContent.Type.IsDir() {
 			if writeHdr {
 				query, csvHdrs, selOpts = getAndValidateArgs(cliCtx, encKeyDB, url)
 			}
-			errorIf(sqlSelect(url, query, encKeyDB, selOpts, csvHdrs, writeHdr).Trace(url), "Unable to run sql")
+			if sqlErr := sqlSelect(url, query, encKeyDB, selOpts, csvHdrs, writeHdr); sqlErr != nil {
+				errorIf(sqlErr.Trace(url), "Unable to run sql")
+				cErr = exitStatus(globalErrorExitStatus) // Set the exit status.
+			}
 			writeHdr = false
 			continue
 		}
@@ -467,12 +472,14 @@ func mainSQL(cliCtx *cli.Context) error {
 		clnt, err := newClientFromAlias(targetAlias, targetURL)
 		if err != nil {
 			errorIf(err.Trace(url), "Unable to initialize target `%s`.", url)
+			cErr = exitStatus(globalErrorExitStatus) // Set the exit status.
 			continue
 		}
 
 		for content := range clnt.List(ctx, ListOptions{Recursive: cliCtx.Bool("recursive"), WithMetadata: true, ShowDir: DirNone}) {
 			if content.Err != nil {
 				errorIf(content.Err.Trace(url), "Unable to list on target `%s`.", url)
+				cErr = exitStatus(globalErrorExitStatus) // Set the exit status.
 				continue
 			}
 			if writeHdr {
@@ -484,8 +491,11 @@ func mainSQL(cliCtx *cli.Context) error {
 			}
 			for _, cTypeSuffix := range supportedContentTypes {
 				if strings.Contains(contentType, cTypeSuffix) {
-					errorIf(sqlSelect(targetAlias+content.URL.Path, query,
-						encKeyDB, selOpts, csvHdrs, writeHdr).Trace(content.URL.String()), "Unable to run sql")
+					if sqlErr := sqlSelect(targetAlias+content.URL.Path, query,
+						encKeyDB, selOpts, csvHdrs, writeHdr); sqlErr != nil {
+						errorIf(sqlErr.Trace(content.URL.String()), "Unable to run sql")
+						cErr = exitStatus(globalErrorExitStatus) // Set the exit status.
+					}
 				}
 				writeHdr = false
 			}
@@ -493,5 +503,5 @@ func mainSQL(cliCtx *cli.Context) error {
 	}
 
 	// Done.
-	return nil
+	return cErr
 }
