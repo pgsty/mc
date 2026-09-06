@@ -238,10 +238,11 @@ func mainPipe(ctx *cli.Context) error {
 	encKeyDB, err := validateAndCreateEncryptionKeys(ctx)
 	fatalIf(err, "Unable to parse encryption keys.")
 
-	// globalQuiet is true for no window size to get.
-	// We just need --quiet and --json here.
-	quiet := ctx.Bool("quiet")
-	json := ctx.Bool("json")
+	// The applied globals already merge --quiet and --json from both flag
+	// positions, and raise quiet when stdout has no window size. Reading them
+	// keeps the progress bar out of a redirected stdout, the way every other
+	// transfer command behaves.
+	quiet, json := globalQuiet, globalJSON
 
 	meta := map[string]string{}
 	if attr := ctx.String("attr"); attr != "" {
