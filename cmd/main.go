@@ -113,6 +113,12 @@ func Main(args []string) error {
 		}
 	}
 
+	// Normalize the boolean environment variables before anything reads
+	// them, the CLI library included.
+	if e := normalizeBoolEnvVars(append(mcFlags, globalFlags...)); e != nil {
+		return e
+	}
+
 	probe.Init() // Set project's root source path.
 	probe.SetAppInfo("Release-Tag", ReleaseTag)
 	probe.SetAppInfo("Commit", ShortCommitID)
@@ -142,6 +148,60 @@ func Main(args []string) error {
 	parsePagerDisableFlag(args)
 	// Run the app
 	return registerApp(appName).Run(args)
+}
+
+// mcBoolEnvSynonyms are the boolean spellings mc accepts in its environment
+// variables on top of the ones strconv.ParseBool understands. They are the
+// extra words the SILO server accepts for the same kind of switch, matched
+// case insensitively, so one vocabulary covers both sides.
+var mcBoolEnvSynonyms = map[string]string{
+	"on":       "true",
+	"off":      "false",
+	"enabled":  "true",
+	"disabled": "false",
+}
+
+// normalizeBoolEnvVars rewrites the environment variables that back boolean
+// flags so the CLI library sees a literal it can parse. Without this pass the
+// library aborts the process for any other value, with a message that names
+// the flag instead of the variable that carries the value. Values the library
+// already accepts are left untouched, and the first variable that is present
+// wins, both to match BoolFlag.ApplyWithError.
+func normalizeBoolEnvVars(flags []cli.Flag) error {
+	for _, f := range flags {
+		bf, ok := f.(cli.BoolFlag)
+		if !ok || bf.EnvVar == "" {
+			continue
+		}
+		for _, name := range strings.Split(bf.EnvVar, ",") {
+			name = strings.TrimSpace(name)
+			value, isSet := os.LookupEnv(name)
+			if !isSet {
+				continue
+			}
+			if err := normalizeBoolEnvVar(name, value); err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return nil
+}
+
+// normalizeBoolEnvVar rewrites one variable in place. An empty value already
+// means false to the CLI library, so it is left alone.
+func normalizeBoolEnvVar(name, value string) error {
+	if value == "" {
+		return nil
+	}
+	if _, e := strconv.ParseBool(value); e == nil {
+		return nil
+	}
+	normalized, known := mcBoolEnvSynonyms[strings.ToLower(value)]
+	if !known {
+		return fmt.Errorf("%s is set to %q, which is not a boolean; use true/false, t/f, 1/0, on/off or enabled/disabled", name, value)
+	}
+	return os.Setenv(name, normalized)
 }
 
 func flagValue(f cli.Flag) reflect.Value {
