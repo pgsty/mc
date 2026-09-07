@@ -43,7 +43,7 @@ vuln_ok="$(run .github/workflows/vulncheck.yml success)"
 release_ok="$(run .github/workflows/test-release.yml success)"
 
 all_green() {
-  printf '[%s,%s,%s,%s%s]\n' "${go_ok}" "${cross_ok}" "${vuln_ok}" "${release_ok}" "${1:+,$1}" >"${fixture}"
+  printf '[%s,%s,%s,%s]\n' "${go_ok}" "${cross_ok}" "${vuln_ok}" "${release_ok}" >"${fixture}"
 }
 
 # Baseline: all four green on a push to main.

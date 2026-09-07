@@ -23,7 +23,7 @@ _init() {
     LDFLAGS=$(go run buildscripts/gen-ldflags.go)
 
     # Extract release tag
-    release_tag=$(echo $LDFLAGS | awk {'print $6'} | cut -f2 -d=)
+    release_tag=$(printf '%s\n' "$LDFLAGS" | awk '{for (i=1; i<=NF; i++) if ($i ~ /\.ReleaseTag=/) {sub(/^[^=]*=/, "", $i); print $i; exit}}')
 
     # Verify release tag.
     if [ -z "$release_tag" ]; then
