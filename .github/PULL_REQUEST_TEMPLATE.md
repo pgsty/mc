@@ -1,8 +1,14 @@
 ## Contribution Licensing (no CLA, inbound=outbound, DCO required)
-This project does not use a CLA; contributions are accepted inbound=outbound.
-All community contributions in this pull request are licensed under the
-[GNU AGPL v3.0 or later](https://www.gnu.org/licenses/agpl-3.0.html), the
-license of this project, and every commit must carry a DCO `Signed-off-by`
+
+This pull request contributes to PGSTY SILO mcli (`pgsty/mc`). Code contributions
+are accepted under AGPL-3.0-or-later, the same license as the client.
+This project does not use a CLA or require a separate Apache-2.0 license grant.
+By submitting this pull request I represent that I have the right to contribute
+the code changes under this repository's
+[GNU AGPL v3.0 or later](https://www.gnu.org/licenses/agpl-3.0.html)
+and retain copyright in my original work. Existing copyright and license
+notices remain intact; separately licensed material keeps its applicable terms.
+Every commit must carry a DCO `Signed-off-by`
 trailer (`git commit -s`) certifying the
 [Developer Certificate of Origin](https://developercertificate.org/) —
 see [CONTRIBUTING.md](https://github.com/pgsty/mc/blob/main/CONTRIBUTING.md).
@@ -27,4 +33,4 @@ see [CONTRIBUTING.md](https://github.com/pgsty/mc/blob/main/CONTRIBUTING.md).
 - [ ] Fixes a regression (If yes, please add `commit-id` or `PR #` here)
 - [ ] Unit tests added/updated
 - [ ] Internal documentation updated
-- [ ] Documentation update requested (open an issue at [pgsty/mc](https://github.com/pgsty/mc/issues) if silo.pgsty.com content needs updating)
+- [ ] Public documentation update opened in [pgsty/silo.pgsty.com](https://github.com/pgsty/silo.pgsty.com), if needed

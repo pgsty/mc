@@ -1,4 +1,7 @@
-### Set up your mc GitHub Repository
+# Contributing to SILO mcli
+
+### Set up your checkout
+
 Fork the [pgsty/mc](https://github.com/pgsty/mc/fork) repository to your own personal repository.
 ```
 $ git clone https://github.com/$USER_ID/mc
@@ -9,7 +12,7 @@ $ ./mc --help
 
 ###  Developer Guidelines
 
-``mc`` welcomes your contribution. To make the process as seamless as possible, we ask for the following:
+SILO mcli welcomes your contribution. To make the process as seamless as possible, we ask for the following:
 
 * Go ahead and fork the project and make your changes. We encourage pull requests to discuss code changes.
     - Fork it
@@ -35,9 +38,10 @@ $ ./mc --help
 
 ### Licensing of Contributions
 
-This project is licensed under the [GNU AGPL v3.0 or later](LICENSE). Its core
-is Copyright (c) MinIO, Inc.; the combined work can never be relicensed, and
-this fork does not try to.
+Code contributions to PGSTY SILO mcli (`pgsty/mc`) are accepted under the
+[GNU AGPL v3.0 or later](LICENSE), the same license as the client. Submit issues
+and pull requests to this repository's maintainers. No separate Apache-2.0
+license grant to SILO or upstream MinIO maintainers is required.
 
 * **No CLA.** We do not ask you to sign a Contributor License Agreement and we
   do not take your copyright. Contributions are accepted inbound=outbound: you
@@ -67,14 +71,17 @@ this fork does not try to.
   `Signed-off-by` trailers) and add your own sign-off as the person passing it
   along.
 
-* **File headers.** Files derived from upstream keep the original MinIO
-  copyright header unchanged. New files added by this fork use the dual
-  header, followed by the standard AGPL boilerplate:
+* **File headers.** Preserve existing copyright and license notices in inherited
+  and third-party files. New original files name their actual copyright holders
+  and use AGPL-3.0-or-later. Use a header such as the following, then append the
+  standard AGPL boilerplate:
 
   ```
-  // Copyright (c) 2015-2025 MinIO, Inc.
-  // Copyright (c) 2025-2026 PGSTY
+  // Copyright (c) 2026 Your Name
   ```
+
+  Separately licensed third-party material retains its existing license and
+  attribution; this policy does not relicense earlier work.
 
 * **Squash merges** must keep the `Signed-off-by:` trailers in the resulting
   commit message.
