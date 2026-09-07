@@ -33,6 +33,6 @@ var adminBucketRemoteAddCmd = cli.Command{
 
 // mainAdminBucketRemoteAdd is the handle for "mc admin bucket remote set" command.
 func mainAdminBucketRemoteAdd(_ *cli.Context) error {
-	deprecatedError("mc replicate add")
+	deprecatedError("mcli replicate add")
 	return nil
 }

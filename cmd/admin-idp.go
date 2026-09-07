@@ -29,11 +29,11 @@ var adminIDPCmd = cli.Command{
 	Hidden:          true,
 	CustomHelpTemplate: `This command's functionality has moved and this command is DEPRECATED.
 
-Please use commands under 'mc idp ldap|openid' instead.
+Please use commands under 'mcli idp ldap|openid' instead.
 `,
 }
 
 func mainAdminIDP(_ *cli.Context) error {
-	deprecatedError("mc idp ldap|openid")
+	deprecatedError("mcli idp ldap|openid")
 	return nil
 }

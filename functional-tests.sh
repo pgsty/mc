@@ -103,18 +103,25 @@ MC="$PWD/mc"
 declare -a MC_CMD
 
 function get_md5sum() {
-	filename="$1"
-	out=$(md5sum "$filename" 2>/dev/null)
-	rv=$?
-	if [ "$rv" -eq 0 ]; then
-		echo $(awk '{ print $1 }' <<<"$out")
+	local filename="$1" out
+	if command -v md5sum >/dev/null 2>&1; then
+		out=$(md5sum "$filename") || return $?
+	else
+		# macOS ships BSD md5 instead of GNU md5sum.
+		out=$(md5 -q "$filename") || return $?
 	fi
-
-	return "$rv"
+	awk '{ print $1 }' <<<"$out"
 }
 
 function get_time() {
-	date +%s%N
+	local timestamp
+	timestamp=$(date +%s%N)
+	if [[ "$timestamp" == *N ]]; then
+		# BSD date has no nanosecond format; retain the same unit at second
+		# precision so Mint's duration arithmetic still works.
+		timestamp="$(date +%s)000000000"
+	fi
+	printf '%s\n' "$timestamp"
 }
 
 function get_duration() {
@@ -215,7 +222,7 @@ function mc_cmd() {
 function check_md5sum() {
 	expected_checksum="$1"
 	shift
-	filename="$@"
+	filename="$1"
 
 	checksum="$(get_md5sum "$filename")"
 	rv=$?
@@ -455,7 +462,7 @@ function test_presigned_post_policy_error() {
 	upload=$(echo "$upload" | sed "s|http://${BUCKET_NAME}.${SERVER_ENDPOINT}/|http://${BUCKET_NAME}.${SERVER_ENDPOINT}/${object_name}|g")
 	upload=$(echo "$upload" | sed "s|https://${BUCKET_NAME}.${SERVER_ENDPOINT}/|https://${BUCKET_NAME}.${SERVER_ENDPOINT}/${object_name}|g")
 
-	ret=$($upload 2>&1 | grep -oP '(?<=Code>)[^<]+')
+	ret=$($upload 2>&1 | sed -n 's/.*<Code>\([^<]*\)<\/Code>.*/\1/p')
 	# Check if the command execution failed.
 	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "unknown failure in upload of $FILE_1_MB using presigned post policy"
 	if [ -z "$ret" ]; then

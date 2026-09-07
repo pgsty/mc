@@ -35,10 +35,10 @@ var supportRegisterCmd = cli.Command{
 	Action:             mainSupportRegister,
 	Before:             setGlobalsFromContext,
 	Flags:              supportRegisterFlags,
-	CustomHelpTemplate: "Please use 'mc license register'",
+	CustomHelpTemplate: "Please use 'mcli license register'",
 }
 
 func mainSupportRegister(_ *cli.Context) error {
-	deprecatedError("mc license register")
+	deprecatedError("mcli license register")
 	return nil
 }

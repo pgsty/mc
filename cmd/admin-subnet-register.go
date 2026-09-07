@@ -28,10 +28,10 @@ var adminSubnetRegisterCmd = cli.Command{
 	Action:             mainAdminRegister,
 	Before:             setGlobalsFromContext,
 	Hidden:             true,
-	CustomHelpTemplate: "Please use 'mc support register'",
+	CustomHelpTemplate: "Please use 'mcli support register'",
 }
 
 func mainAdminRegister(_ *cli.Context) error {
-	deprecatedError("mc support register")
+	deprecatedError("mcli support register")
 	return nil
 }

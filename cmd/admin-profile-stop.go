@@ -30,11 +30,11 @@ var adminProfileStopCmd = cli.Command{
 	Flags:              globalFlags,
 	HideHelpCommand:    true,
 	Hidden:             true,
-	CustomHelpTemplate: "Please use 'mc support profile stop'",
+	CustomHelpTemplate: "Please use 'mcli support profile stop'",
 }
 
 // mainAdminProfileStop - the entry function of profile stop command
 func mainAdminProfileStop(_ *cli.Context) error {
-	deprecatedError("mc support profile stop")
+	deprecatedError("mcli support profile stop")
 	return nil
 }

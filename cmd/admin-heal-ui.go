@@ -408,7 +408,7 @@ func (ui *uiData) healResumeMsg(aliasedURL string) string {
 	if ui.HealOpts.DryRun {
 		flags += "--dry-run "
 	}
-	return fmt.Sprintf("Healing is backgrounded, to resume watching use `mc admin heal %s %s`", flags, aliasedURL)
+	return fmt.Sprintf("Healing is backgrounded, to resume watching use `mcli admin heal %s %s`", flags, aliasedURL)
 }
 
 func (ui *uiData) DisplayAndFollowHealStatus(aliasedURL string) (res madmin.HealTaskStatus, err error) {

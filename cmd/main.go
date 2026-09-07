@@ -146,8 +146,63 @@ func Main(args []string) error {
 	defer globalHelpPager.WaitForExit()
 
 	parsePagerDisableFlag(args)
-	// Run the app
-	return registerApp(appName).Run(args)
+	app := registerApp(appName)
+	jsonFlags := captureJSONFlags(app)
+	// The CLI library writes some nested-command parse errors directly to
+	// Writer without calling OnUsageError. Hold that output until Run returns
+	// so JSON errors never acquire a human-readable prefix. Help uses the
+	// separate HelpWriter and successful version output is flushed below.
+	var output bytes.Buffer
+	app.Writer = &output
+	err := app.Run(args)
+	if err != nil {
+		jsonRequested := globalJSON
+		for _, flag := range jsonFlags {
+			jsonRequested = jsonRequested || *flag
+		}
+		if jsonRequested {
+			fatalJSONUsageError(err)
+		}
+	}
+	_, _ = output.WriteTo(os.Stdout)
+	return err
+}
+
+// captureJSONFlags retains the parser's JSON choice even when a flag error
+// prevents Before from running. Each command gets its own destination, so a
+// child parser cannot reset its parent's value. Copy the command tree to keep
+// registerApp's shared command definitions unchanged.
+func captureJSONFlags(app *cli.App) []*bool {
+	var values []*bool
+	flags := func(in []cli.Flag) []cli.Flag {
+		out := append([]cli.Flag(nil), in...)
+		for i, f := range out {
+			if flag, ok := f.(cli.BoolFlag); ok && flag.Name == "json" {
+				flag.Destination = new(bool)
+				values = append(values, flag.Destination)
+				out[i] = flag
+			}
+		}
+		return out
+	}
+	var commands func([]cli.Command) []cli.Command
+	commands = func(in []cli.Command) []cli.Command {
+		out := append([]cli.Command(nil), in...)
+		for i := range out {
+			out[i].Flags = flags(out[i].Flags)
+			out[i].Subcommands = commands(out[i].Subcommands)
+		}
+		return out
+	}
+	app.Flags = flags(app.Flags)
+	app.Commands = commands(app.Commands)
+	return values
+}
+
+func fatalJSONUsageError(err error) {
+	globalJSON = true
+	console.SetColorOff()
+	fatal(probe.NewError(err), "Invalid command usage")
 }
 
 // mcBoolEnvSynonyms are the boolean spellings mc accepts in its environment
@@ -225,6 +280,10 @@ func visibleFlags(fl []cli.Flag) []cli.Flag {
 
 // Function invoked when invalid flag is passed
 func onUsageError(ctx *cli.Context, err error, _ bool) error {
+	if globalJSON || ctx.Bool("json") || ctx.GlobalBool("json") {
+		fatalJSONUsageError(err)
+	}
+
 	type subCommandHelp struct {
 		flagName string
 		usage    string
@@ -327,7 +386,7 @@ func initMC() {
 	// Check if mc config exists.
 	if !isMcConfigExists() {
 		err := saveMcConfig(newMcConfig())
-		fatalIf(err.Trace(), "Unable to save new mc config.")
+		fatalIf(err.Trace(), "Unable to save new mcli config.")
 
 		if !globalQuiet && !globalJSON {
 			console.Infoln("Configuration written to `" + mustGetMcConfigPath() + "`. Please update your access credentials.")
@@ -576,6 +635,9 @@ func mustGetProfileDir() string {
 }
 
 func showCommandHelpAndExit(cliCtx *cli.Context, code int) {
+	if globalJSON && code != 0 {
+		fatalJSONUsageError(errInvalidArgument().ToGoError())
+	}
 	cli.ShowCommandHelp(cliCtx, cliCtx.Command.Name)
 	// Wait until the user quits the pager
 	globalHelpPager.WaitForExit()
@@ -583,6 +645,9 @@ func showCommandHelpAndExit(cliCtx *cli.Context, code int) {
 }
 
 func showAppHelpAndExit(cliCtx *cli.Context) {
+	if globalJSON {
+		fatalJSONUsageError(errInvalidArgument().ToGoError())
+	}
 	cli.ShowAppHelp(cliCtx)
 	// Wait until the user quits the pager
 	globalHelpPager.WaitForExit()

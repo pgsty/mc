@@ -148,7 +148,7 @@ func mainMakeBucket(cliCtx *cli.Context) error {
 		if err = clnt.MakeBucket(ctx, region, ignoreExisting, withLock); err != nil {
 			switch err.ToGoError().(type) {
 			case BucketNameEmpty:
-				errorIf(err.Trace(targetURL), "Unable to make bucket, please use `mc mb %s`.", urlJoinPath(targetURL, "your-bucket-name"))
+				errorIf(err.Trace(targetURL), "Unable to make bucket, please use `mcli mb %s`.", urlJoinPath(targetURL, "your-bucket-name"))
 			default:
 				errorIf(err.Trace(targetURL), "Unable to make bucket `%s`.", targetURL)
 			}

@@ -30,10 +30,10 @@ var adminPolicyUpdateCmd = cli.Command{
 	Flags:              globalFlags,
 	HideHelpCommand:    true,
 	Hidden:             true,
-	CustomHelpTemplate: `Please use 'mc admin policy attach'`,
+	CustomHelpTemplate: `Please use 'mcli admin policy attach'`,
 }
 
 func mainAdminPolicyUpdateErr(_ *cli.Context) error {
-	deprecatedError("mc admin policy attach")
+	deprecatedError("mcli admin policy attach")
 	return nil
 }

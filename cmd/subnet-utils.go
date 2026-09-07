@@ -623,7 +623,7 @@ func getSubnetAPIKey(alias string) (string, error) {
 		return "", e
 	}
 	if len(apiKey) == 0 && len(lic) == 0 {
-		e = fmt.Errorf("Please register the cluster first by running 'mc license register %s'", alias)
+		e = fmt.Errorf("Please register the cluster first by running 'mcli license register %s'", alias)
 		return "", e
 	}
 	return apiKey, nil

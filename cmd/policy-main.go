@@ -38,11 +38,11 @@ var policyCmd = cli.Command{
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
 	Flags:        append(policyFlags, globalFlags...),
-	CustomHelpTemplate: `Please use 'mc anonymous'
+	CustomHelpTemplate: `Please use 'mcli anonymous'
 `,
 }
 
 func mainPolicy(_ *cli.Context) error {
-	console.Infoln("Please use 'mc anonymous'")
+	console.Infoln("Please use 'mcli anonymous'")
 	return nil
 }

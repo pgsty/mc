@@ -25,7 +25,7 @@ import (
 
 const (
 	selfUpdateDisabledMessage         = "Self-update is disabled in this Silo build of mc; upgrade only through your package repository or https://github.com/pgsty/mc/releases."
-	selfUpdateTooManyArgumentsMessage = "mc update accepts at most one custom release URL; self-update remains disabled."
+	selfUpdateTooManyArgumentsMessage = "mcli update accepts at most one custom release URL; self-update remains disabled."
 )
 
 type disabledUpdateMessage struct {

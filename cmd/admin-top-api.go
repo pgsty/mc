@@ -49,11 +49,11 @@ var adminTopAPICmd = cli.Command{
 	Flags:           append(adminTopAPIFlags, globalFlags...),
 	Hidden:          true,
 	HideHelpCommand: true,
-	CustomHelpTemplate: `Please use 'mc support top api' 
+	CustomHelpTemplate: `Please use 'mcli support top api'
 `,
 }
 
 func mainAdminTopAPI(_ *cli.Context) error {
-	deprecatedError("mc support top api")
+	deprecatedError("mcli support top api")
 	return nil
 }

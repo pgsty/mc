@@ -116,7 +116,7 @@ func checkILMListSyntax(ctx *cli.Context) {
 	}
 
 	if !validateILMListFlagSet(ctx) {
-		fatalIf(errInvalidArgument(), "only one display field flag is allowed per ls command. Refer mc "+ctx.Command.FullName()+" --help.")
+		fatalIf(errInvalidArgument(), "only one display field flag is allowed per ls command. Refer mcli "+ctx.Command.FullName()+" --help.")
 	}
 }
 

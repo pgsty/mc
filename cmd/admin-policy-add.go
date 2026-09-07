@@ -30,10 +30,10 @@ var adminPolicyAddCmd = cli.Command{
 	Flags:              globalFlags,
 	HideHelpCommand:    true,
 	Hidden:             true,
-	CustomHelpTemplate: `Please use 'mc admin policy create'`,
+	CustomHelpTemplate: `Please use 'mcli admin policy create'`,
 }
 
 func mainAdminPolicyAdd(_ *cli.Context) error {
-	deprecatedError("mc admin policy create")
+	deprecatedError("mcli admin policy create")
 	return nil
 }
