@@ -51,7 +51,7 @@ EXAMPLES:
 
   2. Add user "james" to group "staff", then add the "readwrite" policy to the group "staff".
      {{.Prompt}} {{.HelpName}} mysilo staff james
-     {{.Prompt}} mc admin policy attach mysilo readwrite --group staff
+     {{.Prompt}} mcli admin policy attach mysilo readwrite --group staff
 `,
 }
 

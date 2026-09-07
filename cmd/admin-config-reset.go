@@ -74,7 +74,7 @@ func (u configResetMessage) String() (msg string) {
 	msg += console.Colorize("ResetConfigSuccess",
 		fmt.Sprintf("'%s' is successfully reset.", u.key))
 	if u.restart {
-		suggestion := fmt.Sprintf("mc admin service restart %s", u.targetAlias)
+		suggestion := fmt.Sprintf("mcli admin service restart %s", u.targetAlias)
 		msg += console.Colorize("ResetConfigSuccess",
 			fmt.Sprintf("\nPlease restart your server with `%s`.", suggestion))
 	}

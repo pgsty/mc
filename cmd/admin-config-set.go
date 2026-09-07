@@ -69,7 +69,7 @@ func (u configSetMessage) String() (msg string) {
 	msg += console.Colorize("SetConfigSuccess",
 		"Successfully applied new settings.")
 	if u.restart {
-		suggestion := color.RedString("mc admin service restart %s", u.targetAlias)
+		suggestion := color.RedString("mcli admin service restart %s", u.targetAlias)
 		msg += console.Colorize("SetConfigSuccess",
 			fmt.Sprintf("\nPlease restart your server '%s'.", suggestion))
 	}

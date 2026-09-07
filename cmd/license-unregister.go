@@ -47,7 +47,7 @@ FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 DESCRIPTION:
-  This Silo build of mc never contacts MinIO SUBNET; unregister only removes
+  This Silo build of mcli never contacts MinIO SUBNET; unregister only removes
   SUBNET credentials stored in the cluster configuration.
 
 EXAMPLES:

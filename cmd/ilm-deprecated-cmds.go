@@ -55,10 +55,10 @@ EXAMPLES:
 
   2. Add a lifecycle rule with a transition and a noncurrent version transition action for objects with prefix doc/ in mybucket.
      Tiers must exist in Silo/MinIO. Use existing tiers or add new tiers.
-     {{.Prompt}} mc tier add minio mysilo SILOTIER-1 --endpoint https://warm-silo-1.com \
+     {{.Prompt}} mcli ilm tier add minio mysilo SILOTIER-1 --endpoint https://warm-silo-1.com \
          --access-key ACCESSKEY --secret-key SECRETKEY --bucket bucket1 --prefix prefix1
 
-     {{.Prompt}} mc tier add minio mysilo SILOTIER-2 --endpoint https://warm-silo-2.com \
+     {{.Prompt}} mcli ilm tier add minio mysilo SILOTIER-2 --endpoint https://warm-silo-2.com \
          --access-key ACCESSKEY --secret-key SECRETKEY --bucket bucket2 --prefix prefix2
 
      {{.Prompt}} {{.HelpName}} --prefix "doc/" --transition-days "90" --transition-tier "SILOTIER-1" \

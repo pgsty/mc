@@ -154,7 +154,7 @@ EXAMPLES:
       {{.Prompt}} {{.HelpName}} s3/photos --regex "(?i)\.(jpg|png|gif)$"
 
   06. Find all images with ".jpg" extension under "s3/bucket" and copy to "mysilo/bucket" *continuously*.
-      {{.Prompt}} {{.HelpName}} s3/bucket --name "*.jpg" --watch --exec "mc cp {} mysilo/bucket"
+      {{.Prompt}} {{.HelpName}} s3/bucket --name "*.jpg" --watch --exec "mcli cp {} mysilo/bucket"
 
   07. Find and generate public URLs valid for 7 days, for all objects between 64 MB, and 1 GB in size under "s3" account.
       {{.Prompt}} {{.HelpName}} s3 --larger 64MB --smaller 1GB --print {url}
@@ -170,7 +170,7 @@ EXAMPLES:
       {{.Prompt}} {{.HelpName}} s3/bucket --maxdepth 3
 
   11. Copy all versions of all objects in bucket in the local machine
-      {{.Prompt}} {{.HelpName}} s3/bucket --versions --exec "mc cp --version-id {version} {} /tmp/dir/{}.{version}"
+      {{.Prompt}} {{.HelpName}} s3/bucket --versions --exec "mcli cp --version-id {version} {} /tmp/dir/{}.{version}"
 `,
 }
 

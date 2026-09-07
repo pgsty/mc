@@ -176,7 +176,7 @@ func showTags(ctx context.Context, clnt Client, versionID string) {
 	tagsMap, err := clnt.GetTags(ctx, versionID)
 	if err != nil {
 		if minio.ToErrorResponse(err.ToGoError()).Code == "NoSuchTagSet" {
-			fatalIf(probe.NewError(errors.New("check 'mc tag set --help' on how to set tags")), "No tags found  for "+targetName)
+			fatalIf(probe.NewError(errors.New("check 'mcli tag set --help' on how to set tags")), "No tags found  for "+targetName)
 		}
 		fatalIf(err, "Unable to fetch tags for "+targetName)
 		return

@@ -33,12 +33,12 @@ var adminSubnetHealthCmd = cli.Command{
 	Before:             setGlobalsFromContext,
 	Hidden:             true,
 	Flags:              supportDiagFlags, // No need to append globalFlags as top level command would add them
-	CustomHelpTemplate: "This command is deprecated and will be removed in a future release. Use 'mc support diag' instead.\n",
+	CustomHelpTemplate: "This command is deprecated and will be removed in a future release. Use 'mcli support diag' instead.\n",
 }
 
 func mainSubnetHealth(ctx *cli.Context) error {
 	boolValSet := set.CreateStringSet("true", "false")
-	newCmd := []string{"mc support diag"}
+	newCmd := []string{"mcli support diag"}
 	newCmd = append(newCmd, ctx.Args()...)
 	for _, flg := range ctx.Command.Flags {
 		flgName := flg.GetName()

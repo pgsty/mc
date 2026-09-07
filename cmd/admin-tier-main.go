@@ -34,6 +34,6 @@ var adminTierCmd = cli.Command{
 
 // mainAdminTier is the handle for "mc admin tier" command.
 func mainAdminTier(_ *cli.Context) error {
-	deprecatedError("mc ilm tier")
+	deprecatedError("mcli ilm tier")
 	return nil
 }

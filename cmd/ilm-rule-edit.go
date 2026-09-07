@@ -104,7 +104,7 @@ func checkILMEditSyntax(ctx *cli.Context) {
 	}
 	id := ctx.String("id")
 	if id == "" {
-		fatalIf(errInvalidArgument(), "ID for lifecycle rule cannot be empty, please refer mc "+ctx.Command.FullName()+" --help for more details")
+		fatalIf(errInvalidArgument(), "ID for lifecycle rule cannot be empty, please refer mcli "+ctx.Command.FullName()+" --help for more details")
 	}
 }
 

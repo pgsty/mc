@@ -158,7 +158,7 @@ func migrateConfigV2ToV3() {
 	}
 
 	mcCfgV2, e := quick.LoadConfig(mustGetMcConfigPath(), nil, newConfigV2())
-	fatalIf(probe.NewError(e), "Unable to load mc config V2.")
+	fatalIf(probe.NewError(e), "Unable to load mcli config V2.")
 
 	cfgV3 := newConfigV3()
 
@@ -195,7 +195,7 @@ func migrateConfigV3ToV4() {
 	}
 
 	mcCfgV3, e := quick.LoadConfig(mustGetMcConfigPath(), nil, newConfigV3())
-	fatalIf(probe.NewError(e), "Unable to load mc config V3.")
+	fatalIf(probe.NewError(e), "Unable to load mcli config V3.")
 
 	cfgV4 := newConfigV4()
 	maps.Copy(cfgV4.Aliases, mcCfgV3.Data().(*configV3).Aliases)
@@ -234,7 +234,7 @@ func migrateConfigV4ToV5() {
 	}
 
 	mcCfgV4, e := quick.LoadConfig(mustGetMcConfigPath(), nil, newConfigV4())
-	fatalIf(probe.NewError(e), "Unable to load mc config V4.")
+	fatalIf(probe.NewError(e), "Unable to load mcli config V4.")
 
 	cfgV5 := newConfigV5()
 	maps.Copy(cfgV5.Aliases, mcCfgV4.Data().(*configV4).Aliases)
@@ -270,7 +270,7 @@ func migrateConfigV5ToV6() {
 	}
 
 	mcCfgV5, e := quick.LoadConfig(mustGetMcConfigPath(), nil, newConfigV5())
-	fatalIf(probe.NewError(e), "Unable to load mc config V5.")
+	fatalIf(probe.NewError(e), "Unable to load mcli config V5.")
 
 	cfgV6 := newConfigV6()
 
@@ -333,7 +333,7 @@ func migrateConfigV6ToV7() {
 	}
 
 	mcCfgV6, e := quick.LoadConfig(mustGetMcConfigPath(), nil, newConfigV6())
-	fatalIf(probe.NewError(e), "Unable to load mc config V6.")
+	fatalIf(probe.NewError(e), "Unable to load mcli config V6.")
 
 	cfgV7 := newConfigV7()
 	aliasIndex := 0
@@ -411,7 +411,7 @@ func migrateConfigV7ToV8() {
 	}
 
 	mcCfgV7, e := quick.LoadConfig(mustGetMcConfigPath(), nil, newConfigV7())
-	fatalIf(probe.NewError(e), "Unable to load mc config V7.")
+	fatalIf(probe.NewError(e), "Unable to load mcli config V7.")
 
 	cfgV8 := newConfigV8()
 	// We dropped alias support in v7. We only need to migrate host configs.
@@ -452,7 +452,7 @@ func migrateConfigV8ToV9() {
 	}
 
 	mcCfgV8, e := quick.LoadConfig(mustGetMcConfigPath(), nil, newConfigV8())
-	fatalIf(probe.NewError(e), "Unable to load mc config V8.")
+	fatalIf(probe.NewError(e), "Unable to load mcli config V8.")
 
 	cfgV9 := newConfigV9()
 	// We dropped alias support in v8. We only need to migrate host configs.
@@ -493,7 +493,7 @@ func migrateConfigV9ToV10() {
 	}
 
 	mcCfgV9, e := quick.LoadConfig(mustGetMcConfigPath(), nil, newConfigV9())
-	fatalIf(probe.NewError(e), "Unable to load mc config V8.")
+	fatalIf(probe.NewError(e), "Unable to load mcli config V8.")
 
 	cfgV10 := newConfigV10()
 	isEmpty := true

@@ -106,7 +106,7 @@ func performLicenseRenew(alias string) licUpdateMessage {
 	fatalIf(probe.NewError(e), "Error getting subnet creds")
 
 	if len(apiKey) == 0 {
-		errMsg := fmt.Sprintf("Please register the cluster first by running 'mc license register %s'", alias)
+		errMsg := fmt.Sprintf("Please register the cluster first by running 'mcli license register %s'", alias)
 		fatal(errDummy().Trace(), errMsg)
 	}
 

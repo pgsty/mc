@@ -35,7 +35,7 @@ var errDummy = func() *probe.Error {
 type invalidArgumentErr error
 
 var errInvalidArgument = func() *probe.Error {
-	msg := "Invalid arguments provided, please refer " + "`mc <command> -h` for relevant documentation."
+	msg := "Invalid arguments provided, please refer " + "`mcli <command> -h` for relevant documentation."
 	return probe.NewError(invalidArgumentErr(errors.New(msg))).Untrace()
 }
 
@@ -59,7 +59,7 @@ var errUnrecognizedDiffType = func(diff differType) *probe.Error {
 type invalidAliasedURLErr error
 
 var errInvalidAliasedURL = func(URL string) *probe.Error {
-	msg := "Use `mc alias set mycloud " + URL + " ...` to add an alias. Use the alias for S3 operations."
+	msg := "Use `mcli alias set mycloud " + URL + " ...` to add an alias. Use the alias for S3 operations."
 	return probe.NewError(invalidAliasedURLErr(errors.New(msg))).Untrace()
 }
 

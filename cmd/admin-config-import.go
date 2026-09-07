@@ -60,7 +60,7 @@ type configImportMessage struct {
 func (u configImportMessage) String() (msg string) {
 	msg += console.Colorize("SetConfigSuccess",
 		"Setting new key has been successful.\n")
-	suggestion := fmt.Sprintf("mc admin service restart %s", u.targetAlias)
+	suggestion := fmt.Sprintf("mcli admin service restart %s", u.targetAlias)
 	msg += console.Colorize("SetConfigSuccess",
 		fmt.Sprintf("Please restart your server with `%s`.\n", suggestion))
 	return msg

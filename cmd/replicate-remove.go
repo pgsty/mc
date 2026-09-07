@@ -81,7 +81,7 @@ func checkReplicateRemoveSyntax(ctx *cli.Context) {
 	rmChk := (rmAll && rmForce) || (!rmAll && !rmForce)
 	if !rmChk {
 		fatalIf(errInvalidArgument(),
-			"It is mandatory to specify --all and --force flag together for mc "+ctx.Command.FullName()+".")
+			"It is mandatory to specify --all and --force flag together for mcli "+ctx.Command.FullName()+".")
 	}
 	if rmAll && rmForce {
 		return

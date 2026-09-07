@@ -53,6 +53,12 @@ Version one does not support:
 - `--rewind`, tier restore, server batch jobs, or automatic historical-cause
   attribution.
 
+Recursive scans exclude directory markers (object keys ending in `/`). They
+produce no result record for those markers, and `summary.objects` counts the
+selected ordinary objects rather than every entry returned by S3 listing. Use
+a manifest to include a directory marker explicitly; a marker without a stored
+checksum then reports `NO_CHECKSUM`.
+
 ## Minimal manifest
 
 The manifest is an input candidate list, not a result or resume file. Each line

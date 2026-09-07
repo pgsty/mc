@@ -58,7 +58,7 @@ type configRestoreMessage struct {
 
 // String colorized service status message.
 func (u configRestoreMessage) String() (msg string) {
-	suggestion := fmt.Sprintf("mc admin service restart %s", u.targetAlias)
+	suggestion := fmt.Sprintf("mcli admin service restart %s", u.targetAlias)
 	msg += console.Colorize("ConfigRestoreMessage",
 		fmt.Sprintf("Please restart your server with `%s`.\n", suggestion))
 	msg += console.Colorize("ConfigRestoreMessage", "Restored "+u.RestoreID+" kv successfully.")
