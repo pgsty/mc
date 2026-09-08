@@ -146,10 +146,13 @@ make build
 
 ## Common Commands
 
-Use `mcli --json ...` or `MC_JSON=true` for machine-readable output. Unknown
-options, invalid option values, and missing required arguments return a JSON
-error on stdout with exit status 1. Explicit `--help` and `--version` requests
-keep their human-readable output.
+Use `mcli --json ...` or `MC_JSON=true` for machine-readable output. Once JSON
+mode is selected, unknown options, invalid option values, and missing required
+command arguments return a JSON error on stdout with exit status 1. Put
+`--json` before the command: a flag after a rejected option is not parsed.
+Explicit `--help` and `--version` requests keep their human-readable output.
+Command groups such as `mcli --json admin user` also display human-readable
+help and exit 0 when invoked without a subcommand.
 
 | Command | Purpose |
 | :-- | :-- |
