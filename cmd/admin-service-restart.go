@@ -20,6 +20,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -28,6 +29,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/minio/cli"
 	json "github.com/minio/colorjson"
 	"github.com/minio/madmin-go/v3"
@@ -212,7 +214,27 @@ type serviceRestartMessage struct {
 }
 
 func (s serviceRestartMessage) String() string {
-	return s.JSON()
+	action := "Restart request sent to"
+	if s.Result.DryRun {
+		action = "Dry run completed for"
+	}
+	summary := fmt.Sprintf("%s %s", action, s.ServerURL)
+	if total := len(s.Result.Results); total > 0 {
+		var offline, hung int
+		for _, peer := range s.Result.Results {
+			if peer.Err != "" {
+				offline++
+			} else if len(peer.WaitingDrives) > 0 {
+				hung++
+			}
+		}
+		summary += fmt.Sprintf(": %d online, %d offline, %d hung", total-offline-hung, offline, hung)
+	}
+	summary += fmt.Sprintf("; request time %s", s.RestartDuration)
+	if s.WaitingDuration > 0 {
+		summary += fmt.Sprintf("; initialization wait %s", s.WaitingDuration)
+	}
+	return summary
 }
 
 // JSON jsonified service restart command message.
@@ -256,9 +278,9 @@ func mainAdminServiceRestart(ctx *cli.Context) error {
 		rowCount = 3
 	}
 
-	ch := make(chan serviceRestartMessage, 1)
+	useUI := !globalJSON && !globalQuiet && isTerminal() && isatty.IsTerminal(os.Stdin.Fd())
 
-	svcUI := initServiceRestartUI(rowCount, ch)
+	ch := make(chan serviceRestartMessage, 1)
 	go func() {
 		t := time.Now()
 
@@ -340,7 +362,8 @@ func mainAdminServiceRestart(ctx *cli.Context) error {
 		}
 	}()
 
-	if !globalJSON {
+	if useUI {
+		svcUI := initServiceRestartUI(rowCount, ch)
 		ui := tea.NewProgram(svcUI)
 		if _, e := ui.Run(); e != nil {
 			cancel()
@@ -348,7 +371,9 @@ func mainAdminServiceRestart(ctx *cli.Context) error {
 		}
 	} else {
 		for msg := range ch {
-			printMsg(msg)
+			if globalJSON || msg.State == done {
+				printMsg(msg)
+			}
 			if msg.State == done {
 				break
 			}
