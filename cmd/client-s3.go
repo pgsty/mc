@@ -31,7 +31,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -766,7 +765,10 @@ func (c *S3Client) notificationToEventsInfo(ninfo notification.Info) []EventInfo
 			key = record.S3.Object.Key
 		}
 		u := c.targetURL.Clone()
-		u.Path = path.Join(string(u.Separator), bucketName, key)
+		u.Path = string(u.Separator) + bucketName
+		if key != "" {
+			u.Path += string(u.Separator) + key
+		}
 		if strings.HasPrefix(record.EventName, "s3:ObjectCreated:") {
 			if strings.HasPrefix(record.EventName, "s3:ObjectCreated:Copy") {
 				eventsInfo[i] = EventInfo{

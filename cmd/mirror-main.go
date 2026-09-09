@@ -19,6 +19,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -751,6 +752,26 @@ func (mj *mirrorJob) watchMirrorEvents(ctx context.Context, events []EventInfo) 
 			mirrorURL.TotalSize = mj.status.Get()
 			if mirrorURL.TargetContent != nil && (mj.opts.isRemove || mj.opts.activeActive || mj.opts.isWatch) {
 				mj.parallel.queueTask(func() URLs {
+					if sourceAlias != "" && !mj.opts.isFake {
+						client, err := newClientFromAlias(sourceAlias, sourceURL.String())
+						if err != nil {
+							return mirrorURL.WithError(err)
+						}
+						source, ok := client.(*S3Client)
+						if !ok {
+							return mirrorURL.WithError(probe.NewError(fmt.Errorf("source alias %s is not S3", sourceAlias)))
+						}
+						bucket, object := source.url2BucketAndObject()
+						sse := getSSE(sourceAlias+sourceURL.Path, mj.opts.encKeyDB[sourceAlias])
+						// A deletion event may concern an older version of a still-visible object.
+						_, err = source.getObjectStat(ctx, bucket, object, minio.StatObjectOptions{ServerSideEncryption: sse})
+						if err == nil {
+							return mirrorURL.WithError(nil)
+						}
+						if !errors.As(err.ToGoError(), &ObjectMissing{}) && !errors.As(err.ToGoError(), &ObjectIsDeleteMarker{}) {
+							return mirrorURL.WithError(err)
+						}
+					}
 					return mj.doRemove(ctx, mirrorURL, event)
 				}, 0)
 			}
