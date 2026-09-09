@@ -114,6 +114,22 @@ Use [Download & Install](https://silo.pgsty.com/download/#client) to choose a cl
 | Container image | [`pgsty/mc`](https://hub.docker.com/r/pgsty/mc), multi-arch for `linux/amd64` and `linux/arm64`, with `mc` as the entrypoint |
 | Silo bundle | [`pgsty/silo`](https://hub.docker.com/r/pgsty/silo) includes the client as `mcli` with an `mc` compatibility alias |
 
+### Go and TLS compatibility
+
+Go 1.27 builds require macOS 13 or later. On macOS, builds targeting Go 1.27
+replace Keychain trust with on-disk roots and Go's verifier when either
+`SSL_CERT_FILE` or `SSL_CERT_DIR` is set. Stale or incomplete CA paths can break
+previously trusted connections; unset inherited values to restore Keychain
+trust. Certificates in mcli's configured `CAs` directory are still added to the
+selected root pool.
+
+S3, Admin, and alias TLS connections use Go's default key exchanges.
+`GODEBUG=tlsmlkem=0` can temporarily accommodate an ML-KEM-intolerant endpoint;
+it does not disable certificate verification or ML-DSA signatures.
+`GODEBUG=tlssecpmlkem=0` is the narrower option for disabling only the SecP
+hybrids while retaining X25519MLKEM768. The relevant
+changes are described in the [Go release notes](https://go.dev/doc/go1.27).
+
 ## Quick Start
 
 Standalone archives and Linux packages expose the command as `mcli`:
