@@ -267,7 +267,7 @@ func mainAdminServiceRestart(ctx *cli.Context) error {
 			Action: madmin.ServiceActionRestart,
 			DryRun: ctx.Bool("dry-run"),
 		})
-		if e != nil {
+		if e != nil && !ctx.Bool("dry-run") {
 			// Attempt an older API server might be old
 			// nolint:staticcheck
 			// we need this fallback
