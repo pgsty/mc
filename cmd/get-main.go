@@ -125,7 +125,7 @@ func mainGet(cliCtx *cli.Context) (e error) {
 			if getURLs.Error != nil {
 				printGetURLsError(&getURLs)
 				showLastProgressBar(pg, getURLs.Error.ToGoError())
-				return
+				return exitStatus(globalErrorExitStatus)
 			}
 			urls := doCopy(ctx, doCopyOpts{
 				cpURLs:              getURLs,
@@ -134,8 +134,8 @@ func mainGet(cliCtx *cli.Context) (e error) {
 				updateProgressTotal: true,
 			})
 			if urls.Error != nil {
-				e = urls.Error.ToGoError()
-				showLastProgressBar(pg, e)
+				showLastProgressBar(pg, urls.Error.ToGoError())
+				fatalIf(urls.Error.Trace(), "Unable to download.")
 				return
 			}
 		}

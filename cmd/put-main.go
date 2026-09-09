@@ -199,7 +199,7 @@ func mainPut(cliCtx *cli.Context) (e error) {
 			if putURLs.Error != nil {
 				printPutURLsError(&putURLs)
 				showLastProgressBar(pg, putURLs.Error.ToGoError())
-				return
+				return exitStatus(globalErrorExitStatus)
 			}
 			urls := doCopy(ctx, doCopyOpts{
 				cpURLs:           putURLs,
