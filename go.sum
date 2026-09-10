@@ -155,8 +155,8 @@ github.com/minio/madmin-go/v3 v3.0.110 h1:FIYekj7YPc430ffpXFWiUtyut3qBt/unIAcDzJ
 github.com/minio/madmin-go/v3 v3.0.110/go.mod h1:WOe2kYmYl1OIlY2DSRHVQ8j1v4OItARQ6jGyQqcCud8=
 github.com/minio/md5-simd v1.1.2 h1:Gdi1DZK69+ZVMoNHRXJyNcxrMA4dSxoYHZSQbirFg34=
 github.com/minio/md5-simd v1.1.2/go.mod h1:MzdKDxYpY2BT9XQFocsiZf/NKVtR7nkE4RoEpN+20RM=
-github.com/minio/minio-go/v7 v7.3.1-0.20260828014306-0e78d3f18efe h1:By2FKNSOUGLOeb0x4D7xJMHr8x/X1ZW8PG780SpKUwQ=
-github.com/minio/minio-go/v7 v7.3.1-0.20260828014306-0e78d3f18efe/go.mod h1:KUPWdecEO1LWyUz+sTGXAuf2jZHrPh5fCsRH86QbPfk=
+github.com/minio/minio-go/v7 v7.3.1-0.20260909183557-78bfa91607c2 h1:nvX7IksPFOF/cBvkSg/Z+urBZkmhZrfUVmzdNFLjZ5Y=
+github.com/minio/minio-go/v7 v7.3.1-0.20260909183557-78bfa91607c2/go.mod h1:KUPWdecEO1LWyUz+sTGXAuf2jZHrPh5fCsRH86QbPfk=
 github.com/minio/mux v1.10.1 h1:grrK8SwRKbkNFE6qG7WAvFGH09bB46d5teOOtKfQ14s=
 github.com/minio/mux v1.10.1/go.mod h1:INYT4sMSTJy0QWUEA/E2DZNxJ5sAxIwbnyZjkzNFRfE=
 github.com/minio/pkg/v3 v3.6.1 h1:gaNT80BS/iuIany5ylTkVmfN4s6UYY30OtImFv4GQA8=
@@ -175,8 +175,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/olekukonko/tablewriter v0.0.5 h1:P2Ga83D34wi1o9J6Wh1mRuqd4mF/x/lgBS7N7AbDhec=
 github.com/olekukonko/tablewriter v0.0.5/go.mod h1:hPp6KlRPjbx+hW8ykQs1w3UBbZlj6HuIJcUGPhkA7kY=
-github.com/pgsty/silo-pkg/v3 v3.13.3 h1:d2xYTn4LXoWIAIjBlW/17wtA/Ut1ap29t+1ww4TFa8o=
-github.com/pgsty/silo-pkg/v3 v3.13.3/go.mod h1:0GmaDA0ArQ8bkAI/obiSNTBQzdgBu6W0e0olDCbyXXo=
+github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910065859-b3760f56ec23 h1:/9tqYXyTU7OkZCYa0NxsPTUQEM5ehy5GoIK6ivQlmgY=
+github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910065859-b3760f56ec23/go.mod h1:1JdcUcM+TRXObb9QrC8FWhav0RKk6/u8RT2RgimfxRQ=
 github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=
 github.com/philhofer/fwd v1.2.0/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJFxsJM=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
