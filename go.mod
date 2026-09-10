@@ -36,7 +36,7 @@ require (
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910065859-b3760f56ec23
+	github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910091716-2d8fd3cbbf07
 	github.com/pkg/xattr v0.4.12
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.24.1

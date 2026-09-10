@@ -175,8 +175,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/olekukonko/tablewriter v0.0.5 h1:P2Ga83D34wi1o9J6Wh1mRuqd4mF/x/lgBS7N7AbDhec=
 github.com/olekukonko/tablewriter v0.0.5/go.mod h1:hPp6KlRPjbx+hW8ykQs1w3UBbZlj6HuIJcUGPhkA7kY=
-github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910065859-b3760f56ec23 h1:/9tqYXyTU7OkZCYa0NxsPTUQEM5ehy5GoIK6ivQlmgY=
-github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910065859-b3760f56ec23/go.mod h1:1JdcUcM+TRXObb9QrC8FWhav0RKk6/u8RT2RgimfxRQ=
+github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910091716-2d8fd3cbbf07 h1:IKm2AyPsvuL4NyniK3ixqqQz1CIargmhyCkL2eZvlhA=
+github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910091716-2d8fd3cbbf07/go.mod h1:1JdcUcM+TRXObb9QrC8FWhav0RKk6/u8RT2RgimfxRQ=
 github.com/philhofer/fwd v1.2.0 h1:e6DnBTl7vGY+Gz322/ASL4Gyp1FspeMvx1RNDoToZuM=
 github.com/philhofer/fwd v1.2.0/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJFxsJM=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
