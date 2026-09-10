@@ -31,12 +31,12 @@ require (
 	github.com/minio/madmin-go/v3 v3.0.110
 	// Keep upstream master: v7.3.0 predates the checksum and S3 Express fixes
 	// already included in this pseudo-version.
-	github.com/minio/minio-go/v7 v7.3.1-0.20260828014306-0e78d3f18efe
+	github.com/minio/minio-go/v7 v7.3.1-0.20260909183557-78bfa91607c2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/pgsty/silo-pkg/v3 v3.13.3
+	github.com/pgsty/silo-pkg/v3 v3.13.4-0.20260910091716-2d8fd3cbbf07
 	github.com/pkg/xattr v0.4.12
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.24.1
