@@ -32,11 +32,18 @@
 > [!IMPORTANT]
 > `pgsty/mc` 是由 [Pigsty](https://pigsty.cc) 独立维护、从开源 [MinIO Client](https://github.com/minio/mc) 延续而来的社区分支。本项目与 MinIO, Inc. 不存在隶属、背书或赞助关系；文中使用 “MinIO” 仅用于说明上游项目及兼容谱系。
 
+## 当前版本
+
+[20260913](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-09-13T00-00-00Z)
+（`20260913000000.0.0`）使用 silo-pkg v3.14.0 与上游 minio-go `60bd07042d49`。
+行为变化见 [CHANGELOG.md](CHANGELOG.md) 和[中文发布说明](https://silo.pgsty.com/zh/blog/release/mcli-20260913/)。
+[组件版本矩阵](https://silo.pgsty.com/zh/compatibility/versions/) 区分 Server/Console 已发布版本与更新后的主分支。
+
 ## 概述
 
 `pgsty/mc` 维护一条基于上游 MinIO Client 最后一个提交 [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88) 的下游版本线。在上游仓库归档后，本分支让客户端与 [Silo](https://silo.pgsty.com/zh/) 对象存储服务器共用同一条受维护的供应链完成构建、修补、测试和发布，同时仍是面向文件系统与 Amazon S3 兼容对象存储的通用客户端。
 
-本分支遵循一条原则：**改名的是发行产物与分发渠道，不是你使用的工具。** 独立归档包与 Linux 软件包以 `mcli` 命名，而命令、参数、配置与协议行为与上游保持一致。完整的差异清单随版本更新，见[兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/)。
+本分支遵循一条原则：**改名的是发行产物与分发渠道，不是你使用的工具。** 独立归档包与 Linux 软件包以 `mcli` 命名，并保留熟悉的命令语法、配置与协议接口；正确性与安全修复引入的行为差异另行说明。完整的差异清单随版本更新，见[兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/)。
 
 项目统一门户为 [silo.pgsty.com](https://silo.pgsty.com/zh/)，集中提供命令参考、下载安装、版本与安全动态，以及项目法律信息。
 
@@ -87,7 +94,7 @@
 
 ## 治理
 
-本客户端与 [Silo 服务器](https://github.com/pgsty/silo)在同一套发布流程下共同维护：提交必须签署 DCO、Pull Request 必须通过全部必需 CI 检查（本项目由单人维护，不存在可强制执行的独立人工评审）、以签名且不可变的 `RELEASE.YYYY-MM-DDTHH-MM-SSZ` 标签发布带校验和的产物。每个版本都会在门户发布[版本说明](https://silo.pgsty.com/zh/tags/mcli/)；安全问题遵循[安全策略](https://silo.pgsty.com/zh/about/security/)处理。上游版权、许可证与第三方声明完整保留于 [`LICENSE`](LICENSE)、[`NOTICE`](NOTICE) 与 [`CREDITS`](CREDITS)。
+客户端与 [Silo 服务端](https://github.com/pgsty/silo) 共同维护。提交要求 DCO 签署并经过 CI 验证；允许直接推送 main，制品发布另行要求精确标签提交的工作流通过。`RELEASE.YYYY-MM-DDTHH-MM-SSZ` 标签由管理员创建且不可变。发布与安全说明见[项目门户](https://silo.pgsty.com/zh/blog/release/)，上游版权及第三方声明保留。
 
 ## 兼容策略
 
