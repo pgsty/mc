@@ -32,11 +32,19 @@
 > [!IMPORTANT]
 > `pgsty/mc` is an independent, community-maintained fork of the open-source [MinIO Client](https://github.com/minio/mc), published by [Pigsty](https://pigsty.io). It is not affiliated with, endorsed by, or sponsored by MinIO, Inc. “MinIO” is used only to identify the upstream project and compatibility lineage.
 
+## Current release
+
+[20260913](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-09-13T00-00-00Z)
+(`20260913000000.0.0`) uses silo-pkg v3.14.0 and upstream minio-go `60bd07042d49`.
+See [CHANGELOG.md](CHANGELOG.md) for behavior changes and the
+[component matrix](https://silo.pgsty.com/compatibility/versions/) for the
+published Server/Console versions versus their newer main branches.
+
 ## Overview
 
 `pgsty/mc` maintains one downstream release line based on the final upstream MinIO Client commit, [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88). After the upstream repository was archived, this fork keeps the client built, patched, tested, and released through the same maintained supply chain as the [Silo](https://silo.pgsty.com/) object storage server, while remaining a general-purpose client for filesystems and Amazon S3-compatible object stores.
 
-The fork follows one rule: **the shipped artifact and its distribution channels are renamed; the tool you use is not.** Standalone archives and Linux packages ship the binary as `mcli`, while commands, flags, configuration, and wire behavior stay unchanged from upstream. The complete, versioned list of differences is maintained in the [compatibility notes](https://silo.pgsty.com/compatibility/mcli/).
+The fork follows one rule: **the shipped artifact and its distribution channels are renamed; the tool you use is not.** Standalone archives and Linux packages ship the binary as `mcli`, while retaining familiar command syntax, configuration and wire interfaces, with the documented correctness and security changes below. The complete, versioned list of differences is maintained in the [compatibility notes](https://silo.pgsty.com/compatibility/mcli/).
 
 The official project portal is [silo.pgsty.com](https://silo.pgsty.com/). It brings the command reference, downloads, release and security notes, and project legal information together.
 
@@ -87,7 +95,7 @@ Changes are kept narrow and tested where practical. Maintenance is best effort; 
 
 ## Governance
 
-The client is maintained together with the [Silo server](https://github.com/pgsty/silo) under one release process: DCO-signed commits, pull requests gated by required CI checks (a solo-maintained project: there is no independent human reviewer to enforce), signed and immutable `RELEASE.YYYY-MM-DDTHH-MM-SSZ` tags with checksummed artifacts. Each release is announced with a [release note](https://silo.pgsty.com/tags/mcli/) on the portal; security advisories follow the [security policy](https://silo.pgsty.com/about/security/). Upstream copyright, license, and third-party notices are preserved in [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), and [`CREDITS`](CREDITS).
+The client is maintained together with the [Silo server](https://github.com/pgsty/silo) under one release process: DCO-signed commits, reviewed changes with CI validation (direct pushes to main are permitted; artifact publication separately requires successful workflows for the exact tagged commit), signed and immutable `RELEASE.YYYY-MM-DDTHH-MM-SSZ` tags with checksummed artifacts. Each release is announced with a [release note](https://silo.pgsty.com/tags/mcli/) on the portal; security advisories follow the [security policy](https://silo.pgsty.com/about/security/). Upstream copyright, license, and third-party notices are preserved in [`LICENSE`](LICENSE), [`NOTICE`](NOTICE), and [`CREDITS`](CREDITS).
 
 ## Compatibility
 
