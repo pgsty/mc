@@ -69,7 +69,7 @@ jobs:
         run: |
           curl -fsSLO "https://github.com/pgsty/silo/releases/download/${SILO_RELEASE}/${SILO_ARCHIVE}"
           echo "${SILO_ARCHIVE_SHA256}  ${SILO_ARCHIVE}" | sha256sum --check --strict
-          tar -xzf "${SILO_ARCHIVE}"
+          tar -xzf "${SILO_ARCHIVE}" silo
           test -x silo
           mkdir -p ~/.minio/certs/ && cp testdata/localhost.crt ~/.minio/certs/public.crt && cp testdata/localhost.key ~/.minio/certs/private.key
           sudo cp testdata/localhost.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
