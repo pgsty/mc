@@ -63,13 +63,13 @@ jobs:
           MC_TEST_ENABLE_HTTPS: true
           MC_TEST_SKIP_INSECURE: true
           MC_TEST_SKIP_BUILD: true
-          SILO_RELEASE: RELEASE.2026-08-06T00-00-00Z
-          SILO_ARCHIVE: silo_20260806000000.0.0_linux_amd64.tar.gz
-          SILO_ARCHIVE_SHA256: d63d57cc7f0535e1aa116f9e5f42117dbfc4f63492da692b64d3ba6ded30e574
+          SILO_RELEASE: RELEASE.2026-09-03T13-18-01Z
+          SILO_ARCHIVE: silo_20260903131801.0.0_linux_amd64.tar.gz
+          SILO_ARCHIVE_SHA256: cbe5c01eac0a97ccb22fa252eafa432e8608bfde7e3ea27a324cb5ed625a1e96
         run: |
           curl -fsSLO "https://github.com/pgsty/silo/releases/download/${SILO_RELEASE}/${SILO_ARCHIVE}"
           echo "${SILO_ARCHIVE_SHA256}  ${SILO_ARCHIVE}" | sha256sum --check --strict
-          tar -xzf "${SILO_ARCHIVE}"
+          tar -xzf "${SILO_ARCHIVE}" silo
           test -x silo
           mkdir -p ~/.minio/certs/ && cp testdata/localhost.crt ~/.minio/certs/public.crt && cp testdata/localhost.key ~/.minio/certs/private.key
           sudo cp testdata/localhost.crt /usr/local/share/ca-certificates/ && sudo update-ca-certificates
