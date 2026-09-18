@@ -44,6 +44,7 @@ type aliasConfigV10 struct {
 	SessionToken string `json:"sessionToken,omitempty"`
 	API          string `json:"api"`
 	Path         string `json:"path"`
+	Region       string `json:"region,omitempty"`
 	License      string `json:"license,omitempty"`
 	APIKey       string `json:"apiKey,omitempty"`
 	Src          string `json:"src,omitempty"`

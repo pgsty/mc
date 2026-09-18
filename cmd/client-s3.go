@@ -152,6 +152,14 @@ func newCustomDialTLSContext(tlsConf *tls.Config) dialContext {
 
 var timeSentinel = time.Unix(0, 0).UTC()
 
+// resolveRegion returns the region for the config to sign with: the
+// MC_REGION and AWS_REGION environment overrides win over the region
+// configured on the alias, and the empty value leaves region discovery
+// to the S3 client.
+func resolveRegion(config *Config) string {
+	return env.Get("MC_REGION", env.Get("AWS_REGION", config.Region))
+}
+
 // getConfigHash returns the Hash for che *Config
 func getConfigHash(config *Config) uint32 {
 	// Creates a parsed URL.
@@ -162,7 +170,7 @@ func getConfigHash(config *Config) uint32 {
 
 	// Generate a hash out of s3Conf.
 	confHash := fnv.New32a()
-	confHash.Write([]byte(hostName + config.AccessKey + config.SecretKey + config.SessionToken))
+	confHash.Write([]byte(hostName + config.AccessKey + config.SecretKey + config.SessionToken + resolveRegion(config)))
 	confSum := confHash.Sum32()
 	return confSum
 }
@@ -258,7 +266,7 @@ func newFactory() func(config *Config) (Client, *probe.Error) {
 			options := minio.Options{
 				Creds:           credentials.NewChainCredentials(credsChain),
 				Secure:          useTLS,
-				Region:          env.Get("MC_REGION", env.Get("AWS_REGION", "")),
+				Region:          resolveRegion(config),
 				BucketLookup:    config.Lookup,
 				Transport:       transport,
 				TrailingHeaders: useTrailingHeaders.Load(),
