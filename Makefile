@@ -9,7 +9,7 @@ VERSION ?= $(shell git describe --tags)
 TAG ?= "pgsty/mc:$(VERSION)"
 
 GOLANGCI = $(GOPATH)/bin/golangci-lint
-GOLANGCI_VERSION ?= v2.13.1
+GOLANGCI_VERSION ?= v2.14.0
 GOLANGCI_MODULE = github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
 .PHONY: credits check-credits check-dependency-floors test-release-state

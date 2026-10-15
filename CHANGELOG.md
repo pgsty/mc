@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Update silo-pkg to v3.14.2 and upstream minio-go to v7.4.1. Failed multipart
+  uploads are cleaned up after cancellation, retention timestamps are sent in
+  UTC, and STS duration requests are preserved. Existing copy error and
+  checksum handling is retained. Parallel SDK GET and ComposeObject remain
+  opt-in; this update does not enable them in mcli.
+- Build and test with Go 1.27.2. Refresh Go x/* modules, compress v1.20.3,
+  msgp v1.6.5 and the etcd clients v3.7.2. Update golangci-lint to v2.14.0,
+  govulncheck to v1.9.0 and gofumpt to v0.12.0.
+
 ## RELEASE.2026-09-16T00-00-00Z — 2026-09-16
 
 Package version: `20260916000000.0.0`.
