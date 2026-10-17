@@ -258,6 +258,7 @@ type Config struct {
 	Debug             bool
 	Insecure          bool
 	Lookup            minio.BucketLookupType
+	Region            string
 	ConnReadDeadline  time.Duration
 	ConnWriteDeadline time.Duration
 	UploadLimit       int64
