@@ -33,6 +33,9 @@
 
 ## 当前版本
 
+`20261018000000` 正在准备发布，使用 Go 1.27.2、silo-pkg v3.14.2 和 minio-go v7.4.1。
+待发布变更见 [CHANGELOG.md](CHANGELOG.md)。最新已发布版本仍为：
+
 [20260916](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-09-16T00-00-00Z)
 （`20260916000000.0.0`）使用 silo-pkg v3.14.1 与上游 minio-go `32e1f32cb176`。
 行为变化见 [CHANGELOG.md](CHANGELOG.md) 和[中文兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/#current-release)。

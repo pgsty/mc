@@ -2,14 +2,28 @@
 
 ## Unreleased
 
+## RELEASE.2026-10-18T00-00-00Z — 2026-10-18
+
+Package version: `20261018000000.0.0`. Prepared for release; publication and
+container promotion are separate steps.
+[Changes since 20260916](https://github.com/pgsty/mc/compare/RELEASE.2026-09-16T00-00-00Z...RELEASE.2026-10-18T00-00-00Z)
+
 - Update silo-pkg to v3.14.2 and upstream minio-go to v7.4.1. Failed multipart
   uploads are cleaned up after cancellation, retention timestamps are sent in
   UTC, and STS duration requests are preserved. Existing copy error and
   checksum handling is retained. Parallel SDK GET and ComposeObject remain
   opt-in; this update does not enable them in mcli.
 - Build and test with Go 1.27.2. Refresh Go x/* modules, compress v1.20.3,
-  msgp v1.6.5 and the etcd clients v3.7.2. Update golangci-lint to v2.14.0,
+  msgp v1.6.5 and the etcd clients v3.7.2. Update golangci-lint to v2.15.0,
   govulncheck to v1.9.0 and gofumpt to v0.12.0.
+- Update fwd to v1.2.1 to preserve bytes returned together with a read error
+  and correct Skip offsets and fallback behavior on pipes. Update cpuid to
+  v2.4.1 for CPU cache identification fixes.
+- Refresh the pinned UBI 9 release images and use nFPM v2.48.0 for its security
+  dependency updates and RPM/APK packaging fixes. GoReleaser remains v2.17.1.
+
+The go-systemd v22.6.0 portability pin and tablewriter v0.0.5 API remain
+unchanged. This release does not require a server or Console upgrade.
 
 ## RELEASE.2026-09-16T00-00-00Z — 2026-09-16
 

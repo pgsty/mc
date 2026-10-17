@@ -33,6 +33,10 @@
 
 ## Current release
 
+The `20261018000000` release is being prepared with Go 1.27.2, silo-pkg v3.14.2
+and minio-go v7.4.1. See [CHANGELOG.md](CHANGELOG.md) for the prepared changes.
+The latest published release remains:
+
 [20260916](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-09-16T00-00-00Z)
 (`20260916000000.0.0`) uses silo-pkg v3.14.1 and upstream minio-go `32e1f32cb176`.
 See [CHANGELOG.md](CHANGELOG.md) for behavior changes and the

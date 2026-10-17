@@ -85,7 +85,7 @@ jobs:
       - name: Install package validation tools
         run: |
           set -euo pipefail
-          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.47.0
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@v2.48.0
           echo "$(go env GOPATH)/bin" >> "${GITHUB_PATH}"
           sudo apt-get update
           sudo apt-get install --yes rpm binutils
