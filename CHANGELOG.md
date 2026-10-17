@@ -20,7 +20,8 @@ container promotion are separate steps.
   and correct Skip offsets and fallback behavior on pipes. Update cpuid to
   v2.4.1 for CPU cache identification fixes.
 - Refresh the pinned UBI 9 release images and use nFPM v2.48.0 for its security
-  dependency updates and RPM/APK packaging fixes. GoReleaser remains v2.17.1.
+  dependency updates and RPM/APK packaging fixes. Use GoReleaser v2.18.3 for
+  secret redaction, archive error handling and Draft release fixes.
 
 The go-systemd v22.6.0 portability pin and tablewriter v0.0.5 API remain
 unchanged. This release does not require a server or Console upgrade.
