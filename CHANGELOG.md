@@ -4,8 +4,9 @@
 
 ## RELEASE.2026-10-18T00-00-00Z — 2026-10-18
 
-Package version: `20261018000000.0.0`. Prepared for release; publication and
-container promotion are separate steps.
+Package version: `20261018000000.0.0`. GitHub assets and Docker Hub images
+published on 2026-10-17. Release and `latest` images cover Linux amd64/arm64.
+[Release notes](https://silo.pgsty.com/blog/release/mcli-20261018/).
 [Changes since 20260916](https://github.com/pgsty/mc/compare/RELEASE.2026-09-16T00-00-00Z...RELEASE.2026-10-18T00-00-00Z)
 
 - Update silo-pkg to v3.14.2 and upstream minio-go to v7.4.1. Failed multipart
