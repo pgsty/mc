@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Update silo-pkg to v3.14.3 for faster policy evaluation with unchanged
+  authorization behavior. This source update does not change the published
+  mcli 20261018 release or require a coordinated Server or Console release.
+
 ## RELEASE.2026-10-18T00-00-00Z — 2026-10-18
 
 Package version: `20261018000000.0.0`. GitHub assets and Docker Hub images

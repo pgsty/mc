@@ -33,13 +33,14 @@
 
 ## 当前版本
 
-`20261018000000` 正在准备发布，使用 Go 1.27.2、silo-pkg v3.14.2 和 minio-go v7.4.1。
-待发布变更见 [CHANGELOG.md](CHANGELOG.md)。最新已发布版本仍为：
+[20261018](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-18T00-00-00Z)
+（`20261018000000.0.0`）已发布，使用 Go 1.27.2、silo-pkg v3.14.2 和上游 minio-go v7.4.1。
+Linux、macOS、Windows 压缩包、Linux 软件包及 Docker Hub amd64/arm64 镜像均已提供。
+变更见 [CHANGELOG.md](CHANGELOG.md) 以及[中文](https://silo.pgsty.com/zh/blog/release/mcli-20261018/)
+和[英文](https://silo.pgsty.com/blog/release/mcli-20261018/)发布说明。
 
-[20260916](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-09-16T00-00-00Z)
-（`20260916000000.0.0`）使用 silo-pkg v3.14.1 与上游 minio-go `32e1f32cb176`。
-行为变化见 [CHANGELOG.md](CHANGELOG.md) 和[中文兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/#current-release)。
-[组件版本矩阵](https://silo.pgsty.com/zh/compatibility/versions/) 区分 Server/Console 已发布版本与更新后的主分支。
+当前源码采用 silo-pkg v3.14.3，降低策略判定开销，保持授权行为不变。
+此更新尚未包含在已发布的 20261018 二进制中，也不要求升级 Server 或 Console。
 
 ## 概述
 

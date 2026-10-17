@@ -40,6 +40,10 @@ Docker Hub amd64/arm64 images are available. See [CHANGELOG.md](CHANGELOG.md)
 and the release notes in [English](https://silo.pgsty.com/blog/release/mcli-20261018/)
 and [中文](https://silo.pgsty.com/zh/blog/release/mcli-20261018/).
 
+Current source selects silo-pkg v3.14.3 for faster policy evaluation with
+unchanged authorization behavior. This update is not included in the
+published 20261018 binaries and does not require a Server or Console upgrade.
+
 ## Overview
 
 `pgsty/mc` maintains one downstream release line based on the final upstream MinIO Client commit, [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88). After the upstream repository was archived, this fork keeps the client built, patched, tested, and released through the same maintained supply chain as the [Silo](https://silo.pgsty.com/) object storage server, while remaining a general-purpose client for filesystems and Amazon S3-compatible object stores.
