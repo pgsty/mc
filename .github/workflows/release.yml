@@ -172,6 +172,7 @@ jobs:
         with:
           subject-path: |
             dist/mcli_*.tar.gz
+            dist/mcli_*.zip
             dist/mcli_*_checksums.txt
             dist/packages/*.deb
             dist/packages/*.apk

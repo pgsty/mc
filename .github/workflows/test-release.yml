@@ -69,18 +69,41 @@ jobs:
           set -euo pipefail
           buildscripts/verify-build-provenance.sh
 
-      - name: Verify archive documentation
+      - name: Verify archive formats, documentation, and checksums
         run: |
           set -euo pipefail
-          count=0
-          for archive in dist/mcli_*.tar.gz; do
-            count=$((count + 1))
-            listing="$(tar -tzf "${archive}")"
-            for member in LICENSE NOTICE CREDITS README.md README_ZH.md; do
-              grep -Fx "${member}" <<< "${listing}"
+          test "$(find dist -maxdepth 1 -type f \( -name 'mcli_*.tar.gz' -o -name 'mcli_*.zip' \) | wc -l)" -eq 6
+          for os in linux darwin windows; do
+            format=tar.gz
+            binary=mcli
+            if [ "${os}" = windows ]; then
+              format=zip
+              binary=mcli.exe
+            fi
+            for arch in amd64 arm64; do
+              archive="dist/mcli_${PKG_VERSION}_${os}_${arch}.${format}"
+              test -s "${archive}"
+              if [ "${format}" = zip ]; then
+                listing="$(unzip -Z1 "${archive}")"
+              else
+                listing="$(tar -tzf "${archive}")"
+              fi
+              grep -Fx "${binary}" <<< "${listing}"
+              for member in LICENSE NOTICE CREDITS README.md README_ZH.md; do
+                grep -Fx "${member}" <<< "${listing}"
+                if [ "${format}" = zip ]; then
+                  unzip -p "${archive}" "${member}" | cmp - "${member}"
+                else
+                  tar -xOzf "${archive}" "${member}" | cmp - "${member}"
+                fi
+              done
             done
           done
-          test "${count}" -eq 6
+          (
+            cd dist
+            sha256sum --check "mcli_${PKG_VERSION}_checksums.txt"
+            test "$(wc -l < "mcli_${PKG_VERSION}_checksums.txt")" -eq 6
+          )
 
       - name: Install package validation tools
         run: |
