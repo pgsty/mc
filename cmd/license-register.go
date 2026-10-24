@@ -49,28 +49,13 @@ var licenseRegisterFlags = append([]cli.Flag{
 }, subnetCommonFlags...)
 
 var licenseRegisterCmd = cli.Command{
-	Name:         "register",
-	Usage:        "register with MinIO SUBNET (disabled in this build)",
-	OnUsageError: onUsageError,
-	Action:       mainLicenseRegister,
-	Before:       setGlobalsFromContext,
-	Flags:        licenseRegisterFlags,
-	CustomHelpTemplate: `NAME:
-  {{.HelpName}} - {{.Usage}}
-
-USAGE:
-  {{.HelpName}} TARGET
-
-FLAGS:
-  {{range .VisibleFlags}}{{.}}
-  {{end}}
-DESCRIPTION:
-  Registration with MinIO SUBNET is not available in this Silo build of mc.
-  The command is retained for CLI compatibility and always exits with an error.
-
-EXIT STATUS:
-  1 - SUBNET services are disabled
-`,
+	Name:               "register",
+	Usage:              "register with MinIO SUBNET (disabled in this build)",
+	OnUsageError:       onUsageError,
+	Action:             mainLicenseRegister,
+	Before:             setGlobalsFromContext,
+	Flags:              licenseRegisterFlags,
+	CustomHelpTemplate: subnetRegistrationHelpTemplate,
 }
 
 type licRegisterMessage struct {

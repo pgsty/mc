@@ -36,13 +36,13 @@ import (
 var adminUpdateFlags = []cli.Flag{
 	cli.BoolFlag{
 		Name:  "yes, y",
-		Usage: "Confirms the server update",
+		Usage: "confirm the server update",
 	},
 }
 
 var adminServerUpdateCmd = cli.Command{
 	Name:         "update",
-	Usage:        "update all Silo/MinIO servers",
+	Usage:        "request a server update (disabled on Silo)",
 	Action:       mainAdminServerUpdate,
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
@@ -51,17 +51,16 @@ var adminServerUpdateCmd = cli.Command{
   {{.HelpName}} - {{.Usage}}
 
 USAGE:
-  {{.HelpName}} TARGET
+  {{.HelpName}} [FLAGS] TARGET [MIRROR_URL]
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
-EXAMPLES:
-  1. Update Silo/MinIO server represented by its alias 'mysilo'.
-     {{.Prompt}} {{.HelpName}} mysilo/
+DESCRIPTION:
+  Silo disables in-place updates. Upgrade through packages, images, or your orchestrator:
+  https://silo.pgsty.com/download/#server
 
-  2. Update all Silo/MinIO servers in a distributed setup, represented by its alias 'mydist'.
-     {{.Prompt}} {{.HelpName}} mydist/
+  This command is retained for servers that support the in-place update API.
 `,
 }
 

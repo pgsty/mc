@@ -18,7 +18,10 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/minio/cli"
+	"github.com/minio/mc/pkg/probe"
 )
 
 var supportRegisterFlags = append([]cli.Flag{
@@ -30,15 +33,15 @@ var supportRegisterFlags = append([]cli.Flag{
 
 var supportRegisterCmd = cli.Command{
 	Name:               "register",
-	Usage:              "register with MinIO SUBNET (deprecated)",
+	Usage:              "register with MinIO SUBNET (disabled in this build)",
 	OnUsageError:       onUsageError,
 	Action:             mainSupportRegister,
 	Before:             setGlobalsFromContext,
 	Flags:              supportRegisterFlags,
-	CustomHelpTemplate: "Please use 'mcli license register'",
+	CustomHelpTemplate: subnetRegistrationHelpTemplate,
 }
 
 func mainSupportRegister(_ *cli.Context) error {
-	deprecatedError("mcli license register")
+	fatal(probe.NewError(errors.New(subnetDisabledMessage)), "Deprecated command")
 	return nil
 }

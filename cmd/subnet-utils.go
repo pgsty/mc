@@ -54,6 +54,23 @@ const (
 	subnetDisabledMessage = "MinIO SUBNET services (registration, licensing, uploads) are disabled in this Silo build of mc; diagnostics remain available locally. See https://github.com/pgsty/mc"
 )
 
+const subnetRegistrationHelpTemplate = `NAME:
+  {{.HelpName}} - {{.Usage}}
+
+USAGE:
+  {{.HelpName}} TARGET
+{{if .VisibleFlags}}
+FLAGS:
+  {{range .VisibleFlags}}{{.}}
+  {{end}}{{end}}
+DESCRIPTION:
+  MinIO SUBNET registration is disabled in this Silo build.
+  Use 'support diag' for local diagnostics.
+
+EXIT STATUS:
+  1 - SUBNET services are disabled
+`
+
 // subnetServicesEnabled reports whether this build may talk to MinIO SUBNET.
 // The Silo fork ships permanently offline; re-enabling requires a fork-level
 // decision, not a runtime switch.

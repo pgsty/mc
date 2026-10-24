@@ -27,7 +27,7 @@ import (
 
 var supportCallhomeCmd = cli.Command{
 	Name:         "callhome",
-	Usage:        "configure callhome settings",
+	Usage:        "show or disable callhome settings",
 	OnUsageError: onUsageError,
 	Action:       mainCallhome,
 	Before:       setGlobalsFromContext,
@@ -36,25 +36,22 @@ var supportCallhomeCmd = cli.Command{
   {{.HelpName}} - {{.Usage}}
 
 USAGE:
-  {{.HelpName}} enable|disable|status ALIAS
+  {{.HelpName}} status|disable|enable ALIAS
 
 OPTIONS:
-  enable - Enable callhome (not supported in this build; always exits with an error)
-  disable - Disable callhome
   status - Display callhome settings
+  disable - Disable callhome
+  enable - Unavailable in this Silo build; exits with status 1
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
   {{end}}
 EXAMPLES:
-  1. Enable callhome for cluster with alias 'mysilo'
-     {{.Prompt}} {{.HelpName}} enable mysilo
-
-  2. Disable callhome for cluster with alias 'mysilo'
-     {{.Prompt}} {{.HelpName}} disable mysilo
-
-  3. Check callhome status for cluster with alias 'mysilo'
+  1. Check callhome status.
      {{.Prompt}} {{.HelpName}} status mysilo
+
+  2. Disable callhome.
+     {{.Prompt}} {{.HelpName}} disable mysilo
 `,
 }
 

@@ -40,20 +40,20 @@ import (
 var sqlFlags = []cli.Flag{
 	cli.StringFlag{
 		Name:  "query, e",
-		Usage: "sql query expression",
+		Usage: "SQL query expression",
 		Value: "select * from s3object",
 	},
 	cli.BoolFlag{
 		Name:  "recursive, r",
-		Usage: "sql query recursively",
+		Usage: "query objects recursively",
 	},
 	cli.StringFlag{
 		Name:  "csv-input",
-		Usage: "csv input serialization option",
+		Usage: "CSV input options",
 	},
 	cli.StringFlag{
 		Name:  "json-input",
-		Usage: "json input serialization option",
+		Usage: "JSON input options",
 	},
 	cli.StringFlag{
 		Name:  "compression",
@@ -61,22 +61,22 @@ var sqlFlags = []cli.Flag{
 	},
 	cli.StringFlag{
 		Name:  "csv-output",
-		Usage: "csv output serialization option",
+		Usage: "CSV output options",
 	},
 	cli.StringFlag{
 		Name:  "csv-output-header",
-		Usage: "optional csv output header ",
+		Usage: "CSV output header",
 	},
 	cli.StringFlag{
 		Name:  "json-output",
-		Usage: "json output serialization option",
+		Usage: "JSON output options",
 	},
 }
 
-// Display contents of a file.
+// Query object contents through S3 Select.
 var sqlCmd = cli.Command{
 	Name:         "sql",
-	Usage:        "run sql queries on objects",
+	Usage:        "run SQL queries on objects",
 	Action:       mainSQL,
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
@@ -92,31 +92,28 @@ FLAGS:
   {{end}}{{end}}
 
 SERIALIZATION OPTIONS:
-  For query serialization options, refer to https://silo.pgsty.com/reference/minio-mc/
+  See https://silo.pgsty.com/reference/minio-mc/mc-sql/
 
 EXAMPLES:
-  1. Run a query on a set of objects recursively on AWS S3.
+  1. Query every object under an S3 prefix.
      {{.Prompt}} {{.HelpName}} --recursive --query "select * from S3Object" s3/personalbucket/my-large-csvs/
 
-  2. Run a query on an object on Silo/MinIO.
+  2. Count rows in a CSV object.
      {{.Prompt}} {{.HelpName}} --query "select count(s.power) from S3Object s" mysilo/iot-devices/power-ratio.csv
 
-  3. Run a query on an encrypted object with customer provided keys.
+  3. Query an object encrypted with an SSE-C key.
      {{.Prompt}} {{.HelpName}} --enc-c "mysilo/iot-devices=MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDA" \
          --query "select count(s.power) from S3Object s" mysilo/iot-devices/power-ratio-encrypted.csv
 
-  4. Run a query on an object on Silo/MinIO in gzip format using ; as field delimiter,
-     newline as record delimiter and file header to be used
+  4. Query gzip-compressed CSV with a header row and semicolon delimiters.
      {{.Prompt}} {{.HelpName}} --compression GZIP --csv-input "rd=\n,fh=USE,fd=;" \
          --query "select count(s.power) from S3Object s" mysilo/iot-devices/power-ratio.csv.gz
 
-  5. Run a query on an object on Silo/MinIO in gzip format using ; as field delimiter,
-     newline as record delimiter and file header to be used
+  5. Return JSON records separated by a blank line.
      {{.Prompt}} {{.HelpName}} --compression GZIP --csv-input "rd=\n,fh=USE,fd=;" \
          --json-output "rd=\n\n" --query "select * from S3Object" mysilo/iot-devices/data.csv
 
-  6. Run same query as in 5., but specify csv output headers. If --csv-output-headers is
-     specified as "", first row of csv is interpreted as header
+  6. Add column headers to CSV output.
      {{.Prompt}} {{.HelpName}} --compression GZIP --csv-input "rd=\n,fh=USE,fd=;" \
          --csv-output "rd=\n" --csv-output-header "device_id,uptime,lat,lon" \
          --query "select * from S3Object" mysilo/iot-devices/data.csv

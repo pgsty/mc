@@ -2,7 +2,8 @@
 
 # Brand policy gate for the Silo mc fork.
 #
-# Classification follows the Silo rebranding manual:
+# Classification follows the Silo compatibility policy:
+# https://silo.pgsty.com/compatibility/mcli/
 #   BRAND/UPSELL -> must not reappear in user-visible surfaces (checked here)
 #   COMPAT       -> deliberately preserved and never checked: MINIO_*/MC_* env
 #                   vars, x-minio-* headers, module and import paths, the
@@ -68,7 +69,7 @@ if git grep -nE 'MII[A-Za-z0-9+/]{64,}' -- 'cmd/*.go' ':!cmd/*_test.go'; then
 fi
 
 if [ "${fail}" -ne 0 ]; then
-	echo "check-branding: FAILED - review docs/rebranding policy before changing brand surfaces" >&2
+	echo "check-branding: FAILED - see https://silo.pgsty.com/compatibility/mcli/" >&2
 	exit 1
 fi
 echo "check-branding: OK"

@@ -71,6 +71,11 @@ GLOBAL FLAGS:
 TIP:
   Use '{{.Name}} --autocompletion' to enable shell autocompletion
 
+RESOURCES:
+  Website:       https://silo.pgsty.com/
+  Documentation: https://silo.pgsty.com/reference/minio-mc/
+  Issues:        https://github.com/pgsty/mc/issues
+
 COPYRIGHT:
   Copyright (c) 2015-2025 MinIO, Inc.
   Copyright (c) 2025-` + copyrightEndYear() + ` PGSTY
