@@ -27,7 +27,7 @@ _init() {
 
     ## Minimum required versions for build dependencies
     GIT_VERSION="1.0"
-    GO_VERSION="1.27.2"
+    GO_VERSION="1.27.3"
     OSX_VERSION="13.0"
     KNAME=$(uname -s)
     ARCH=$(uname -m)

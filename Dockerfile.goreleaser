@@ -6,7 +6,19 @@
 # This is not full reproducibility: the dnf install below still resolves
 # whatever the Red Hat repositories serve at build time.
 FROM registry.access.redhat.com/ubi9/ubi:latest@sha256:16e9e43d99e181463513cc84a514859b1abb9460f1c4d9e208da4b4e51cd5cc3 AS certs
+# Native root blocklist mitigation: https://access.redhat.com/security/vulnerabilities/RHSB-2026-012
 RUN dnf -y install ca-certificates && \
+    if [ -d /etc/pki/ca-trust/source/blocklist ]; then \
+      blocklist=/etc/pki/ca-trust/source/blocklist; \
+    else \
+      blocklist=/etc/pki/ca-trust/source/blacklist; \
+    fi && \
+    trust extract --overwrite --format=pem-bundle \
+      --filter='pkcs11:object=Comodo%20AAA%20Services%20root;type=cert' \
+      "$blocklist/Comodo_AAA_Services_root.pem" && \
+    trust extract --overwrite --format=pem-bundle \
+      --filter='pkcs11:object=emSign%20ECC%20Root%20CA%20-%20G3;type=cert' \
+      "$blocklist/emSign_ECC_Root_CA_-_G3.pem" && \
     update-ca-trust && \
     cp /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem /tmp/ca-certificates.crt && \
     dnf clean all && \
