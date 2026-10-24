@@ -2,8 +2,9 @@
 
 ## Unreleased
 
-- Update silo-pkg to v3.14.3 for faster policy evaluation with unchanged
-  authorization behavior. This source update does not change the published
+- Update silo-pkg to v3.15.0 for Go 1.27.3 dependency maintenance, retaining
+  the v3.14.3 policy evaluation improvements and authorization behavior.
+  This source update does not change the published
   mcli 20261018 release or require a coordinated Server or Console release.
 
 ## RELEASE.2026-10-18T00-00-00Z — 2026-10-18
