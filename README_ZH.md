@@ -33,19 +33,20 @@
 
 ## 当前版本
 
-[20261018](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-18T00-00-00Z)
-（`20261018000000.0.0`）已发布，使用 Go 1.27.2、silo-pkg v3.14.2 和上游 minio-go v7.4.1。
-Linux、macOS、Windows 压缩包、Linux 软件包及 Docker Hub amd64/arm64 镜像均已提供。
-变更见 [CHANGELOG.md](CHANGELOG.md) 以及[中文](https://silo.pgsty.com/zh/blog/release/mcli-20261018/)
-和[英文](https://silo.pgsty.com/blog/release/mcli-20261018/)发布说明。
+[20261025](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-25T00-00-00Z)
+（`20261025000000.0.0`）已发布，采用 Go 1.27.3、silo-pkg v3.15.1 和上游 minio-go
+`v7.4.2-0.20261020194015-ab93db7ba435`（v7.4.1 之后的固定上游提交）。
+Linux 与 macOS 归档使用 tar.gz，Windows amd64/arm64 归档改用 ZIP。
+Linux 软件包和 Docker Hub amd64/arm64 镜像均已提供。
 
-**20261025 已进入发布准备阶段，尚未正式发布。** 计划标签为
-`RELEASE.2026-10-25T00-00-00Z`，软件包版本为 `20261025000000.0.0`。
-该版本采用 Go 1.27.3、silo-pkg v3.15.1 和上游 minio-go
-`v7.4.2-0.20261020194015-ab93db7ba435`（固定的上游提交，并非正式 v7.4.2）。
-更新包括持久化别名区域、`admin info` JSON 错误退出码修复，以及 Windows ZIP
-归档，详见 [CHANGELOG.md](CHANGELOG.md)。Linux 与 macOS 继续使用 tar.gz。
-升级不要求同步升级 Server 或 Console；新制品正式发布并验证前，上方下载链接继续提供 20261018。
+本次包含 SDK 正确性与依赖修复、持久化别名区域，以及 `admin info --json`
+失败时的非零退出码。继续兼容现有配置，无需同步升级 Server 或 Console。
+详见 [CHANGELOG.md](CHANGELOG.md)、[中文](https://silo.pgsty.com/zh/blog/release/mcli-20261025/)
+与[英文](https://silo.pgsty.com/blog/release/mcli-20261025/)发布说明，以及
+[下载页](https://silo.pgsty.com/zh/download/#client)。
+
+RPM 使用 PGSTY GPG 密钥签名。跨平台归档、归档校验和清单、DEB 和 APK 均提供 GitHub 构建证明。
+Docker 固定标签为 `pgsty/mc:RELEASE.2026-10-25T00-00-00Z`，`latest` 指向同一版本。
 
 ## 概述
 

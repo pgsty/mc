@@ -1,9 +1,12 @@
 # Changelog
 
-## RELEASE.2026-10-25T00-00-00Z — 2026-10-25 (prepared)
+## RELEASE.2026-10-25T00-00-00Z — 2026-10-25
 
-Package version: `20261025000000.0.0`. This release is prepared but has not been
-published. The latest published client remains 20261018.
+Package version: `20261025000000.0.0`. GitHub assets and Docker Hub images
+published on 2026-10-25. Release and `latest` images cover Linux amd64/arm64.
+[GitHub release](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-25T00-00-00Z) ·
+[English release notes](https://silo.pgsty.com/blog/release/mcli-20261025/) ·
+[中文发布说明](https://silo.pgsty.com/zh/blog/release/mcli-20261025/).
 
 - Honor the optional `region` field persisted in alias configuration. Region
   selection follows `MC_REGION`, `AWS_REGION`, then the alias; an unset region
@@ -29,8 +32,7 @@ published. The latest published client remains 20261018.
   characters. The SDK also fixes ReadAt EOF/negative offsets and read/seek bounds
   after Stat; parallel SDK GET remains opt-in and is not enabled by this update.
 
-These source changes are not included in the published mcli 20261018 binaries
-and do not require a coordinated Server or Console release.
+These changes do not require a coordinated Server or Console release.
 
 Interrupted CLI uploads can leave incomplete multipart uploads, as in 20261018.
 SIGINT exits with status 130 without exposing a completed object; use
