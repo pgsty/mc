@@ -696,6 +696,14 @@ func ShareURLDownloadTest(t *testing.T) {
 func PutObjectPreserveAttributes(t *testing.T) {
 	AttrTestBucket := CreateBucket(t)
 	file := fileMap["1M"]
+	info, err := file.diskFile.Stat()
+	fatalIfError(err, t)
+	// An old atime makes the upload read update it on relatime filesystems.
+	// Preserve the pre-read attributes, not the source's post-upload atime.
+	fatalIfError(os.Chtimes(file.diskFile.Name(), time.Unix(1, 0), info.ModTime()), t)
+	attr, err := disk.GetFileSystemAttrs(file.diskFile.Name())
+	fatalIfError(err, t)
+
 	out, err := RunMC(
 		"cp",
 		"-a",
@@ -713,8 +721,6 @@ func PutObjectPreserveAttributes(t *testing.T) {
 	stats, err := parseStatSingleObjectJSONOutput(out)
 	fatalIfError(err, t)
 
-	attr, err := disk.GetFileSystemAttrs(file.diskFile.Name())
-	fatalIfError(err, t)
 	if attr != stats.Metadata["X-Amz-Meta-Mc-Attrs"] {
 		fatalMsgOnly(fmt.Sprintf("expecting file attributes (%s) but got file attributes (%s)", attr, stats.Metadata["X-Amz-Meta-Mc-Attrs"]), t)
 	}
