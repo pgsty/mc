@@ -1,11 +1,41 @@
 # Changelog
 
-## Unreleased
+## RELEASE.2026-10-25T00-00-00Z — 2026-10-25 (prepared)
 
-- Update silo-pkg to v3.15.0 for Go 1.27.3 dependency maintenance, retaining
-  the v3.14.3 policy evaluation improvements and authorization behavior.
-  This source update does not change the published
-  mcli 20261018 release or require a coordinated Server or Console release.
+Package version: `20261025000000.0.0`. This release is prepared but has not been
+published. The latest published client remains 20261018.
+
+- Honor the optional `region` field persisted in alias configuration. Region
+  selection follows `MC_REGION`, `AWS_REGION`, then the alias; an unset region
+  still uses bucket-location discovery. Keep cached clients separate when their
+  signing regions differ. This does not add an `alias set --region` flag.
+- Package Windows amd64/arm64 archives as ZIP; Linux and macOS keep tar.gz.
+  Validate archive formats, bundled documentation, and checksums in release CI.
+- Clarify help for disabled server updates and SUBNET operations, improve SQL
+  examples, and show SILO documentation and issue links in top-level help.
+- Return a nonzero exit status when `admin info --json` fails, including access
+  denial, while preserving its JSON error record for scripts.
+- Build with Go 1.27.3, including the CVE-2026-111943 certificate-trust fix.
+  Apply the native certificate blocklist mitigation to release container roots.
+  Refresh Prometheus, etcd, gRPC, JWX, JSON, and terminal dependencies while
+  retaining the systemd portability and terminal-width compatibility pins.
+- Update silo-pkg to v3.15.1, aligning its minio-go dependency with this client
+  and retaining the Go 1.27.3 maintenance updates, v3.14.3 policy evaluation
+  improvements, and authorization behavior.
+- Update upstream minio-go to `v7.4.2-0.20261020194015-ab93db7ba435`, a pinned
+  upstream commit after v7.4.1, not a released v7.4.2. Reject truncated streams
+  before uploading a short multipart part and abort the failed upload. Report
+  a failed single-delete fallback only once for keys containing XML control
+  characters. The SDK also fixes ReadAt EOF/negative offsets and read/seek bounds
+  after Stat; parallel SDK GET remains opt-in and is not enabled by this update.
+
+These source changes are not included in the published mcli 20261018 binaries
+and do not require a coordinated Server or Console release.
+
+Interrupted CLI uploads can leave incomplete multipart uploads, as in 20261018.
+SIGINT exits with status 130 without exposing a completed object; use
+`mcli rm --incomplete --recursive --force ALIAS/BUCKET/PREFIX` when cleanup is
+needed. A mid-body download interruption returns failure; retry the command.
 
 ## RELEASE.2026-10-18T00-00-00Z — 2026-10-18
 

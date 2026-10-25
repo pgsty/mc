@@ -40,9 +40,15 @@ Docker Hub amd64/arm64 images are available. See [CHANGELOG.md](CHANGELOG.md)
 and the release notes in [English](https://silo.pgsty.com/blog/release/mcli-20261018/)
 and [中文](https://silo.pgsty.com/zh/blog/release/mcli-20261018/).
 
-Current source selects silo-pkg v3.14.3 for faster policy evaluation with
-unchanged authorization behavior. This update is not included in the
-published 20261018 binaries and does not require a Server or Console upgrade.
+**20261025 is prepared for release, but is not published.** The planned tag is
+`RELEASE.2026-10-25T00-00-00Z`, with package version `20261025000000.0.0`.
+It uses Go 1.27.3, silo-pkg v3.15.1, and upstream minio-go
+`v7.4.2-0.20261020194015-ab93db7ba435` (a pinned upstream commit, not a formal
+v7.4.2 release). Changes include persisted alias regions, corrected JSON error
+exit status for `admin info`, and Windows ZIP archives; see
+[CHANGELOG.md](CHANGELOG.md). Linux and macOS archives remain tar.gz. A Server
+or Console upgrade is not required; the download links above serve 20261018
+until the new artifacts are published and verified.
 
 ## Overview
 

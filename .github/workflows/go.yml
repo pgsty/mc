@@ -63,9 +63,9 @@ jobs:
           MC_TEST_ENABLE_HTTPS: true
           MC_TEST_SKIP_INSECURE: true
           MC_TEST_SKIP_BUILD: true
-          SILO_RELEASE: RELEASE.2026-09-03T13-18-01Z
-          SILO_ARCHIVE: silo_20260903131801.0.0_linux_amd64.tar.gz
-          SILO_ARCHIVE_SHA256: cbe5c01eac0a97ccb22fa252eafa432e8608bfde7e3ea27a324cb5ed625a1e96
+          SILO_RELEASE: RELEASE.2026-10-18T00-00-00Z
+          SILO_ARCHIVE: silo_20261018000000.0.0_linux_amd64.tar.gz
+          SILO_ARCHIVE_SHA256: e069b6425f0de944fea6c301773d5620fe8992bf0d16b6c5e42be57d666ee794
         run: |
           curl -fsSLO "https://github.com/pgsty/silo/releases/download/${SILO_RELEASE}/${SILO_ARCHIVE}"
           echo "${SILO_ARCHIVE_SHA256}  ${SILO_ARCHIVE}" | sha256sum --check --strict

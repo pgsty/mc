@@ -403,6 +403,9 @@ func mainAdminInfo(ctx *cli.Context) error {
 
 	clusterInfo.Info = admInfo
 	printMsg(clusterInfo)
+	if e != nil {
+		return exitStatus(globalErrorExitStatus)
+	}
 
 	return nil
 }

@@ -149,8 +149,8 @@ github.com/minio/madmin-go/v3 v3.0.110 h1:FIYekj7YPc430ffpXFWiUtyut3qBt/unIAcDzJ
 github.com/minio/madmin-go/v3 v3.0.110/go.mod h1:WOe2kYmYl1OIlY2DSRHVQ8j1v4OItARQ6jGyQqcCud8=
 github.com/minio/md5-simd v1.1.2 h1:Gdi1DZK69+ZVMoNHRXJyNcxrMA4dSxoYHZSQbirFg34=
 github.com/minio/md5-simd v1.1.2/go.mod h1:MzdKDxYpY2BT9XQFocsiZf/NKVtR7nkE4RoEpN+20RM=
-github.com/minio/minio-go/v7 v7.4.1 h1:PtU/zIOfQRWZ+QydXAZysc+xZYHdG+BBR4Z6TUvy73w=
-github.com/minio/minio-go/v7 v7.4.1/go.mod h1:nQnQi7zTfXR4lREtYXZQWqo5aw0Rqv+ZqCGrTORygRk=
+github.com/minio/minio-go/v7 v7.4.2-0.20261020194015-ab93db7ba435 h1:BIn1BJi2zZ+z5BIMsr02USFB+Wmipc4SrIAA8nksNH0=
+github.com/minio/minio-go/v7 v7.4.2-0.20261020194015-ab93db7ba435/go.mod h1:nQnQi7zTfXR4lREtYXZQWqo5aw0Rqv+ZqCGrTORygRk=
 github.com/minio/mux v1.10.1 h1:grrK8SwRKbkNFE6qG7WAvFGH09bB46d5teOOtKfQ14s=
 github.com/minio/mux v1.10.1/go.mod h1:INYT4sMSTJy0QWUEA/E2DZNxJ5sAxIwbnyZjkzNFRfE=
 github.com/minio/pkg/v3 v3.11.0 h1:WjzWGP7lyuupJgUSRim1RDtNujHtESyMQF7qSR4r5Dg=
@@ -169,8 +169,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/olekukonko/tablewriter v0.0.5 h1:P2Ga83D34wi1o9J6Wh1mRuqd4mF/x/lgBS7N7AbDhec=
 github.com/olekukonko/tablewriter v0.0.5/go.mod h1:hPp6KlRPjbx+hW8ykQs1w3UBbZlj6HuIJcUGPhkA7kY=
-github.com/pgsty/silo-pkg/v3 v3.15.0 h1:T4Zg7sEzbG9i5Zh/W1qjJhng5SOBztRs7syTAaRVy0g=
-github.com/pgsty/silo-pkg/v3 v3.15.0/go.mod h1:sMDSBNxJGdSZprPGQDbH/KcKrWf1KjNzR8hQurNlyOA=
+github.com/pgsty/silo-pkg/v3 v3.15.1 h1:T5rqY3HR1WGybcjnx/ghBvliEgo7yNCA7JAC3f1LpTk=
+github.com/pgsty/silo-pkg/v3 v3.15.1/go.mod h1:GmTF6fIEkTrzgM+ysWWfDZIlVRD2DYAJkKjA5bjiWpQ=
 github.com/philhofer/fwd v1.2.1 h1:UtpS73q8bFgy/yH3gCq8LSNvj5gv/FowNOiWZa7uKwQ=
 github.com/philhofer/fwd v1.2.1/go.mod h1:RqIHx9QI14HlwKwm98g9Re5prTQ6LdeRQn+gXJFxsJM=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=

@@ -39,8 +39,13 @@ Linux、macOS、Windows 压缩包、Linux 软件包及 Docker Hub amd64/arm64 �
 变更见 [CHANGELOG.md](CHANGELOG.md) 以及[中文](https://silo.pgsty.com/zh/blog/release/mcli-20261018/)
 和[英文](https://silo.pgsty.com/blog/release/mcli-20261018/)发布说明。
 
-当前源码采用 silo-pkg v3.14.3，降低策略判定开销，保持授权行为不变。
-此更新尚未包含在已发布的 20261018 二进制中，也不要求升级 Server 或 Console。
+**20261025 已进入发布准备阶段，尚未正式发布。** 计划标签为
+`RELEASE.2026-10-25T00-00-00Z`，软件包版本为 `20261025000000.0.0`。
+该版本采用 Go 1.27.3、silo-pkg v3.15.1 和上游 minio-go
+`v7.4.2-0.20261020194015-ab93db7ba435`（固定的上游提交，并非正式 v7.4.2）。
+更新包括持久化别名区域、`admin info` JSON 错误退出码修复，以及 Windows ZIP
+归档，详见 [CHANGELOG.md](CHANGELOG.md)。Linux 与 macOS 继续使用 tar.gz。
+升级不要求同步升级 Server 或 Console；新制品正式发布并验证前，上方下载链接继续提供 20261018。
 
 ## 概述
 
