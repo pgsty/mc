@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -234,8 +233,9 @@ func (m *resyncMetricsUI) View() string {
 		addLine("Versions: ", m.current.ReplicatedCount)
 		addLine("FailedObjects: ", m.current.FailedCount)
 		if accElapsedTime > 0 {
-			bytesTransferredPerSec := float64(int64(time.Second)*m.current.ReplicatedSize) / float64(accElapsedTime)
-			objectsPerSec := float64(int64(time.Second)*m.current.ReplicatedCount) / float64(accElapsedTime)
+			elapsedSeconds := accElapsedTime.Seconds()
+			bytesTransferredPerSec := float64(m.current.ReplicatedSize) / elapsedSeconds
+			objectsPerSec := float64(m.current.ReplicatedCount) / elapsedSeconds
 			addLine("Throughput: ", fmt.Sprintf("%s/s", humanize.IBytes(uint64(bytesTransferredPerSec))))
 			addLine("IOPs: ", fmt.Sprintf("%.2f objs/s", objectsPerSec))
 		}
