@@ -33,12 +33,12 @@ require (
 	github.com/minio/colorjson v1.0.8
 	github.com/minio/filepath v1.0.0
 	github.com/minio/madmin-go/v3 v3.0.110
-	github.com/minio/minio-go/v7 v7.4.2-0.20261020194015-ab93db7ba435
+	github.com/minio/minio-go/v7 v7.4.2-0.20261025165926-320af050c445
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/muesli/reflow v0.3.0
 	github.com/muesli/termenv v0.16.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/pgsty/silo-pkg/v3 v3.15.1
+	github.com/pgsty/silo-pkg/v3 v3.15.2
 	github.com/pkg/xattr v0.4.12
 	github.com/posener/complete v1.2.3
 	github.com/prometheus/client_golang v1.25.0

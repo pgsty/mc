@@ -1,5 +1,33 @@
 # Changelog
 
+## RELEASE.2026-10-26T00-00-00Z — 2026-10-26
+
+Package version: `20261026000000.0.0`. Publication status and artifacts are
+listed in [GitHub Releases](https://github.com/pgsty/mc/releases).
+
+- Isolate S3 and administration clients by their complete identity and connection
+  configuration. Pin credential sources across refreshes, preserve token-file
+  rotation, and keep trust, proxy, resolver and header settings separate.
+- Consume resync JSON status streams synchronously. Stop observation at Completed,
+  Canceled or Failed, emit a result for disabled replication, and avoid throughput
+  overflow for large object counts.
+- Return nonzero for partial resync start/cancel failures, retaining the original
+  JSON response and bucket error details. Successfully querying a failed or
+  canceled job still exits zero.
+- Keep observing batch jobs when live metrics are missing, emit a `pending` JSON
+  state and use bounded persisted-status fallback. A 30-second telemetry gap and
+  10-second status requests bound failure handling; cancel workers on exit.
+- Use silo-pkg v3.15.2 and upstream minio-go
+  `v7.4.2-0.20261025165926-320af050c445`. Removing bucket replication now accepts
+  HTTP 204 as well as HTTP 200 while retaining errors such as AccessDenied.
+- Use GoReleaser 2.19.0. Keep Go 1.27.3 and the existing output-format,
+  Unicode-width and NetBSD compatibility selections. This update adds no new
+  CVE fix; the earlier security updates remain included.
+
+The new `pending` status and nonzero partial-mutation exit are intentional script
+compatibility changes. Other command output, region precedence and S3 APIs retain
+their existing behavior. These fixes do not require a Server protocol change.
+
 ## RELEASE.2026-10-25T00-00-00Z — 2026-10-25
 
 Package version: `20261025000000.0.0`. GitHub assets and Docker Hub images

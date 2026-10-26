@@ -116,7 +116,7 @@ jobs:
       - name: Build Draft release with GoReleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
-          version: v2.18.3
+          version: v2.19.0
           args: release --clean --skip=validate --config .github/goreleaser.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
