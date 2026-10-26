@@ -65,7 +65,7 @@ func mainAdminReplicationResyncStatus(ctx *cli.Context) error {
 		showCommandHelpAndExit(ctx, 1) // last argument is exit code
 	}
 
-	console.SetColor("ResyncMessage", color.New(color.FgGreen))
+	console.SetColor("UserMessage", color.New(color.FgGreen))
 	console.SetColor("THeader", color.New(color.Bold, color.FgHiWhite))
 	console.SetColor("THeader2", color.New(color.Bold, color.FgYellow))
 	console.SetColor("TDetail", color.New(color.Bold, color.FgCyan))
@@ -80,7 +80,8 @@ func mainAdminReplicationResyncStatus(ctx *cli.Context) error {
 	info, e := client.SiteReplicationInfo(globalContext)
 	fatalIf(probe.NewError(e), "Unable to fetch site replication info.")
 	if !info.Enabled {
-		console.Colorize("ResyncMessage", "SiteReplication is not enabled")
+		// Disabled replication is a successful query result, in either format.
+		printMsg(srInfo(info))
 		return nil
 	}
 
@@ -98,63 +99,81 @@ func mainAdminReplicationResyncStatus(ctx *cli.Context) error {
 		fatalIf(errInvalidArgument().Trace(ctx.Args().Tail()...),
 			"alias provided is not part of cluster replication.")
 	}
-	ctxt, cancel := context.WithCancel(globalContext)
-	defer cancel()
-
 	opts := madmin.MetricsOptions{
 		Type:    madmin.MetricsSiteResync,
 		ByDepID: peer.DeploymentID,
 	}
 	if globalJSON {
-		finished := false
-		e := client.Metrics(ctxt, opts, func(metrics madmin.RealtimeMetrics) {
-			// The decoder may have buffered more samples before cancellation.
-			if finished {
-				return
-			}
+		e = streamResyncMetrics(globalContext, client, opts, func(metrics madmin.RealtimeMetrics) {
 			printMsg(metricsMessage{RealtimeMetrics: metrics})
-			finished = metrics.Final
-			if sr := metrics.Aggregated.SiteResync; sr != nil {
-				switch strings.ToLower(sr.ResyncStatus) {
-				case "completed", "canceled", "failed":
-					finished = true
-				}
-			}
-			if finished {
-				cancel()
-			}
 		})
-		// Once the last event has been printed, errors from the unused tail
-		// of the response are irrelevant. Earlier request/stream errors fail.
-		if e != nil && !finished && (!errors.Is(e, context.Canceled) || ctxt.Err() == nil) {
-			fatalIf(probe.NewError(e).Trace(ctx.Args()...), "Unable to get resync status")
+	} else {
+		ui := tea.NewProgram(initResyncMetricsUI(peer.DeploymentID))
+		e = runResyncMetricsUI(globalContext, client, opts, ui)
+	}
+	fatalIf(probe.NewError(e).Trace(ctx.Args()...), "Unable to get resync status")
+	return nil
+}
+
+func resyncStatusTerminal(status string) bool {
+	switch strings.ToLower(status) {
+	case "completed", "canceled", "failed":
+		return true
+	default:
+		return false
+	}
+}
+
+func streamResyncMetrics(ctx context.Context, client *madmin.AdminClient, opts madmin.MetricsOptions, out func(madmin.RealtimeMetrics)) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	finished := false
+	err := client.Metrics(ctx, opts, func(metrics madmin.RealtimeMetrics) {
+		// The decoder may have buffered more samples before cancellation.
+		if finished || ctx.Err() != nil {
+			return
 		}
+		out(metrics)
+		finished = metrics.Final
+		if sr := metrics.Aggregated.SiteResync; sr != nil {
+			finished = finished || resyncStatusTerminal(sr.ResyncStatus)
+		}
+		if finished {
+			cancel()
+		}
+	})
+	// Once the last event has been delivered, the unused response tail does
+	// not belong to this query. Earlier request/stream errors still fail.
+	if finished || (errors.Is(err, context.Canceled) && ctx.Err() != nil) {
 		return nil
 	}
+	return err
+}
 
-	ui := tea.NewProgram(initResyncMetricsUI(peer.DeploymentID))
+type resyncMetricsDoneMsg struct{}
+
+func runResyncMetricsUI(ctx context.Context, client *madmin.AdminClient, opts madmin.MetricsOptions, ui *tea.Program) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	done := make(chan error, 1)
 	go func() {
-		e := client.Metrics(ctxt, opts, func(metrics madmin.RealtimeMetrics) {
-			if metrics.Aggregated.SiteResync != nil {
-				sr := metrics.Aggregated.SiteResync
+		err := streamResyncMetrics(ctx, client, opts, func(metrics madmin.RealtimeMetrics) {
+			if sr := metrics.Aggregated.SiteResync; sr != nil {
 				ui.Send(sr)
-				if sr.Complete() {
-					cancel()
-					return
-				}
 			}
 		})
-		if e != nil && !errors.Is(e, context.Canceled) {
-			fatalIf(probe.NewError(e).Trace(ctx.Args()...), "Unable to get resync status")
-		}
+		// Quit through Update so EOF, errors and cancellation stop the
+		// spinner and retain the last frame before restoring the terminal.
+		ui.Send(resyncMetricsDoneMsg{})
+		done <- err
 	}()
-
-	if _, e := ui.Run(); e != nil {
-		cancel()
-		fatalIf(probe.NewError(e).Trace(aliasedURL), "Unable to get resync status")
+	_, uiErr := ui.Run()
+	cancel()
+	streamErr := <-done
+	if uiErr != nil {
+		return uiErr
 	}
-
-	return nil
+	return streamErr
 }
 
 func initResyncMetricsUI(deplID string) *resyncMetricsUI {
@@ -179,6 +198,9 @@ func (m *resyncMetricsUI) Init() tea.Cmd {
 }
 
 func (m *resyncMetricsUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.quitting {
+		return m, nil
+	}
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -190,15 +212,14 @@ func (m *resyncMetricsUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case *madmin.SiteResyncMetrics:
 		m.current = *msg
-		if msg.ResyncStatus == "Canceled" {
-			m.quitting = true
-			return m, tea.Quit
-		}
-		if msg.Complete() {
+		if resyncStatusTerminal(msg.ResyncStatus) {
 			m.quitting = true
 			return m, tea.Quit
 		}
 		return m, nil
+	case resyncMetricsDoneMsg:
+		m.quitting = true
+		return m, tea.Quit
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
@@ -236,12 +257,10 @@ func (m *resyncMetricsUI) View() string {
 	if !m.quitting {
 		s.WriteString(m.spinner.View())
 	} else {
-		if m.current.Complete() {
-			if m.current.FailedCount == 0 {
-				s.WriteString(m.spinner.Style.Render((tickCell + tickCell + tickCell)))
-			} else {
-				s.WriteString(m.spinner.Style.Render((crossTickCell + crossTickCell + crossTickCell)))
-			}
+		if strings.EqualFold(m.current.ResyncStatus, "failed") || (m.current.Complete() && m.current.FailedCount != 0) {
+			s.WriteString(m.spinner.Style.Render(crossTickCell + crossTickCell + crossTickCell))
+		} else if m.current.Complete() {
+			s.WriteString(m.spinner.Style.Render(tickCell + tickCell + tickCell))
 		}
 	}
 	s.WriteString("\n")

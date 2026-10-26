@@ -22,20 +22,17 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"sync"
 	"time"
 
 	"github.com/mattn/go-ieproxy"
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/httptracer"
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // NewAdminFactory encloses New function with client cache.
 func NewAdminFactory() func(config *Config) (*madmin.AdminClient, *probe.Error) {
-	clientCache := make(map[uint32]*madmin.AdminClient)
-	mutex := &sync.Mutex{}
+	var cache clientCache[*madmin.AdminClient]
 
 	// Return New function.
 	return func(config *Config) (*madmin.AdminClient, *probe.Error) {
@@ -46,31 +43,17 @@ func NewAdminFactory() func(config *Config) (*madmin.AdminClient, *probe.Error) 
 		}
 		hostName := targetURL.Host
 
-		confSum := getConfigHash(config)
-
-		useTLS := isHostTLS(config)
-
-		// Lookup previous cache by hash.
-		mutex.Lock()
-		defer mutex.Unlock()
-		var api *madmin.AdminClient
-		var found bool
-		if api, found = clientCache[confSum]; !found {
-
-			transport := config.getTransport()
-
-			credsChain, err := config.getCredsChain()
-			if err != nil {
-				return nil, err
-			}
-
-			creds := credentials.NewChainCredentials(credsChain)
+		settings, err := snapshotClient(config, hostName, targetURL.Scheme != "http")
+		if err != nil {
+			return nil, err
+		}
+		return cache.get(&settings, func() (*madmin.AdminClient, *probe.Error) {
+			transport, creds := settings.transportAndCredentials()
 
 			// Not found. Instantiate a new MinIO
-			var e error
-			api, e = madmin.NewWithOptions(hostName, &madmin.Options{
+			api, e := madmin.NewWithOptions(hostName, &madmin.Options{
 				Creds:  creds,
-				Secure: useTLS,
+				Secure: settings.key.secure,
 			})
 			if e != nil {
 				return nil, probe.NewError(e)
@@ -80,14 +63,9 @@ func NewAdminFactory() func(config *Config) (*madmin.AdminClient, *probe.Error) 
 			api.SetCustomTransport(transport)
 
 			// Set app info.
-			api.SetAppInfo(config.AppName, config.AppVersion)
-
-			// Cache the new MinIO Client with hash of config as key.
-			clientCache[confSum] = api
-		}
-
-		// Store the new api object.
-		return api, nil
+			api.SetAppInfo(settings.key.appName, settings.key.appVersion)
+			return api, nil
+		})
 	}
 }
 

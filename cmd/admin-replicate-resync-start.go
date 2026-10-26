@@ -55,6 +55,20 @@ EXAMPLES:
 
 type resyncMessage madmin.SRResyncOpStatus
 
+func resyncOperationErrorDetails(res madmin.SRResyncOpStatus) []string {
+	var details []string
+	if res.ErrDetail != "" {
+		details = append(details, res.ErrDetail)
+	}
+	for _, bucket := range res.Buckets {
+		// SILO may leave Status empty when a bucket's target update fails.
+		if bucket.ErrDetail != "" {
+			details = append(details, fmt.Sprintf("Bucket %s: %s", bucket.Bucket, bucket.ErrDetail))
+		}
+	}
+	return details
+}
+
 func (m resyncMessage) JSON() string {
 	bs, e := json.MarshalIndent(madmin.SRResyncOpStatus(m), "", " ")
 	fatalIf(probe.NewError(e), "Unable to marshal into JSON.")
@@ -63,10 +77,9 @@ func (m resyncMessage) JSON() string {
 
 func (m resyncMessage) String() string {
 	v := madmin.SRResyncOpStatus(m)
-	messages := []string{}
+	messages := resyncOperationErrorDetails(v)
 	th := "ResyncMessage"
-	if v.ErrDetail != "" {
-		messages = append(messages, v.ErrDetail)
+	if len(messages) > 0 {
 		th = "ResyncErr"
 	} else {
 		messages = append(messages, fmt.Sprintf("Site resync started with ID %s", v.ResyncID))
@@ -110,6 +123,9 @@ func mainAdminReplicateResyncStart(ctx *cli.Context) error {
 	res, e := client.SiteReplicationResyncOp(globalContext, peer, madmin.SiteResyncStart)
 	fatalIf(probe.NewError(e).Trace(args...), "Unable to start replication resync")
 	printMsg(resyncMessage(res))
+	if len(resyncOperationErrorDetails(res)) > 0 {
+		return exitStatus(globalErrorExitStatus)
+	}
 
 	return nil
 }

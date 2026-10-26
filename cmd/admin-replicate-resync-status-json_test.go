@@ -214,6 +214,8 @@ func TestAdminReplicateResyncStatusJSONStream(t *testing.T) {
 		{name: "already_canceled", statuses: []string{"Canceled"}},
 		{name: "already_failed", statuses: []string{"Failed"}},
 		{name: "lowercase_completed", statuses: []string{"completed"}},
+		{name: "lowercase_canceled", statuses: []string{"canceled"}},
+		{name: "mixed_case_failed", statuses: []string{"fAiLeD"}},
 		{name: "final_packet", statuses: []string{"Ongoing"}, final: true},
 		{name: "final_packet_without_resync", statuses: []string{""}, final: true},
 	} {
