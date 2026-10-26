@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -11,12 +12,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/dustin/go-humanize"
+	"github.com/mattn/go-isatty"
 	"github.com/minio/cli"
 	json "github.com/minio/colorjson"
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pgsty/silo-pkg/v3/console"
 )
 
 var batchStatusCmd = cli.Command{
@@ -32,6 +33,16 @@ var batchStatusCmd = cli.Command{
 
 USAGE:
   {{.HelpName}} TARGET JOBID
+
+DESCRIPTION:
+  Watch an existing job until it completes or fails. Missing live metrics are
+  reported as pending. After 30 seconds without job metrics, or if the stream
+  ends, check the saved status and report an error if no terminal result exists.
+  Individual status requests time out after 10 seconds.
+
+  A retrieved complete or failed result exits 0; inspect "status" for the job
+  outcome. An unavailable or missing job status exits nonzero. Retry this
+  status command to resume observation of a queued job.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
@@ -57,7 +68,12 @@ func (c batchJobStatusMessage) JSON() string {
 }
 
 func (c batchJobStatusMessage) String() string {
-	return c.JSON()
+	if c.Status == "pending" {
+		return fmt.Sprintf("Job %s: pending (waiting for live metrics; the job may be queued)", c.Metric.JobID)
+	}
+	ui := initBatchJobMetricsUI(c.Metric.JobID)
+	ui.metric, ui.status, ui.quitting = c.Metric, c.Status, true
+	return ui.View()
 }
 
 // checkBatchStatusSyntax - validate all the passed arguments
@@ -80,92 +96,189 @@ func mainBatchStatus(ctx *cli.Context) error {
 	ctxt, cancel := context.WithCancel(globalContext)
 	defer cancel()
 
-	_, e := client.DescribeBatchJob(ctxt, jobID)
-	nosuchJob := madmin.ToErrorResponse(e).Code == "XMinioAdminNoSuchJob"
-	if nosuchJob {
-		e = nil
-		if !globalJSON {
-			console.Infoln("Unable to find an active job, attempting to list from previously run jobs")
-		}
-	}
-	fatalIf(probe.NewError(e), "Unable to lookup job status")
-
-	ui := tea.NewProgram(initBatchJobMetricsUI(jobID))
-	if nosuchJob {
-		go func() {
-			res, e := client.BatchJobStatus(ctxt, jobID)
-			fatalIf(probe.NewError(e), "Unable to lookup job status")
-			if globalJSON {
-				printMsg(batchJobStatusMessage{
-					Status: "success",
-					Metric: res.LastMetric,
-				})
-				if res.LastMetric.Complete || res.LastMetric.Failed {
-					cancel()
-					return
-				}
-			} else {
-				ui.Send(res.LastMetric)
-			}
-		}()
-	} else {
-		go func() {
-			opts := madmin.MetricsOptions{
-				Type:     madmin.MetricsBatchJobs,
-				ByJobID:  jobID,
-				Interval: time.Second,
-			}
-			e := client.Metrics(ctxt, opts, func(metrics madmin.RealtimeMetrics) {
-				if globalJSON {
-					if metrics.Aggregated.BatchJobs == nil {
-						cancel()
-						return
-					}
-
-					job, ok := metrics.Aggregated.BatchJobs.Jobs[jobID]
-					if !ok {
-						cancel()
-						return
-					}
-
-					m := batchJobStatusMessage{
-						Status: "in-progress",
-						Metric: job,
-					}
-					switch {
-					case job.Complete:
-						m.Status = "complete"
-					case job.Failed:
-						m.Status = "failed"
-					default:
-						// leave as is with in-progress
-					}
-					printMsg(m)
-					if job.Complete || job.Failed {
-						cancel()
-						return
-					}
-				} else {
-					ui.Send(metrics.Aggregated.BatchJobs.Jobs[jobID])
-				}
-			})
-			if e != nil && !errors.Is(e, context.Canceled) {
-				fatalIf(probe.NewError(e).Trace(ctx.Args()...), "Unable to get current batch status")
-			}
-		}()
+	useUI := !globalJSON && !globalQuiet && isTerminal() && isatty.IsTerminal(os.Stdin.Fd())
+	if !useUI {
+		e := watchBatchJobStatus(ctxt, client, jobID, batchStatusIdleTimeout, func(msg batchJobStatusMessage) {
+			printMsg(msg)
+		})
+		fatalIf(probe.NewError(e).Trace(ctx.Args()...), "Unable to get current batch status")
+		return nil
 	}
 
-	if !globalJSON {
-		if _, e := ui.Run(); e != nil {
-			cancel()
-			fatalIf(probe.NewError(e).Trace(aliasedURL), "Unable to get current batch status")
-		}
-	} else {
-		<-ctxt.Done()
+	model := initBatchJobMetricsUI(jobID)
+	ui := tea.NewProgram(model, tea.WithContext(ctxt), tea.WithoutSignalHandler())
+	result := make(chan error, 1)
+	go func() {
+		e := watchBatchJobStatus(ctxt, client, jobID, batchStatusIdleTimeout, func(msg batchJobStatusMessage) {
+			ui.Send(msg)
+		})
+		result <- e
+		ui.Send(batchJobStatusDoneMsg{})
+	}()
+	_, e := ui.Run()
+	cancel()
+	statusErr := <-result
+	if model.canceled {
+		return cli.NewExitError("Batch status observation canceled", globalCancelExitStatus)
 	}
-
+	fatalIf(probe.NewError(e).Trace(aliasedURL), "Unable to display batch status")
+	fatalIf(probe.NewError(statusErr).Trace(ctx.Args()...), "Unable to get current batch status")
 	return nil
 }
+
+const (
+	batchStatusRequestTimeout = 10 * time.Second
+	batchStatusIdleTimeout    = 30 * time.Second
+)
+
+type batchStatusClient interface {
+	DescribeBatchJob(context.Context, string) (string, error)
+	BatchJobStatus(context.Context, string) (madmin.BatchJobStatus, error)
+	Metrics(context.Context, madmin.MetricsOptions, func(madmin.RealtimeMetrics)) error
+}
+
+func batchStatusMessage(job madmin.JobMetric) batchJobStatusMessage {
+	status := "in-progress"
+	if job.Failed {
+		status = "failed"
+	} else if job.Complete {
+		status = "complete"
+	}
+	return batchJobStatusMessage{Status: status, Metric: job}
+}
+
+func describeBatchStatus(ctx context.Context, client batchStatusClient, jobID string) error {
+	ctx, cancel := context.WithTimeout(ctx, batchStatusRequestTimeout)
+	defer cancel()
+	_, err := client.DescribeBatchJob(ctx, jobID)
+	return err
+}
+
+// watchBatchJobStatus observes only existing jobs. Missing telemetry is not a
+// terminal job state; a bounded gap is resolved against the persisted status.
+func watchBatchJobStatus(ctx context.Context, client batchStatusClient, jobID string, idleTimeout time.Duration, emit func(batchJobStatusMessage)) error {
+	err := describeBatchStatus(ctx, client, jobID)
+	if madmin.ToErrorResponse(err).Code == "XMinioAdminNoSuchJob" {
+		return batchStatusFallback(ctx, client, jobID, true, errors.New("no active job definition"), emit)
+	}
+	if err != nil {
+		return fmt.Errorf("unable to describe job %q: %w", jobID, err)
+	}
+
+	streamCtx, cancel := context.WithCancel(ctx)
+	samples := make(chan madmin.RealtimeMetrics)
+	result := make(chan error, 1)
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		result <- client.Metrics(streamCtx, madmin.MetricsOptions{
+			Type:     madmin.MetricsBatchJobs,
+			ByJobID:  jobID,
+			Interval: time.Second,
+		}, func(sample madmin.RealtimeMetrics) {
+			select {
+			case samples <- sample:
+			case <-streamCtx.Done():
+			}
+		})
+	}()
+	defer func() {
+		cancel()
+		<-stopped
+	}()
+
+	timer := time.NewTimer(idleTimeout)
+	defer timer.Stop()
+	pending := false
+	var cause error
+observe:
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timer.C:
+			cause = fmt.Errorf("no live metrics for job %q for %s", jobID, idleTimeout)
+			break observe
+		case err := <-result:
+			if err == nil {
+				err = errors.New("metrics stream ended before a terminal job status")
+			} else {
+				err = fmt.Errorf("live metrics stream failed: %w", err)
+			}
+			cause = err
+			break observe
+		case sample := <-samples:
+			job, found := madmin.JobMetric{}, false
+			if sample.Aggregated.BatchJobs != nil {
+				job, found = sample.Aggregated.BatchJobs.Jobs[jobID]
+			}
+			if found {
+				if job.JobID != jobID {
+					cause = fmt.Errorf("live metrics returned job ID %q instead of %q", job.JobID, jobID)
+					break observe
+				}
+				emit(batchStatusMessage(job))
+				if job.Complete || job.Failed {
+					return nil
+				}
+				pending = false
+				timer.Reset(idleTimeout)
+			} else if !pending {
+				emit(batchJobStatusMessage{Status: "pending", Metric: madmin.JobMetric{JobID: jobID}})
+				pending = true
+			}
+			if len(sample.Errors) > 0 {
+				cause = fmt.Errorf("batch metrics unavailable: %s", strings.Join(sample.Errors, "; "))
+				break observe
+			}
+			if sample.Final {
+				cause = errors.New("metrics stream ended before a terminal job status")
+				break observe
+			}
+		}
+	}
+	cancel()
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return batchStatusFallback(ctx, client, jobID, false, cause, emit)
+}
+
+func batchStatusFallback(ctx context.Context, client batchStatusClient, jobID string, missingDefinition bool, cause error, emit func(batchJobStatusMessage)) error {
+	statusCtx, cancel := context.WithTimeout(ctx, batchStatusRequestTimeout)
+	res, err := client.BatchJobStatus(statusCtx, jobID)
+	cancel()
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	if err == nil {
+		job := res.LastMetric
+		if job.JobID != jobID {
+			return fmt.Errorf("job %q status unavailable: %w; persisted status returned job ID %q", jobID, cause, job.JobID)
+		}
+		emit(batchStatusMessage(job))
+		if job.Complete || job.Failed {
+			return nil
+		}
+		return fmt.Errorf("job %q status unavailable: %w; persisted status is still in-progress, retry batch status", jobID, cause)
+	}
+	if madmin.ToErrorResponse(err).Code == "XMinioAdminNoSuchJob" {
+		if !missingDefinition {
+			describeErr := describeBatchStatus(ctx, client, jobID)
+			missingDefinition = madmin.ToErrorResponse(describeErr).Code == "XMinioAdminNoSuchJob"
+			if describeErr != nil && !missingDefinition {
+				return fmt.Errorf("job %q status unavailable: %w", jobID, errors.Join(cause, err, describeErr))
+			}
+		}
+		if missingDefinition {
+			return fmt.Errorf("job %q is missing or expired: %w", jobID, errors.Join(cause, err))
+		}
+		return fmt.Errorf("job %q exists but its status is unavailable (it may be queued): %w; retry batch status", jobID, cause)
+	}
+	return fmt.Errorf("job %q persisted status unavailable: %w", jobID, errors.Join(cause, err))
+}
+
+type batchJobStatusDoneMsg struct{}
 
 func initBatchJobMetricsUI(jobID string) *batchJobMetricsUI {
 	s := spinner.New()
@@ -174,6 +287,7 @@ func initBatchJobMetricsUI(jobID string) *batchJobMetricsUI {
 	return &batchJobMetricsUI{
 		spinner: s,
 		jobID:   jobID,
+		status:  "pending",
 	}
 }
 
@@ -181,7 +295,9 @@ type batchJobMetricsUI struct {
 	metric   madmin.JobMetric
 	spinner  spinner.Model
 	quitting bool
+	canceled bool
 	jobID    string
+	status   string
 }
 
 func (m *batchJobMetricsUI) Init() tea.Cmd {
@@ -194,12 +310,23 @@ func (m *batchJobMetricsUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			m.quitting = true
+			m.canceled = true
 			return m, tea.Quit
 		default:
 			return m, nil
 		}
+	case batchJobStatusMessage:
+		m.status = msg.Status
+		if msg.Status == "pending" {
+			return m, nil
+		}
+		return m.Update(msg.Metric)
+	case batchJobStatusDoneMsg:
+		m.quitting = true
+		return m, tea.Quit
 	case madmin.JobMetric:
 		m.metric = msg
+		m.status = batchStatusMessage(msg).Status
 		if msg.Complete || msg.Failed {
 			m.quitting = true
 			return m, tea.Quit
@@ -250,8 +377,13 @@ func (m *batchJobMetricsUI) View() string {
 	}
 	s.WriteString("\n")
 
-	switch m.metric.JobType {
-	case string(madmin.BatchJobReplicate):
+	addLine("JobID: ", m.jobID)
+	addLine("Status: ", m.status)
+	if m.status == "pending" {
+		addLine("Waiting: ", "live metrics unavailable; the job may be queued")
+	}
+	switch {
+	case m.metric.JobType == string(madmin.BatchJobReplicate) && m.metric.Replicate != nil:
 		accElapsedTime := m.metric.LastUpdate.Sub(m.metric.StartTime)
 
 		addLine("JobType: ", m.metric.JobType)
@@ -262,14 +394,14 @@ func (m *batchJobMetricsUI) View() string {
 		addLine("FailedDeleteMarker: ", m.metric.Replicate.DeleteMarkersFailed)
 		if accElapsedTime > 0 {
 			bytesTransferredPerSec := float64(m.metric.Replicate.BytesTransferred) / accElapsedTime.Seconds()
-			objectsPerSec := float64(int64(time.Second)*m.metric.Replicate.Objects) / float64(accElapsedTime)
+			objectsPerSec := float64(m.metric.Replicate.Objects) / accElapsedTime.Seconds()
 			addLine("Throughput: ", fmt.Sprintf("%s/s", humanize.IBytes(uint64(bytesTransferredPerSec))))
 			addLine("IOPs: ", fmt.Sprintf("%.2f objs/s", objectsPerSec))
 		}
 		addLine("Transferred: ", humanize.IBytes(uint64(m.metric.Replicate.BytesTransferred)))
 		addLine("Elapsed: ", accElapsedTime.Round(time.Second).String())
 		addLine("CurrObjName: ", m.metric.Replicate.Object)
-	case string(madmin.BatchJobExpire):
+	case m.metric.JobType == string(madmin.BatchJobExpire) && m.metric.Expired != nil:
 		addLine("JobType: ", m.metric.JobType)
 		addLine("Objects: ", m.metric.Expired.Objects)
 		addLine("FailedObjects: ", m.metric.Expired.ObjectsFailed)
@@ -281,7 +413,7 @@ func (m *batchJobMetricsUI) View() string {
 			accElapsedTime := m.metric.LastUpdate.Sub(m.metric.StartTime)
 			addLine("Elapsed: ", accElapsedTime.String())
 		}
-	case string(madmin.BatchJobCatalog):
+	case m.metric.JobType == string(madmin.BatchJobCatalog) && m.metric.Catalog != nil:
 		addLine("JobType: ", m.metric.JobType)
 		addLine("ObjectsScannedCount: ", m.metric.Catalog.ObjectsScannedCount)
 		addLine("ObjectsMatchedCount: ", m.metric.Catalog.ObjectsMatchedCount)

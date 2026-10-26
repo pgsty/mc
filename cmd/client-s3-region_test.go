@@ -356,32 +356,37 @@ func TestS3ClientCacheKeepsRegionIdentity(t *testing.T) {
 	}
 }
 
-// TestGetConfigHashIncludesRegion pins the client cache identity: the
-// hash must distinguish clients by the region they will sign with, and
+// TestClientCacheKeyIncludesRegion pins the client cache identity: the
+// key must distinguish clients by the region they will sign with, and
 // it must use the resolved region so an environment override collapses
 // otherwise different alias regions into one cache entry.
-func TestGetConfigHashIncludesRegion(t *testing.T) {
-	base := func(region string) *Config {
-		return &Config{
+func TestClientCacheKeyIncludesRegion(t *testing.T) {
+	key := func(region string) clientCacheKey {
+		config := &Config{
 			HostURL:   "https://s3.local:9000",
 			AccessKey: "access",
 			SecretKey: "secret",
 			Region:    region,
 		}
+		settings, err := snapshotClient(config, "s3.local:9000", isHostTLS(config))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return settings.key
 	}
 
 	t.Setenv("MC_REGION", "")
 	t.Setenv("AWS_REGION", "")
 
-	if getConfigHash(base("")) == getConfigHash(base("us-west-1")) {
-		t.Error("cache hash must distinguish a client with an alias region from one without")
+	if key("") == key("us-west-1") {
+		t.Error("cache key must distinguish a client with an alias region from one without")
 	}
-	if getConfigHash(base("us-west-1")) == getConfigHash(base("eu-west-1")) {
-		t.Error("cache hash must distinguish clients with different alias regions")
+	if key("us-west-1") == key("eu-west-1") {
+		t.Error("cache key must distinguish clients with different alias regions")
 	}
 
 	t.Setenv("MC_REGION", "eu-central-1")
-	if getConfigHash(base("us-west-1")) != getConfigHash(base("eu-west-1")) {
-		t.Error("with MC_REGION set, the resolved region is identical, so the cache hash must match too")
+	if key("us-west-1") != key("eu-west-1") {
+		t.Error("with MC_REGION set, the resolved region is identical, so the cache key must match too")
 	}
 }

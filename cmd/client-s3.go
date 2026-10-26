@@ -24,11 +24,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"io"
 	"maps"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -43,7 +43,6 @@ import (
 	"github.com/pgsty/silo-pkg/v3/env"
 
 	"github.com/minio/minio-go/v7"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/encrypt"
 	"github.com/minio/minio-go/v7/pkg/lifecycle"
 	"github.com/minio/minio-go/v7/pkg/notification"
@@ -98,13 +97,18 @@ type dialContext func(ctx context.Context, network, addr string) (net.Conn, erro
 
 // newCustomDialContext setups a custom dialer for any external communication and proxies.
 func newCustomDialContext(c *Config) dialContext {
+	return newCustomDialContextWithResolvers(c, maps.Clone(globalResolvers))
+}
+
+func newCustomDialContextWithResolvers(c *Config, resolvers map[string]netip.Addr) dialContext {
+	readDeadline, writeDeadline := c.ConnReadDeadline, c.ConnWriteDeadline
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		dialer := &net.Dialer{
 			Timeout:   10 * time.Second,
 			KeepAlive: 15 * time.Second,
 		}
 
-		if ip, ok := globalResolvers[addr]; ok {
+		if ip, ok := resolvers[addr]; ok {
 			if _, port, err := net.SplitHostPort(addr); err == nil {
 				addr = net.JoinHostPort(ip.String(), port)
 			} else {
@@ -118,8 +122,8 @@ func newCustomDialContext(c *Config) dialContext {
 		}
 
 		dconn := deadlineconn.New(conn).
-			WithReadDeadline(c.ConnReadDeadline).
-			WithWriteDeadline(c.ConnWriteDeadline)
+			WithReadDeadline(readDeadline).
+			WithWriteDeadline(writeDeadline)
 
 		return dconn, nil
 	}
@@ -127,6 +131,10 @@ func newCustomDialContext(c *Config) dialContext {
 
 // newCustomDialTLSContext setups a custom TLS dialer for any external communication and proxies.
 func newCustomDialTLSContext(tlsConf *tls.Config) dialContext {
+	return newCustomDialTLSContextWithResolvers(tlsConf, maps.Clone(globalResolvers))
+}
+
+func newCustomDialTLSContextWithResolvers(tlsConf *tls.Config, resolvers map[string]netip.Addr) dialContext {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		dialer := &tls.Dialer{
 			NetDialer: &net.Dialer{
@@ -136,7 +144,7 @@ func newCustomDialTLSContext(tlsConf *tls.Config) dialContext {
 			Config: tlsConf,
 		}
 
-		if ip, ok := globalResolvers[addr]; ok {
+		if ip, ok := resolvers[addr]; ok {
 			dialer.Config = dialer.Config.Clone()
 			if host, port, err := net.SplitHostPort(addr); err == nil {
 				dialer.Config.ServerName = host // Set SNI
@@ -158,21 +166,6 @@ var timeSentinel = time.Unix(0, 0).UTC()
 // to the S3 client.
 func resolveRegion(config *Config) string {
 	return env.Get("MC_REGION", env.Get("AWS_REGION", config.Region))
-}
-
-// getConfigHash returns the Hash for che *Config
-func getConfigHash(config *Config) uint32 {
-	// Creates a parsed URL.
-	targetURL := newClientURL(config.HostURL)
-
-	// Save if target supports virtual host style.
-	hostName := targetURL.Host
-
-	// Generate a hash out of s3Conf.
-	confHash := fnv.New32a()
-	confHash.Write([]byte(hostName + config.AccessKey + config.SecretKey + config.SessionToken + resolveRegion(config)))
-	confSum := confHash.Sum32()
-	return confSum
 }
 
 // isHostTLS returns true if the Host URL is https
@@ -217,8 +210,7 @@ var useTrailingHeaders atomic.Bool
 
 // newFactory encloses New function with client cache.
 func newFactory() func(config *Config) (Client, *probe.Error) {
-	clientCache := make(map[uint32]*minio.Client)
-	var mutex sync.Mutex
+	var cache clientCache[*minio.Client]
 
 	// Return New function.
 	return func(config *Config) (Client, *probe.Error) {
@@ -227,10 +219,6 @@ func newFactory() func(config *Config) (Client, *probe.Error) {
 
 		// Save if target supports virtual host style.
 		hostName := targetURL.Host
-
-		confSum := getConfigHash(config)
-
-		useTLS := isHostTLS(config)
 
 		// Instantiate s3
 		s3Clnt := &S3Client{}
@@ -247,32 +235,23 @@ func newFactory() func(config *Config) (Client, *probe.Error) {
 			}
 		}
 
-		// Lookup previous cache by hash.
-		mutex.Lock()
-		defer mutex.Unlock()
-		var api *minio.Client
-		var found bool
-		if api, found = clientCache[confSum]; !found {
-
-			transport := config.getTransport()
-
-			credsChain, err := config.getCredsChain()
-			if err != nil {
-				return nil, err
-			}
-
-			var e error
+		settings, err := snapshotClient(config, hostName, targetURL.Scheme != "http")
+		if err != nil {
+			return nil, err
+		}
+		api, err := cache.get(&settings, func() (*minio.Client, *probe.Error) {
+			transport, creds := settings.transportAndCredentials()
 
 			options := minio.Options{
-				Creds:           credentials.NewChainCredentials(credsChain),
-				Secure:          useTLS,
-				Region:          resolveRegion(config),
-				BucketLookup:    config.Lookup,
+				Creds:           creds,
+				Secure:          settings.key.secure,
+				Region:          settings.key.region,
+				BucketLookup:    settings.key.lookup,
 				Transport:       transport,
-				TrailingHeaders: useTrailingHeaders.Load(),
+				TrailingHeaders: settings.key.trailingHeaders,
 			}
 
-			api, e = minio.New(hostName, &options)
+			api, e := minio.New(hostName, &options)
 			if e != nil {
 				return nil, probe.NewError(e)
 			}
@@ -283,10 +262,11 @@ func newFactory() func(config *Config) (Client, *probe.Error) {
 			}
 
 			// Set app info.
-			api.SetAppInfo(config.AppName, config.AppVersion)
-
-			// Cache the new MinIO Client with hash of config as key.
-			clientCache[confSum] = api
+			api.SetAppInfo(settings.key.appName, settings.key.appVersion)
+			return api, nil
+		})
+		if err != nil {
+			return nil, err
 		}
 
 		// Store the new api object.

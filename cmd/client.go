@@ -20,10 +20,8 @@ package cmd
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"maps"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -36,7 +34,6 @@ import (
 	"github.com/minio/mc/pkg/probe"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/cors"
-	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/minio/minio-go/v7/pkg/encrypt"
 	"github.com/minio/minio-go/v7/pkg/lifecycle"
 	"github.com/minio/minio-go/v7/pkg/replication"
@@ -263,63 +260,8 @@ type Config struct {
 	ConnWriteDeadline time.Duration
 	UploadLimit       int64
 	DownloadLimit     int64
-	Transport         http.RoundTripper
-}
-
-// getCredsChain returns an []credentials.Provider array for the config
-// and the STS configuration (if present)
-func (config *Config) getCredsChain() ([]credentials.Provider, *probe.Error) {
-	var credsChain []credentials.Provider
-	// if an STS endpoint is set, we will add that to the chain
-	if stsEndpoint := env.Get("MC_STS_ENDPOINT_"+config.Alias, ""); stsEndpoint != "" {
-		// set AWS_WEB_IDENTITY_TOKEN_FILE is MC_WEB_IDENTITY_TOKEN_FILE is set
-		if val := env.Get("MC_WEB_IDENTITY_TOKEN_FILE_"+config.Alias, ""); val != "" {
-			os.Setenv("AWS_WEB_IDENTITY_TOKEN_FILE", val)
-			if val := env.Get("MC_ROLE_ARN_"+config.Alias, ""); val != "" {
-				os.Setenv("AWS_ROLE_ARN", val)
-			}
-			if val := env.Get("MC_ROLE_SESSION_NAME_"+config.Alias, randString(32, rand.NewSource(time.Now().UnixNano()), "mc-session-name-")); val != "" {
-				os.Setenv("AWS_ROLE_SESSION_NAME", val)
-			}
-		}
-		stsEndpointURL, err := url.Parse(stsEndpoint)
-		if err != nil {
-			return nil, probe.NewError(fmt.Errorf("Error parsing sts endpoint: %w", err))
-		}
-		credsSts := &credentials.IAM{
-			Client: &http.Client{
-				Transport: config.getTransport(),
-			},
-			Endpoint: stsEndpointURL.String(),
-		}
-		credsChain = append(credsChain, credsSts)
-	}
-
-	signType := credentials.SignatureV4
-	if strings.EqualFold(config.Signature, "s3v2") {
-		signType = credentials.SignatureV2
-	}
-
-	// Credentials
-	creds := &credentials.Static{
-		Value: credentials.Value{
-			AccessKeyID:     config.AccessKey,
-			SecretAccessKey: config.SecretKey,
-			SessionToken:    config.SessionToken,
-			SignerType:      signType,
-		},
-	}
-	credsChain = append(credsChain, creds)
-	return credsChain, nil
-}
-
-// getTransport returns a corresponding *http.Transport for the *Config
-// set withS3v2 bool to true to add traceV2 tracer.
-func (config *Config) getTransport() http.RoundTripper {
-	if config.Transport == nil {
-		config.initTransport(true)
-	}
-	return config.Transport
+	// Custom transports are used as supplied and bypass factory caches.
+	Transport http.RoundTripper
 }
 
 func (config *Config) isTLS() bool {
@@ -334,16 +276,20 @@ func (config *Config) isTLS() bool {
 }
 
 func (config *Config) initTransport(withS3v2 bool) {
+	config.initTransportWithSettings(withS3v2, snapshotTransport(config, config.isTLS()).clone())
+}
+
+func (config *Config) initTransportWithSettings(withS3v2 bool, settings transportSettings) {
 	var transport http.RoundTripper
 
-	useTLS := config.isTLS()
+	useTLS := settings.key.tls
 
 	if config.Transport != nil {
 		transport = config.Transport
 	} else {
 		tr := &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
-			DialContext:           newCustomDialContext(config),
+			Proxy:                 func(r *http.Request) (*url.URL, error) { return settings.proxy(r.URL) },
+			DialContext:           newCustomDialContextWithResolvers(config, settings.resolvers),
 			MaxIdleConnsPerHost:   1024,
 			WriteBufferSize:       32 << 10, // 32KiB moving up from 4KiB default
 			ReadBufferSize:        32 << 10, // 32KiB moving up from 4KiB default
@@ -359,11 +305,11 @@ func (config *Config) initTransport(withS3v2 bool) {
 			DisableCompression: true,
 		}
 		if useTLS {
-			tr.DialTLSContext = newCustomDialTLSContext(&tls.Config{
-				RootCAs:            globalRootCAs,
+			tr.DialTLSContext = newCustomDialTLSContextWithResolvers(&tls.Config{
+				RootCAs:            settings.rootCAs,
 				MinVersion:         tls.VersionTLS12,
 				InsecureSkipVerify: config.Insecure,
-			})
+			}, settings.resolvers)
 
 			// Because we create a custom TLSClientConfig, we have to opt-in to HTTP/2.
 			// See https://github.com/golang/go/issues/14275
@@ -375,10 +321,10 @@ func (config *Config) initTransport(withS3v2 bool) {
 			// }
 		}
 
-		if len(globalCustomHeader) > 0 {
+		if len(settings.customHeader) > 0 {
 			transport = &headerTransport{
 				RoundTripper: tr,
-				customHeader: globalCustomHeader.Clone(),
+				customHeader: settings.customHeader,
 			}
 		} else {
 			transport = tr
@@ -395,7 +341,7 @@ func (config *Config) initTransport(withS3v2 bool) {
 			transport = httptracer.GetNewTraceTransport(newTraceV2(), transport)
 		}
 	} else {
-		if !globalJSONLine && !globalJSON {
+		if settings.key.notify {
 			transport = notifyExpiringTLS{transport: transport}
 		}
 	}

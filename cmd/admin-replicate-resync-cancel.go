@@ -62,11 +62,13 @@ func (m resyncCancelMessage) JSON() string {
 
 func (m resyncCancelMessage) String() string {
 	v := madmin.SRResyncOpStatus(m)
-	messages := []string{}
+	messages := resyncOperationErrorDetails(v)
 	th := "ResyncMessage"
-	if v.ErrDetail != "" {
-		messages = append(messages, v.ErrDetail)
+	if len(messages) > 0 {
 		th = "ResyncErr"
+		if strings.EqualFold(v.Status, "Canceled") {
+			messages = append([]string{fmt.Sprintf("Site resync with ID %s canceled, but cleanup is incomplete:", v.ResyncID)}, messages...)
+		}
 	} else {
 		messages = append(messages, fmt.Sprintf("Site resync with ID %s canceled successfully.", v.ResyncID))
 	}
@@ -81,6 +83,7 @@ func mainAdminReplicateResyncCancel(ctx *cli.Context) error {
 	}
 
 	console.SetColor("ResyncMessage", color.New(color.FgGreen))
+	console.SetColor("ResyncErr", color.New(color.FgRed))
 
 	// Get the alias parameter from cli
 	args := ctx.Args()
@@ -110,6 +113,9 @@ func mainAdminReplicateResyncCancel(ctx *cli.Context) error {
 	fatalIf(probe.NewError(e).Trace(args...), "Unable to cancel replication resync")
 
 	printMsg(resyncCancelMessage(res))
+	if len(resyncOperationErrorDetails(res)) > 0 {
+		return exitStatus(globalErrorExitStatus)
+	}
 
 	return nil
 }
