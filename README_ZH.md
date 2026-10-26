@@ -31,18 +31,20 @@
 > [!IMPORTANT]
 > `pgsty/mc` 是由 [Pigsty](https://pigsty.cc) 独立维护、从开源 [MinIO Client](https://github.com/minio/mc) 延续而来的社区分支。本项目与 MinIO, Inc. 不存在隶属、背书或赞助关系；文中使用 “MinIO” 仅用于说明上游项目及兼容谱系。
 
-## 20261026 候选版本
+## 当前版本
 
-**20261026**（`20261026000000.0.0`）使用 Go 1.27.3、silo-pkg v3.15.2
+[20261026](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-26T00-00-00Z)（`20261026000000.0.0`）已正式发布，使用 Go 1.27.3、silo-pkg v3.15.2
 与上游 minio-go `v7.4.2-0.20261025165926-320af050c445`。
 本次修复客户端身份与连接配置隔离、resync JSON/终态/部分失败、batch 状态与速率溢出，
 并接受删除桶复制配置时成功返回的 HTTP 204。
 
 脚本应处理 batch 新增的 `pending` 状态，以及部分 resync 操作失败时的非零退出码。
 表格格式、字符宽度和 NetBSD 兼容性选择保持不变。
-发布状态与制品见 [GitHub Releases](https://github.com/pgsty/mc/releases)，
+签名软件包与带构建证明的归档见 [GitHub Releases](https://github.com/pgsty/mc/releases)，
 详细变化见 [CHANGELOG.md](CHANGELOG.md) 和
 [兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/)。
+
+Docker Hub amd64/arm64 镜像已发布为 `pgsty/mc:RELEASE.2026-10-26T00-00-00Z`，`latest` 指向同一版本。
 
 ## 概述
 

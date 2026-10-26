@@ -31,9 +31,9 @@
 > [!IMPORTANT]
 > `pgsty/mc` is an independent, community-maintained fork of the open-source [MinIO Client](https://github.com/minio/mc), published by [Pigsty](https://pigsty.io). It is not affiliated with, endorsed by, or sponsored by MinIO, Inc. “MinIO” is used only to identify the upstream project and compatibility lineage.
 
-## 20261026 candidate
+## Current release
 
-**20261026** (`20261026000000.0.0`) uses Go 1.27.3, silo-pkg v3.15.2,
+[20261026](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-26T00-00-00Z) (`20261026000000.0.0`) is released and uses Go 1.27.3, silo-pkg v3.15.2,
 and upstream minio-go `v7.4.2-0.20261025165926-320af050c445`.
 It fixes client identity and connection isolation, resync JSON/terminal/partial
 failure handling, batch status and rate overflow, and accepts successful HTTP
@@ -42,8 +42,10 @@ failure handling, batch status and rate overflow, and accepts successful HTTP
 Scripts should handle the additive batch `pending` status and nonzero exits for
 partial resync mutations. Existing table formatting, character widths and NetBSD
 compatibility selections are retained. See [GitHub Releases](https://github.com/pgsty/mc/releases)
-for publication status and artifacts, [CHANGELOG.md](CHANGELOG.md) for changes,
+for signed packages and attested archives, [CHANGELOG.md](CHANGELOG.md) for changes,
 and the [compatibility notes](https://silo.pgsty.com/compatibility/mcli/).
+
+Docker Hub amd64/arm64 images are published as `pgsty/mc:RELEASE.2026-10-26T00-00-00Z`; `latest` points to the same release.
 
 ## Overview
 
