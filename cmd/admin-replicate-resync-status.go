@@ -101,17 +101,40 @@ func mainAdminReplicationResyncStatus(ctx *cli.Context) error {
 	ctxt, cancel := context.WithCancel(globalContext)
 	defer cancel()
 
-	ui := tea.NewProgram(initResyncMetricsUI(peer.DeploymentID))
-	go func() {
-		opts := madmin.MetricsOptions{
-			Type:    madmin.MetricsSiteResync,
-			ByDepID: peer.DeploymentID,
-		}
+	opts := madmin.MetricsOptions{
+		Type:    madmin.MetricsSiteResync,
+		ByDepID: peer.DeploymentID,
+	}
+	if globalJSON {
+		finished := false
 		e := client.Metrics(ctxt, opts, func(metrics madmin.RealtimeMetrics) {
-			if globalJSON {
-				printMsg(metricsMessage{RealtimeMetrics: metrics})
+			// The decoder may have buffered more samples before cancellation.
+			if finished {
 				return
 			}
+			printMsg(metricsMessage{RealtimeMetrics: metrics})
+			finished = metrics.Final
+			if sr := metrics.Aggregated.SiteResync; sr != nil {
+				switch strings.ToLower(sr.ResyncStatus) {
+				case "completed", "canceled", "failed":
+					finished = true
+				}
+			}
+			if finished {
+				cancel()
+			}
+		})
+		// Once the last event has been printed, errors from the unused tail
+		// of the response are irrelevant. Earlier request/stream errors fail.
+		if e != nil && !finished && (!errors.Is(e, context.Canceled) || ctxt.Err() == nil) {
+			fatalIf(probe.NewError(e).Trace(ctx.Args()...), "Unable to get resync status")
+		}
+		return nil
+	}
+
+	ui := tea.NewProgram(initResyncMetricsUI(peer.DeploymentID))
+	go func() {
+		e := client.Metrics(ctxt, opts, func(metrics madmin.RealtimeMetrics) {
 			if metrics.Aggregated.SiteResync != nil {
 				sr := metrics.Aggregated.SiteResync
 				ui.Send(sr)
@@ -126,11 +149,9 @@ func mainAdminReplicationResyncStatus(ctx *cli.Context) error {
 		}
 	}()
 
-	if !globalJSON {
-		if _, e := ui.Run(); e != nil {
-			cancel()
-			fatalIf(probe.NewError(e).Trace(aliasedURL), "Unable to get resync status")
-		}
+	if _, e := ui.Run(); e != nil {
+		cancel()
+		fatalIf(probe.NewError(e).Trace(aliasedURL), "Unable to get resync status")
 	}
 
 	return nil
