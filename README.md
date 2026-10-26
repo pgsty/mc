@@ -215,9 +215,9 @@ As of **2026-10-26**, **4 contributors** are credited in this repository. Every 
 
 <p align="center">
 <a href="https://github.com/Vonng"><img src="https://silo.pgsty.com/images/contributors/Vonng.svg" width="60" height="60" alt="@Vonng" title="@Vonng — Maintains mcli, including fixes, tests, packaging, and releases"></a>
-<a href="https://github.com/mrjavadseydi"><img src="https://silo.pgsty.com/images/contributors/mrjavadseydi.svg" width="60" height="60" alt="@mrjavadseydi" title="@mrjavadseydi — Fixed bucket quota metrics; contributed access-frequency ILM and S3-compatible multipart listing proposals"></a>
-<a href="https://github.com/geraldcombs"><img src="https://silo.pgsty.com/images/contributors/geraldcombs.svg" width="48" height="48" alt="@geraldcombs" title="@geraldcombs — Suggested zip or 7z packaging for Windows artifacts"></a>
-<a href="https://github.com/MikeVL">@MikeVL</a>
+<a href="https://github.com/mrjavadseydi"><img src="https://silo.pgsty.com/images/contributors/mrjavadseydi.svg" width="60" height="60" alt="@mrjavadseydi" title="@mrjavadseydi — Fixed bucket quota metrics and mcli alias regions; contributed access-frequency ILM and S3-compatible multipart listing proposals"></a>
+<a href="https://github.com/MikeVL"><img src="https://silo.pgsty.com/images/contributors/MikeVL.svg" width="60" height="60" alt="@MikeVL" title="@MikeVL — Reported resync throughput overflow and missing JSON status, both fixed in mcli 20261026"></a>
+<a href="https://github.com/geraldcombs"><img src="https://silo.pgsty.com/images/contributors/geraldcombs.svg" width="48" height="48" alt="@geraldcombs" title="@geraldcombs — Suggested Windows ZIP packaging, adopted across the maintained release tools"></a>
 </p>
 
 [View the contribution record](CONTRIBUTORS.md), including actual PR status and work incorporated through later fixes.

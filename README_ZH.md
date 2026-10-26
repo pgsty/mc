@@ -197,9 +197,9 @@ Issue 与 Pull Request 应说明受影响的客户端与服务端版本、复现
 
 <p align="center">
 <a href="https://github.com/Vonng"><img src="https://silo.pgsty.com/images/contributors/Vonng.svg" width="60" height="60" alt="@Vonng" title="@Vonng — 维护 mcli 的修复、测试、打包与发行"></a>
-<a href="https://github.com/mrjavadseydi"><img src="https://silo.pgsty.com/images/contributors/mrjavadseydi.svg" width="60" height="60" alt="@mrjavadseydi" title="@mrjavadseydi — 修复桶配额指标，贡献按访问频率分层的 ILM 与 S3 兼容分片上传列表方案"></a>
-<a href="https://github.com/geraldcombs"><img src="https://silo.pgsty.com/images/contributors/geraldcombs.svg" width="48" height="48" alt="@geraldcombs" title="@geraldcombs — 建议使用 zip 或 7z 分发 Windows 制品"></a>
-<a href="https://github.com/MikeVL">@MikeVL</a>
+<a href="https://github.com/mrjavadseydi"><img src="https://silo.pgsty.com/images/contributors/mrjavadseydi.svg" width="60" height="60" alt="@mrjavadseydi" title="@mrjavadseydi — 修复桶配额指标与 mcli 别名区域配置，贡献按访问频率分层的 ILM 与 S3 兼容分片上传列表方案"></a>
+<a href="https://github.com/MikeVL"><img src="https://silo.pgsty.com/images/contributors/MikeVL.svg" width="60" height="60" alt="@MikeVL" title="@MikeVL — 报告 resync 吞吐量溢出与 JSON 状态无输出，两项均在 mcli 20261026 修复"></a>
+<a href="https://github.com/geraldcombs"><img src="https://silo.pgsty.com/images/contributors/geraldcombs.svg" width="48" height="48" alt="@geraldcombs" title="@geraldcombs — 建议 Windows 使用 ZIP 归档，已在维护的发布工具中采纳"></a>
 </p>
 
 [查看完整贡献记录](CONTRIBUTORS.md)，包括实际 PR 状态与后续采纳情况。

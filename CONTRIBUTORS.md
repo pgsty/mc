@@ -10,9 +10,9 @@ When a proposal was incorporated through a later repair, its adoption is credite
 
 <p align="center">
 <a href="https://github.com/Vonng"><img src="https://silo.pgsty.com/images/contributors/Vonng.svg" width="60" height="60" alt="@Vonng" title="@Vonng — Maintains mcli, including fixes, tests, packaging, and releases"></a>
-<a href="https://github.com/mrjavadseydi"><img src="https://silo.pgsty.com/images/contributors/mrjavadseydi.svg" width="60" height="60" alt="@mrjavadseydi" title="@mrjavadseydi — Fixed bucket quota metrics; contributed access-frequency ILM and S3-compatible multipart listing proposals"></a>
-<a href="https://github.com/geraldcombs"><img src="https://silo.pgsty.com/images/contributors/geraldcombs.svg" width="48" height="48" alt="@geraldcombs" title="@geraldcombs — Suggested zip or 7z packaging for Windows artifacts"></a>
-<a href="https://github.com/MikeVL">@MikeVL</a>
+<a href="https://github.com/mrjavadseydi"><img src="https://silo.pgsty.com/images/contributors/mrjavadseydi.svg" width="60" height="60" alt="@mrjavadseydi" title="@mrjavadseydi — Fixed bucket quota metrics and mcli alias regions; contributed access-frequency ILM and S3-compatible multipart listing proposals"></a>
+<a href="https://github.com/MikeVL"><img src="https://silo.pgsty.com/images/contributors/MikeVL.svg" width="60" height="60" alt="@MikeVL" title="@MikeVL — Reported resync throughput overflow and missing JSON status, both fixed in mcli 20261026"></a>
+<a href="https://github.com/geraldcombs"><img src="https://silo.pgsty.com/images/contributors/geraldcombs.svg" width="48" height="48" alt="@geraldcombs" title="@geraldcombs — Suggested Windows ZIP packaging, adopted across the maintained release tools"></a>
 </p>
 
 ## Merged pull requests
@@ -20,14 +20,14 @@ When a proposal was incorporated through a later repair, its adoption is credite
 | Contributor | Contribution | Record |
 | :-- | :-- | :-- |
 | [@Vonng](https://github.com/Vonng) | Maintains mcli, including fixes, tests, packaging, and releases | [pgsty/mc: Merged PRs (27)](https://github.com/pgsty/mc/issues?q=author%3AVonng+is%3Apr+is%3Amerged)<br>[pgsty/mc: Closed issues (23)](https://github.com/pgsty/mc/issues?q=author%3AVonng+is%3Aissue+is%3Aclosed) |
-| [@mrjavadseydi](https://github.com/mrjavadseydi) | Fixed bucket quota metrics; contributed access-frequency ILM and S3-compatible multipart listing proposals | Merged PRs: [pgsty/mc#44](https://github.com/pgsty/mc/pull/44)<br>The access-frequency feature in [#60](https://github.com/pgsty/silo/pull/60) was merged and later removed. The multipart-listing contribution in [#198](https://github.com/pgsty/silo/pull/198) was merged after follow-up durability and cancellation repairs; it shipped in Server 20260916 with legacy as the default and strict as an opt-in. |
+| [@mrjavadseydi](https://github.com/mrjavadseydi) | Fixed bucket quota metrics and mcli alias regions; contributed access-frequency ILM and S3-compatible multipart listing proposals | Merged PRs: [pgsty/mc#44](https://github.com/pgsty/mc/pull/44)<br>The access-frequency feature in [#60](https://github.com/pgsty/silo/pull/60) was merged and later removed. The multipart-listing contribution in [#198](https://github.com/pgsty/silo/pull/198) was merged after follow-up durability and cancellation repairs; it shipped in Server 20260916 with legacy as the default and strict as an opt-in. |
 
 ## Issue reports
 
 | Contributor | Contribution | Record |
 | :-- | :-- | :-- |
-| [@geraldcombs](https://github.com/geraldcombs) | Suggested zip or 7z packaging for Windows artifacts | Closed issues: [pgsty/mc#45](https://github.com/pgsty/mc/issues/45) |
-| [@MikeVL](https://github.com/MikeVL) | Reported resync JSON status and large-transfer rate calculation failures | Closed issues: [pgsty/mc#48](https://github.com/pgsty/mc/issues/48), [pgsty/mc#49](https://github.com/pgsty/mc/issues/49) |
+| [@MikeVL](https://github.com/MikeVL) | Reported resync throughput overflow and missing JSON status, both fixed in mcli 20261026 | Closed issues: [pgsty/mc#48](https://github.com/pgsty/mc/issues/48), [pgsty/mc#49](https://github.com/pgsty/mc/issues/49) |
+| [@geraldcombs](https://github.com/geraldcombs) | Suggested Windows ZIP packaging, adopted across the maintained release tools | Closed issues: [pgsty/mc#45](https://github.com/pgsty/mc/issues/45) |
 
 ## Audit scope
 
