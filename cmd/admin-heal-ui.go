@@ -154,7 +154,7 @@ func (ui *uiData) getProgress() (oCount, objSize, duration string) {
 	bytesScanned := float64(ui.BytesScanned)
 
 	// Compute unit for object size
-	magnitudes := []float64{1 << 10, 1 << 20, 1 << 30, 1 << 40, 1 << 50, 1 << 60}
+	magnitudes := []float64{1 << 10, 1 << 20, 1 << 30, 1 << 40, 1 << 50, 1 << 60, 1 << 70}
 	units := []string{"B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"}
 	var i int
 	for i = 0; i < len(magnitudes); i++ {
