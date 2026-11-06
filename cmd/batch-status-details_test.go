@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -133,6 +134,7 @@ func TestBatchStatusTerminalRejectsStaleDetails(t *testing.T) {
 		`{"LastMetric":{"jobID":"other","complete":true,"keysRefused":10}}`,
 		`{"LastMetric":{"jobID":"job","complete":true,"lastUpdate":"1970-01-01T00:01:41Z","keysRefused":10}}`,
 		`{"LastMetric":{"jobID":"job","complete":false,"lastUpdate":"1970-01-01T00:01:42Z","pausedReason":"stale pause"}}`,
+		`{"LastMetric":{"jobID":"job","complete":true,"failed":true,"lastUpdate":"1970-01-01T00:01:42Z","keysRefused":10}}`,
 	} {
 		server := newBatchStatusServer(t, batchStatusFixture{
 			metrics: func(w http.ResponseWriter, _ *http.Request) {
@@ -173,4 +175,63 @@ func TestBatchStatusTerminalDetailsCancellation(t *testing.T) {
 	}); !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v, want cancellation", err)
 	}
+}
+
+func TestBatchStatusFallbackRejectsOlderTerminal(t *testing.T) {
+	for _, jsonMode := range []bool{false, true} {
+		for _, terminal := range []string{"complete", "failed"} {
+			t.Run(terminal+"/json="+fmt.Sprint(jsonMode), func(t *testing.T) {
+				server := newBatchStatusServer(t, batchStatusFixture{
+					metrics: func(w http.ResponseWriter, r *http.Request) {
+						sample := batchStatusTestSample("in-progress")
+						sample.Final = true
+						_ = json.NewEncoder(w).Encode(sample)
+						w.(http.Flusher).Flush()
+						<-r.Context().Done()
+					},
+					status: func(w http.ResponseWriter, _ *http.Request) {
+						job := batchStatusTestMetric(terminal)
+						job.LastUpdate = job.LastUpdate.Add(-time.Second)
+						_ = json.NewEncoder(w).Encode(madmin.BatchJobStatus{LastMetric: job})
+					},
+				})
+				result := runBatchStatusCLI(t, server.URL, jsonMode)
+				assertBatchStatusResult(t, result, jsonMode, 1, "", "persisted status is older than observed progress")
+			})
+		}
+	}
+}
+
+func TestBatchStatusIgnoresOlderLiveTerminal(t *testing.T) {
+	server := newBatchStatusServer(t, batchStatusFixture{
+		metrics: func(w http.ResponseWriter, r *http.Request) {
+			_ = json.NewEncoder(w).Encode(batchStatusTestSample("in-progress"))
+			sample := batchStatusTestSample("complete")
+			job := sample.Aggregated.BatchJobs.Jobs["job"]
+			job.LastUpdate = job.LastUpdate.Add(-time.Second)
+			sample.Aggregated.BatchJobs.Jobs["job"] = job
+			sample.Final = true
+			_ = json.NewEncoder(w).Encode(sample)
+			w.(http.Flusher).Flush()
+			<-r.Context().Done()
+		},
+		status: func(w http.ResponseWriter, _ *http.Request) {
+			_ = json.NewEncoder(w).Encode(madmin.BatchJobStatus{LastMetric: batchStatusTestMetric("in-progress")})
+		},
+	})
+	result := runBatchStatusCLI(t, server.URL, true)
+	assertBatchStatusResult(t, result, true, 1, "", "persisted status is still in-progress")
+}
+
+func TestBatchStatusFallbackRejectsContradictoryTerminal(t *testing.T) {
+	server := newBatchStatusServer(t, batchStatusFixture{
+		describe: batchStatusNoSuchJob,
+		status: func(w http.ResponseWriter, _ *http.Request) {
+			job := batchStatusTestMetric("complete")
+			job.Failed = true
+			_ = json.NewEncoder(w).Encode(madmin.BatchJobStatus{LastMetric: job})
+		},
+	})
+	result := runBatchStatusCLI(t, server.URL, true)
+	assertBatchStatusResult(t, result, true, 1, "", "persisted status reports both complete and failed")
 }

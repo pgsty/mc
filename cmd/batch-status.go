@@ -280,7 +280,7 @@ func loadBatchStatus(ctx context.Context, client batchStatusClient, jobID string
 // pause or partial counts to newer live progress, or replace a live terminal
 // result with a saved nonterminal result.
 func batchStatusSnapshotMessage(live, persisted madmin.JobMetric, details *batchStatusDetails) (batchJobStatusMessage, bool) {
-	if persisted.JobID == "" || live.JobID != "" && persisted.JobID != live.JobID || persisted.LastUpdate.Before(live.LastUpdate) {
+	if persisted.JobID == "" || live.JobID != "" && persisted.JobID != live.JobID || persisted.LastUpdate.Before(live.LastUpdate) || persisted.Complete && persisted.Failed {
 		return batchStatusMessage(live), false
 	}
 	if (live.Complete || live.Failed) && (persisted.Complete != live.Complete || persisted.Failed != live.Failed) {
@@ -345,7 +345,7 @@ func pollBatchStatusDetails(ctx context.Context, client batchStatusClient, jobID
 func watchBatchJobStatus(ctx context.Context, client batchStatusClient, jobID string, idleTimeout time.Duration, emit func(batchJobStatusMessage)) error {
 	err := describeBatchStatus(ctx, client, jobID)
 	if madmin.ToErrorResponse(err).Code == "XMinioAdminNoSuchJob" {
-		return batchStatusFallback(ctx, client, jobID, true, errors.New("no active job definition"), emit)
+		return batchStatusFallback(ctx, client, jobID, madmin.JobMetric{}, true, errors.New("no active job definition"), emit)
 	}
 	if err != nil {
 		return fmt.Errorf("unable to describe job %q: %w", jobID, err)
@@ -416,6 +416,7 @@ observe:
 			}
 			previous := saved
 			saved = detail
+			liveMetric = detail.metric
 			if detail.details == nil && previous.details == nil {
 				continue
 			}
@@ -428,11 +429,17 @@ observe:
 			if sample.Aggregated.BatchJobs != nil {
 				job, found = sample.Aggregated.BatchJobs.Jobs[jobID]
 			}
-			if found {
-				if job.JobID != jobID {
-					cause = fmt.Errorf("live metrics returned job ID %q instead of %q", job.JobID, jobID)
-					break observe
-				}
+			if found && job.JobID != jobID {
+				cause = fmt.Errorf("live metrics returned job ID %q instead of %q", job.JobID, jobID)
+				break observe
+			}
+			if found && job.Complete && job.Failed {
+				cause = errors.New("live metrics report both complete and failed")
+				break observe
+			}
+			// A delayed sample must not undo progress already observed from
+			// either source, especially by advertising an older terminal state.
+			if found && !job.LastUpdate.Before(liveMetric.LastUpdate) {
 				liveMetric = job
 				msg, _ := batchStatusSnapshotMessage(job, saved.metric, saved.details)
 				if job.Complete || job.Failed {
@@ -447,7 +454,7 @@ observe:
 				}
 				pending = false
 				timer.Reset(idleTimeout)
-			} else if !pending {
+			} else if !found && !pending {
 				emit(batchJobStatusMessage{Status: "pending", Metric: madmin.JobMetric{JobID: jobID}})
 				pending = true
 			}
@@ -465,10 +472,10 @@ observe:
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	return batchStatusFallback(ctx, client, jobID, false, cause, emit)
+	return batchStatusFallback(ctx, client, jobID, liveMetric, false, cause, emit)
 }
 
-func batchStatusFallback(ctx context.Context, client batchStatusClient, jobID string, missingDefinition bool, cause error, emit func(batchJobStatusMessage)) error {
+func batchStatusFallback(ctx context.Context, client batchStatusClient, jobID string, observed madmin.JobMetric, missingDefinition bool, cause error, emit func(batchJobStatusMessage)) error {
 	statusCtx, cancel := context.WithTimeout(ctx, batchStatusRequestTimeout)
 	job, details, err := loadBatchStatus(statusCtx, client, jobID)
 	cancel()
@@ -478,6 +485,12 @@ func batchStatusFallback(ctx context.Context, client batchStatusClient, jobID st
 	if err == nil {
 		if job.JobID != jobID {
 			return fmt.Errorf("job %q status unavailable: %w; persisted status returned job ID %q", jobID, cause, job.JobID)
+		}
+		if job.LastUpdate.Before(observed.LastUpdate) {
+			return fmt.Errorf("job %q status unavailable: %w; persisted status is older than observed progress, retry batch status", jobID, cause)
+		}
+		if job.Complete && job.Failed {
+			return fmt.Errorf("job %q status unavailable: %w; persisted status reports both complete and failed", jobID, cause)
 		}
 		emit(batchStatusMessageWithDetails(job, detailsValue(details)))
 		if job.Complete || job.Failed {
