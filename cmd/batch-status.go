@@ -1,9 +1,15 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	stdjson "encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -40,9 +46,12 @@ DESCRIPTION:
   ends, check the saved status and report an error if no terminal result exists.
   Individual status requests time out after 10 seconds.
 
-  A retrieved complete or failed result exits 0; inspect "status" for the job
-  outcome. An unavailable or missing job status exits nonzero. Retry this
-  status command to resume observation of a queued job.
+  A retrieved complete, complete-with-skips, or failed result exits 0; inspect
+  "status" and the skip counters for the job outcome. A paused job is waiting
+  for server retry and is not terminal. Saved details are refreshed every
+  five seconds and at the terminal result. Unconfirmed terminal details are
+  reported explicitly. An unavailable or missing job status exits nonzero.
+  Retry this status command to resume observation of a queued or paused job.
 
 FLAGS:
   {{range .VisibleFlags}}{{.}}
@@ -55,8 +64,30 @@ EXAMPLES:
 
 // batchJobStatusMessage container for batch job status messages
 type batchJobStatusMessage struct {
-	Status string           `json:"status"`
-	Metric madmin.JobMetric `json:"metric"`
+	Status             string              `json:"status"`
+	Metric             madmin.JobMetric    `json:"metric"`
+	Details            *batchStatusDetails `json:"details,omitempty"`
+	DetailsUnavailable string              `json:"detailsUnavailable,omitempty"`
+}
+
+// batchStatusDetails is the additive part of SILO's persisted batch status
+// response. It is kept separate from madmin.JobMetric so the client remains
+// compatible with older madmin-go and upstream servers.
+type batchStatusDetails struct {
+	VersionsSkippedLocked int64  `json:"versionsSkippedLocked,omitempty"`
+	KeysRefused           int64  `json:"keysRefused,omitempty"`
+	FailureReason         string `json:"failureReason,omitempty"`
+	PausedReason          string `json:"pausedReason,omitempty"`
+}
+
+func (d batchStatusDetails) empty() bool {
+	return d.VersionsSkippedLocked == 0 && d.KeysRefused == 0 &&
+		d.FailureReason == "" && d.PausedReason == ""
+}
+
+type batchStatusMetric struct {
+	madmin.JobMetric
+	batchStatusDetails
 }
 
 // JSON jsonified batchJobStatusMessage message
@@ -72,7 +103,8 @@ func (c batchJobStatusMessage) String() string {
 		return fmt.Sprintf("Job %s: pending (waiting for live metrics; the job may be queued)", c.Metric.JobID)
 	}
 	ui := initBatchJobMetricsUI(c.Metric.JobID)
-	ui.metric, ui.status, ui.quitting = c.Metric, c.Status, true
+	ui.metric, ui.status, ui.details, ui.quitting = c.Metric, c.Status, c.Details, true
+	ui.detailsUnavailable = c.DetailsUnavailable
 	return ui.View()
 }
 
@@ -137,14 +169,45 @@ type batchStatusClient interface {
 	Metrics(context.Context, madmin.MetricsOptions, func(madmin.RealtimeMetrics)) error
 }
 
-func batchStatusMessage(job madmin.JobMetric) batchJobStatusMessage {
-	status := "in-progress"
+// batchStatusDetailsClient is implemented by madmin.AdminClient through its
+// exported custom-request method. Keeping this optional lets tests and older
+// client implementations use the original BatchJobStatus interface.
+type batchStatusDetailsClient interface {
+	ExecuteMethod(context.Context, string, madmin.RequestData) (*http.Response, error)
+}
+
+const batchStatusDetailsPollInterval = 5 * time.Second
+
+func batchStatusLabel(job madmin.JobMetric, details *batchStatusDetails) string {
 	if job.Failed {
-		status = "failed"
-	} else if job.Complete {
-		status = "complete"
+		return "failed"
 	}
-	return batchJobStatusMessage{Status: status, Metric: job}
+	if job.Complete {
+		if details != nil && (details.VersionsSkippedLocked != 0 || details.KeysRefused != 0) {
+			return "complete-with-skips"
+		}
+		return "complete"
+	}
+	if details != nil && details.PausedReason != "" {
+		return "paused"
+	}
+	return "in-progress"
+}
+
+func batchStatusMessage(job madmin.JobMetric) batchJobStatusMessage {
+	return batchJobStatusMessage{Status: batchStatusLabel(job, nil), Metric: job}
+}
+
+func batchStatusMessageWithDetails(job madmin.JobMetric, details batchStatusDetails) batchJobStatusMessage {
+	var ptr *batchStatusDetails
+	if !details.empty() {
+		ptr = &details
+	}
+	return batchJobStatusMessage{
+		Status:  batchStatusLabel(job, ptr),
+		Metric:  job,
+		Details: ptr,
+	}
 }
 
 func describeBatchStatus(ctx context.Context, client batchStatusClient, jobID string) error {
@@ -152,6 +215,129 @@ func describeBatchStatus(ctx context.Context, client batchStatusClient, jobID st
 	defer cancel()
 	_, err := client.DescribeBatchJob(ctx, jobID)
 	return err
+}
+
+// loadBatchStatus reads the additive SILO response when the concrete admin
+// client supports custom requests. For other clients it uses the standard
+// madmin response, which simply has no details.
+func loadBatchStatus(ctx context.Context, client batchStatusClient, jobID string) (madmin.JobMetric, *batchStatusDetails, error) {
+	if detailsClient, ok := client.(batchStatusDetailsClient); ok {
+		values := make(url.Values)
+		values.Set("jobId", jobID)
+		resp, err := detailsClient.ExecuteMethod(ctx, http.MethodGet, madmin.RequestData{
+			QueryValues: values,
+			RelPath:     "/v3/status-job",
+		})
+		if err != nil {
+			return madmin.JobMetric{}, nil, err
+		}
+		if resp == nil || resp.Body == nil {
+			return madmin.JobMetric{}, nil, errors.New("empty batch status response")
+		}
+		defer resp.Body.Close()
+		body, err := io.ReadAll(io.LimitReader(resp.Body, (1<<20)+1))
+		if err != nil {
+			return madmin.JobMetric{}, nil, err
+		}
+		if len(body) > 1<<20 {
+			return madmin.JobMetric{}, nil, errors.New("batch status response exceeds 1 MiB")
+		}
+		if resp.StatusCode != http.StatusOK {
+			var apiErr madmin.ErrorResponse
+			if err := stdjson.Unmarshal(body, &apiErr); err != nil {
+				_ = xml.Unmarshal(body, &apiErr)
+			}
+			if apiErr.Code == "" {
+				apiErr.Code = resp.Status
+			}
+			if apiErr.Message == "" {
+				apiErr.Message = resp.Status
+			}
+			return madmin.JobMetric{}, nil, apiErr
+		}
+		var status struct {
+			LastMetric batchStatusMetric `json:"LastMetric"`
+		}
+		decoder := stdjson.NewDecoder(bytes.NewReader(body))
+		if err := decoder.Decode(&status); err != nil {
+			return madmin.JobMetric{}, nil, err
+		}
+		if err := decoder.Decode(new(any)); !errors.Is(err, io.EOF) {
+			return madmin.JobMetric{}, nil, errors.New("unexpected data after batch status response")
+		}
+		details := status.LastMetric.batchStatusDetails
+		if details.empty() {
+			return status.LastMetric.JobMetric, nil, nil
+		}
+		return status.LastMetric.JobMetric, &details, nil
+	}
+
+	res, err := client.BatchJobStatus(ctx, jobID)
+	return res.LastMetric, nil, err
+}
+
+// A metric and its extra fields form one snapshot. Never attach an earlier
+// pause or partial counts to newer live progress, or replace a live terminal
+// result with a saved nonterminal result.
+func batchStatusSnapshotMessage(live, persisted madmin.JobMetric, details *batchStatusDetails) (batchJobStatusMessage, bool) {
+	if persisted.JobID == "" || live.JobID != "" && persisted.JobID != live.JobID || persisted.LastUpdate.Before(live.LastUpdate) {
+		return batchStatusMessage(live), false
+	}
+	if (live.Complete || live.Failed) && (persisted.Complete != live.Complete || persisted.Failed != live.Failed) {
+		return batchStatusMessage(live), false
+	}
+	return batchStatusMessageWithDetails(persisted, detailsValue(details)), true
+}
+
+func terminalBatchStatusMessage(ctx context.Context, client batchStatusClient, jobID string, live madmin.JobMetric) batchJobStatusMessage {
+	requestCtx, cancel := context.WithTimeout(ctx, batchStatusRequestTimeout)
+	persisted, details, err := loadBatchStatus(requestCtx, client, jobID)
+	cancel()
+	msg, valid := batchStatusSnapshotMessage(live, persisted, details)
+	if err != nil || !valid {
+		msg = batchStatusMessage(live)
+		msg.DetailsUnavailable = "saved details unavailable; skip counts and reasons could not be confirmed"
+	}
+	return msg
+}
+
+type batchStatusDetailsResult struct {
+	metric  madmin.JobMetric
+	details *batchStatusDetails
+	err     error
+}
+
+// pollBatchStatusDetails refreshes fields that are intentionally absent from
+// madmin's realtime metric type. It is best effort: a live stream remains the
+// source of truth when a compatible status endpoint is unavailable.
+func pollBatchStatusDetails(ctx context.Context, client batchStatusClient, jobID string) (<-chan batchStatusDetailsResult, <-chan struct{}) {
+	if _, ok := client.(batchStatusDetailsClient); !ok {
+		return nil, nil
+	}
+	results := make(chan batchStatusDetailsResult, 1)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer close(results)
+		ticker := time.NewTicker(batchStatusDetailsPollInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				requestCtx, cancel := context.WithTimeout(ctx, batchStatusRequestTimeout)
+				metric, details, err := loadBatchStatus(requestCtx, client, jobID)
+				cancel()
+				select {
+				case results <- batchStatusDetailsResult{metric: metric, details: details, err: err}:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+	return results, done
 }
 
 // watchBatchJobStatus observes only existing jobs. Missing telemetry is not a
@@ -186,10 +372,19 @@ func watchBatchJobStatus(ctx context.Context, client batchStatusClient, jobID st
 		cancel()
 		<-stopped
 	}()
+	detailResults, detailDone := pollBatchStatusDetails(streamCtx, client, jobID)
+	if detailDone != nil {
+		defer func() {
+			cancel()
+			<-detailDone
+		}()
+	}
 
 	timer := time.NewTimer(idleTimeout)
 	defer timer.Stop()
 	pending := false
+	var liveMetric madmin.JobMetric
+	var saved batchStatusDetailsResult
 	var cause error
 observe:
 	for {
@@ -207,6 +402,27 @@ observe:
 			}
 			cause = err
 			break observe
+		case detail, ok := <-detailResults:
+			if !ok {
+				detailResults = nil
+				continue
+			}
+			if detail.err != nil || detail.metric.JobID != jobID {
+				continue
+			}
+			msg, valid := batchStatusSnapshotMessage(liveMetric, detail.metric, detail.details)
+			if !valid {
+				continue
+			}
+			previous := saved
+			saved = detail
+			if detail.details == nil && previous.details == nil {
+				continue
+			}
+			emit(msg)
+			if msg.Metric.Complete || msg.Metric.Failed {
+				return nil
+			}
 		case sample := <-samples:
 			job, found := madmin.JobMetric{}, false
 			if sample.Aggregated.BatchJobs != nil {
@@ -217,8 +433,16 @@ observe:
 					cause = fmt.Errorf("live metrics returned job ID %q instead of %q", job.JobID, jobID)
 					break observe
 				}
-				emit(batchStatusMessage(job))
+				liveMetric = job
+				msg, _ := batchStatusSnapshotMessage(job, saved.metric, saved.details)
 				if job.Complete || job.Failed {
+					msg = terminalBatchStatusMessage(streamCtx, client, jobID, job)
+				}
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				emit(msg)
+				if msg.Metric.Complete || msg.Metric.Failed {
 					return nil
 				}
 				pending = false
@@ -246,21 +470,20 @@ observe:
 
 func batchStatusFallback(ctx context.Context, client batchStatusClient, jobID string, missingDefinition bool, cause error, emit func(batchJobStatusMessage)) error {
 	statusCtx, cancel := context.WithTimeout(ctx, batchStatusRequestTimeout)
-	res, err := client.BatchJobStatus(statusCtx, jobID)
+	job, details, err := loadBatchStatus(statusCtx, client, jobID)
 	cancel()
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
 	if err == nil {
-		job := res.LastMetric
 		if job.JobID != jobID {
 			return fmt.Errorf("job %q status unavailable: %w; persisted status returned job ID %q", jobID, cause, job.JobID)
 		}
-		emit(batchStatusMessage(job))
+		emit(batchStatusMessageWithDetails(job, detailsValue(details)))
 		if job.Complete || job.Failed {
 			return nil
 		}
-		return fmt.Errorf("job %q status unavailable: %w; persisted status is still in-progress, retry batch status", jobID, cause)
+		return fmt.Errorf("job %q status unavailable: %w; persisted status is still %s, retry batch status", jobID, cause, batchStatusLabel(job, details))
 	}
 	if madmin.ToErrorResponse(err).Code == "XMinioAdminNoSuchJob" {
 		if !missingDefinition {
@@ -278,6 +501,13 @@ func batchStatusFallback(ctx context.Context, client batchStatusClient, jobID st
 	return fmt.Errorf("job %q persisted status unavailable: %w", jobID, errors.Join(cause, err))
 }
 
+func detailsValue(details *batchStatusDetails) batchStatusDetails {
+	if details == nil {
+		return batchStatusDetails{}
+	}
+	return *details
+}
+
 type batchJobStatusDoneMsg struct{}
 
 func initBatchJobMetricsUI(jobID string) *batchJobMetricsUI {
@@ -292,12 +522,14 @@ func initBatchJobMetricsUI(jobID string) *batchJobMetricsUI {
 }
 
 type batchJobMetricsUI struct {
-	metric   madmin.JobMetric
-	spinner  spinner.Model
-	quitting bool
-	canceled bool
-	jobID    string
-	status   string
+	metric             madmin.JobMetric
+	details            *batchStatusDetails
+	spinner            spinner.Model
+	quitting           bool
+	canceled           bool
+	jobID              string
+	status             string
+	detailsUnavailable string
 }
 
 func (m *batchJobMetricsUI) Init() tea.Cmd {
@@ -317,15 +549,24 @@ func (m *batchJobMetricsUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case batchJobStatusMessage:
 		m.status = msg.Status
+		m.details = msg.Details
+		m.detailsUnavailable = msg.DetailsUnavailable
 		if msg.Status == "pending" {
 			return m, nil
 		}
-		return m.Update(msg.Metric)
+		m.metric = msg.Metric
+		if msg.Metric.Complete || msg.Metric.Failed {
+			m.quitting = true
+			return m, tea.Quit
+		}
+		return m, nil
 	case batchJobStatusDoneMsg:
 		m.quitting = true
 		return m, tea.Quit
 	case madmin.JobMetric:
 		m.metric = msg
+		m.details = nil
+		m.detailsUnavailable = ""
 		m.status = batchStatusMessage(msg).Status
 		if msg.Complete || msg.Failed {
 			m.quitting = true
@@ -379,6 +620,23 @@ func (m *batchJobMetricsUI) View() string {
 
 	addLine("JobID: ", m.jobID)
 	addLine("Status: ", m.status)
+	if m.detailsUnavailable != "" {
+		addLine("Details: ", m.detailsUnavailable)
+	}
+	if m.details != nil {
+		if m.details.VersionsSkippedLocked != 0 {
+			addLine("VersionsSkippedLocked: ", m.details.VersionsSkippedLocked)
+		}
+		if m.details.KeysRefused != 0 {
+			addLine("KeysRefused: ", m.details.KeysRefused)
+		}
+		if m.details.PausedReason != "" {
+			addLine("PausedReason: ", m.details.PausedReason)
+		}
+		if m.details.FailureReason != "" {
+			addLine("FailureReason: ", m.details.FailureReason)
+		}
+	}
 	if m.status == "pending" {
 		addLine("Waiting: ", "live metrics unavailable; the job may be queued")
 	}
