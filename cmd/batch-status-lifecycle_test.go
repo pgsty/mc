@@ -291,9 +291,8 @@ func TestBatchStatusCLITerminalBufferedTail(t *testing.T) {
 						body.WriteString("not JSON")
 						_, _ = w.Write(body.Bytes())
 					},
-					status: func(w http.ResponseWriter, r *http.Request) {
-						t.Error("terminal live result must not fall back")
-						batchStatusNoSuchJob(w, r)
+					status: func(w http.ResponseWriter, _ *http.Request) {
+						_ = json.NewEncoder(w).Encode(madmin.BatchJobStatus{LastMetric: batchStatusTestMetric(terminal)})
 					},
 				})
 				result := runBatchStatusCLI(t, server.URL, jsonMode)
@@ -303,6 +302,58 @@ func TestBatchStatusCLITerminalBufferedTail(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestBatchStatusCLIExtendedDetails(t *testing.T) {
+	type extendedMetric struct {
+		madmin.JobMetric
+		VersionsSkippedLocked int64  `json:"versionsSkippedLocked"`
+		KeysRefused           int64  `json:"keysRefused"`
+		FailureReason         string `json:"failureReason,omitempty"`
+		PausedReason          string `json:"pausedReason,omitempty"`
+	}
+	type extendedStatus struct {
+		LastMetric extendedMetric `json:"LastMetric"`
+	}
+	for _, jsonMode := range []bool{true, false} {
+		t.Run("complete-with-skips/json="+strconv.FormatBool(jsonMode), func(t *testing.T) {
+			metric := batchStatusTestMetric("complete")
+			server := newBatchStatusServer(t, batchStatusFixture{
+				metrics: func(w http.ResponseWriter, r *http.Request) {
+					_ = json.NewEncoder(w).Encode(batchStatusTestSample("complete"))
+					w.(http.Flusher).Flush()
+					<-r.Context().Done()
+				},
+				status: func(w http.ResponseWriter, _ *http.Request) {
+					_ = json.NewEncoder(w).Encode(extendedStatus{LastMetric: extendedMetric{
+						JobMetric:             metric,
+						VersionsSkippedLocked: 3,
+						KeysRefused:           1,
+					}})
+				},
+			})
+			result := runBatchStatusCLI(t, server.URL, jsonMode)
+			if result.exitCode != 0 || len(result.stderr) != 0 {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
+			}
+			if jsonMode {
+				records := batchStatusRecords(t, result.stdout)
+				if len(records) != 1 || records[0].Status != "complete-with-skips" || records[0].Details == nil {
+					t.Fatalf("unexpected records: %+v", records)
+				}
+				if records[0].Details.VersionsSkippedLocked != 3 || records[0].Details.KeysRefused != 1 {
+					t.Errorf("details=%+v", records[0].Details)
+				}
+			} else {
+				text := string(result.stdout)
+				for _, want := range []string{"complete-with-skips", "VersionsSkippedLocked", "3", "KeysRefused", "1"} {
+					if !strings.Contains(text, want) {
+						t.Errorf("text output missing %q: %q", want, text)
+					}
+				}
+			}
+		})
 	}
 }
 
