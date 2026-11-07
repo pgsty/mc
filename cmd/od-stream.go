@@ -74,6 +74,9 @@ func odSetSizes(odURLs URLs, args argKVS) (combinedSize int64, partSize uint64, 
 	if e != nil {
 		return 0, 0, 0, 0, e
 	}
+	if partSize == 0 {
+		return 0, 0, 0, 0, fmt.Errorf("size must be greater than zero")
+	}
 
 	// Convert skipInt to bytes.
 	skip = int64(skipInt) * int64(partSize)
@@ -164,6 +167,10 @@ func odCopy(ctx context.Context, odURLs URLs, args argKVS, odType string) (odMes
 	// Get upload time.
 	elapsed := time.Since(pg.startTime)
 
+	skippedParts := 0
+	if partSize > 0 {
+		skippedParts = int(uint64(skip) / partSize)
+	}
 	message := odMessage{
 		Status:    "success",
 		Type:      odType,
@@ -172,7 +179,7 @@ func odCopy(ctx context.Context, odURLs URLs, args argKVS, odType string) (odMes
 		PartSize:  partSize,
 		TotalSize: total,
 		Parts:     parts,
-		Skip:      int(uint64(skip) / partSize),
+		Skip:      skippedParts,
 		Elapsed:   elapsed.Milliseconds(),
 	}
 

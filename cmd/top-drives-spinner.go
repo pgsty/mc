@@ -117,7 +117,12 @@ func (m *topDriveUI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 	case topDriveResult:
-		m.prevTopMap[msg.diskName] = m.currTopMap[msg.diskName]
+		if previous, ok := m.currTopMap[msg.diskName]; ok {
+			m.prevTopMap[msg.diskName] = previous
+		} else {
+			// The first cumulative sample establishes the baseline.
+			m.prevTopMap[msg.diskName] = msg.stats
+		}
 		m.currTopMap[msg.diskName] = msg.stats
 		if msg.final {
 			m.quitting = true
