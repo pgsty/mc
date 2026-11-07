@@ -279,6 +279,14 @@ func loadBatchStatus(ctx context.Context, client batchStatusClient, jobID string
 // A metric and its extra fields form one snapshot. Never attach an earlier
 // pause or partial counts to newer live progress, or replace a live terminal
 // result with a saved nonterminal result.
+//
+// The server publishes the live metric from a copy it takes before it stamps
+// and persists the job, so the live timestamp never exceeds the saved one and
+// usually lags it until the job makes further progress, while the live
+// counters are the ones that move. While the job runs, the live sample is
+// therefore the progress and the saved status only contributes its details,
+// such as a pause reason. A saved terminal snapshot is always reported as
+// saved, with its details.
 func batchStatusSnapshotMessage(live, persisted madmin.JobMetric, details *batchStatusDetails) (batchJobStatusMessage, bool) {
 	if persisted.JobID == "" || live.JobID != "" && persisted.JobID != live.JobID || persisted.LastUpdate.Before(live.LastUpdate) || persisted.Complete && persisted.Failed {
 		return batchStatusMessage(live), false
@@ -286,7 +294,20 @@ func batchStatusSnapshotMessage(live, persisted madmin.JobMetric, details *batch
 	if (live.Complete || live.Failed) && (persisted.Complete != live.Complete || persisted.Failed != live.Failed) {
 		return batchStatusMessage(live), false
 	}
-	return batchStatusMessageWithDetails(persisted, detailsValue(details)), true
+	metric := persisted
+	if live.JobID != "" && !persisted.Complete && !persisted.Failed {
+		metric = live
+	}
+	return batchStatusMessageWithDetails(metric, detailsValue(details)), true
+}
+
+// newestBatchMetric returns the metric with the later timestamp, or a when
+// they tie.
+func newestBatchMetric(a, b madmin.JobMetric) madmin.JobMetric {
+	if b.LastUpdate.After(a.LastUpdate) {
+		return b
+	}
+	return a
 }
 
 func terminalBatchStatusMessage(ctx context.Context, client batchStatusClient, jobID string, live madmin.JobMetric) batchJobStatusMessage {
@@ -416,14 +437,20 @@ observe:
 			}
 			previous := saved
 			saved = detail
-			liveMetric = detail.metric
+			// The saved snapshot does not advance the live floor: the live
+			// stream is stamped before the job is saved, so its samples
+			// legitimately carry an older timestamp than the saved status,
+			// and they must keep flowing (and keep the idle timer reset)
+			// after a poll. A saved terminal result is final whether or not
+			// it carries details.
+			if msg.Metric.Complete || msg.Metric.Failed {
+				emit(msg)
+				return nil
+			}
 			if detail.details == nil && previous.details == nil {
 				continue
 			}
 			emit(msg)
-			if msg.Metric.Complete || msg.Metric.Failed {
-				return nil
-			}
 		case sample := <-samples:
 			job, found := madmin.JobMetric{}, false
 			if sample.Aggregated.BatchJobs != nil {
@@ -437,8 +464,10 @@ observe:
 				cause = errors.New("live metrics report both complete and failed")
 				break observe
 			}
-			// A delayed sample must not undo progress already observed from
-			// either source, especially by advertising an older terminal state.
+			// A delayed sample must not undo progress already observed on the
+			// live stream, especially by advertising an older terminal state.
+			// Only live samples set this floor; see batchStatusSnapshotMessage
+			// for why the saved status cannot.
 			if found && !job.LastUpdate.Before(liveMetric.LastUpdate) {
 				liveMetric = job
 				msg, _ := batchStatusSnapshotMessage(job, saved.metric, saved.details)
@@ -472,7 +501,9 @@ observe:
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	return batchStatusFallback(ctx, client, jobID, liveMetric, false, cause, emit)
+	// The saved status read now must not be older than anything already
+	// observed, from the live stream or from an earlier poll.
+	return batchStatusFallback(ctx, client, jobID, newestBatchMetric(liveMetric, saved.metric), false, cause, emit)
 }
 
 func batchStatusFallback(ctx context.Context, client batchStatusClient, jobID string, observed madmin.JobMetric, missingDefinition bool, cause error, emit func(batchJobStatusMessage)) error {
