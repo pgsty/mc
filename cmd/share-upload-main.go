@@ -20,7 +20,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 	"time"
 
@@ -69,10 +68,9 @@ EXAMPLES:
 `,
 }
 
-var shellQuoteRegex = regexp.MustCompile("([&;#$` \t\n<>()|'\"])")
-
+// shellQuote preserves one complete argument for a POSIX shell.
 func shellQuote(s string) string {
-	return shellQuoteRegex.ReplaceAllString(s, "\\$1")
+	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
 // checkShareUploadSyntax - validate command-line args.
@@ -115,22 +113,19 @@ func checkShareUploadSyntax(ctx *cli.Context) {
 
 // makeCurlCmd constructs curl command-line.
 func makeCurlCmd(key, postURL string, isRecursive bool, uploadInfo map[string]string) (string, *probe.Error) {
-	postURL += " "
-	curlCommand := "curl " + postURL
+	curlCommand := "curl " + shellQuote(postURL) + " "
 	for k, v := range uploadInfo {
 		if k == "key" {
 			key = v
 			continue
 		}
-		curlCommand += fmt.Sprintf("-F %s=%s ", k, v)
+		curlCommand += fmt.Sprintf("--form-string %s ", shellQuote(k+"="+v))
 	}
-	// If key starts with is enabled prefix it with the output.
 	if isRecursive {
-		curlCommand += fmt.Sprintf("-F key=%s<NAME> ", shellQuote(key)) // Object name.
-	} else {
-		curlCommand += fmt.Sprintf("-F key=%s ", shellQuote(key)) // Object name.
+		key += "<NAME>"
 	}
-	curlCommand += "-F file=@<FILE>" // File to upload.
+	curlCommand += "--form-string " + shellQuote("key="+key) + " "
+	curlCommand += "--form " + shellQuote("file=@<FILE>")
 	return curlCommand, nil
 }
 
