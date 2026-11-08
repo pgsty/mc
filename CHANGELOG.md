@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+- Adopt silo-pkg v3.16.0 with cpuid/v2 v2.4.2 and YAML v3.0.6. Retain
+  Go 1.27.3 across source, CI and build images, the existing upstream minio-go
+  commit, and the systemd, terminal-width and tablewriter compatibility pins.
+  The x/net v0.62.0 and x/crypto security floors are included in this candidate.
+- Update gjson to v1.20.1 to preserve UTF-8 characters following malformed
+  emoji input.
+- Expose paused and complete-with-skips batch states, pause reasons and skip
+  counters. Use complete live details when available, including explicit zeros;
+  otherwise refresh saved details periodically and at completion. Report
+  `detailsUnavailable` when terminal details cannot be confirmed.
+- Keep observing healthy running or paused batch jobs after saved-status polls.
+  Preserve live progress counters, report a saved terminal result promptly, and
+  reject stale terminal snapshots after a metrics disconnect.
+- Validate `od` operands, zero part sizes, negative sizes and arithmetic overflow
+  before modifying the target. Handle empty copies without invalid rate output.
+- Format heal progress through EiB, baseline the first drive I/O sample instead
+  of presenting cumulative counters as an interval, and retain fractional site
+  speed-test durations.
+
+A retrieved complete, complete-with-skips or failed batch result exits zero;
+scripts must inspect the status and skip counters for the job outcome. Paused
+jobs remain observable and are not terminal. Extended details require a server
+that supplies them. This candidate has not been tagged or published as standalone
+archives, packages or container images.
+
 ## RELEASE.2026-10-26T00-00-00Z — 2026-10-26
 
 Package version: `20261026000000.0.0`. Publication status and artifacts are
