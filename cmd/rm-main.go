@@ -571,6 +571,7 @@ func listAndRemove(url string, opts removeOpts) error {
 							continue
 						case minio.ErrorResponse:
 							if strings.Contains(e.Message, "Object is WORM protected and cannot be overwritten") {
+								removeErr = exitStatus(globalErrorExitStatus)
 								continue
 							}
 						}

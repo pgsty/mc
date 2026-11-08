@@ -21,6 +21,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -249,6 +251,113 @@ func TestRmForceMissingPrefixStillSucceeds(t *testing.T) {
 		if result.exitCode != 0 {
 			t.Fatalf("%s exit=%d stdout=%s stderr=%s", mode, result.exitCode, result.stdout, result.stderr)
 		}
+	}
+}
+
+func TestRmWORMFailureCLI(t *testing.T) {
+	const wormMessage = "Object is WORM protected and cannot be overwritten"
+	// Exceed the SDK's 1000-object delete batch so the WORM error arrives
+	// while more objects are being queued, before the final result drain.
+	const objectCount = 1005
+	for _, mode := range []string{"text", "json"} {
+		t.Run(mode, func(t *testing.T) {
+			var removed, rejected atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/xml")
+				switch {
+				case r.Method == http.MethodGet && r.URL.Query().Get("list-type") == "2":
+					start, end := 0, 1000
+					if r.URL.Query().Get("continuation-token") == "next" {
+						start, end = 1000, objectCount
+					}
+					_, _ = fmt.Fprintf(w, `<ListBucketResult><Name>bucket</Name><IsTruncated>%t</IsTruncated>`, end < objectCount)
+					if end < objectCount {
+						_, _ = io.WriteString(w, `<NextContinuationToken>next</NextContinuationToken>`)
+					}
+					for i := start; i < end; i++ {
+						_, _ = fmt.Fprintf(w, `<Contents><Key>object-%04d</Key><LastModified>2026-11-01T00:00:00Z</LastModified><Size>1</Size></Contents>`, i)
+					}
+					_, _ = io.WriteString(w, `</ListBucketResult>`)
+				case r.Method == http.MethodPost && r.URL.Query().Has("delete"):
+					var request struct {
+						Objects []struct{ Key string } `xml:"Object"`
+					}
+					if err := xml.NewDecoder(r.Body).Decode(&request); err != nil {
+						t.Errorf("decode delete request: %v", err)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+					_, _ = io.WriteString(w, `<DeleteResult>`)
+					for _, object := range request.Objects {
+						if object.Key == "object-0000" {
+							rejected.Add(1)
+							_, _ = fmt.Fprintf(w, `<Error><Key>%s</Key><Code>AccessDenied</Code><Message>%s</Message></Error>`, object.Key, wormMessage)
+						} else {
+							removed.Add(1)
+							_, _ = fmt.Fprintf(w, `<Deleted><Key>%s</Key></Deleted>`, object.Key)
+						}
+					}
+					_, _ = io.WriteString(w, `</DeleteResult>`)
+				default:
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			}))
+			defer server.Close()
+			args := []string{"rm", "--recursive", "--force", "b4/bucket/"}
+			if mode == "json" {
+				args = append([]string{"--json"}, args...)
+			}
+			result := runChecksumVerifyCLI(t, server.URL, []string{"MC_REGION=us-east-1"}, args...)
+			if result.exitCode != 1 {
+				t.Errorf("exit=%d, want 1; stderr=%s", result.exitCode, result.stderr)
+			}
+			if removed.Load() != objectCount-1 || rejected.Load() != 1 {
+				t.Errorf("removed=%d rejected=%d; independent removals must continue", removed.Load(), rejected.Load())
+			}
+			const lastKey = "b4/bucket/object-1004"
+			if mode == "text" {
+				if strings.Count(string(result.stdout), "Removed `") != objectCount-1 ||
+					!strings.Contains(string(result.stdout), "Removed `"+lastKey+"`.") ||
+					strings.Contains(string(result.stdout), "Removed `b4/bucket/object-0000`.") ||
+					!strings.Contains(string(result.stderr), wormMessage) {
+					t.Errorf("missing or incorrect text removal reports; stderr=%s", result.stderr)
+				}
+				return
+			}
+			decoder := json.NewDecoder(bytes.NewReader(result.stdout))
+			var successes, failures int
+			var lastRemoved bool
+			for {
+				var record struct {
+					Status, Key string
+					Error       json.RawMessage
+				}
+				if err := decoder.Decode(&record); err == io.EOF {
+					break
+				} else if err != nil {
+					t.Fatal(err)
+				}
+				switch record.Status {
+				case "success":
+					successes++
+					lastRemoved = lastRemoved || record.Key == lastKey
+					if record.Key == "b4/bucket/object-0000" {
+						t.Error("WORM-protected object reported as removed")
+					}
+				case "error":
+					failures++
+					if !bytes.Contains(record.Error, []byte(wormMessage)) {
+						t.Errorf("missing WORM error: %s", record.Error)
+					}
+				default:
+					t.Errorf("unexpected status: %s", record.Status)
+				}
+			}
+			if successes != objectCount-1 || failures != 1 || !lastRemoved {
+				t.Errorf("successes=%d failures=%d lastRemoved=%t", successes, failures, lastRemoved)
+			}
+		})
 	}
 }
 
