@@ -67,7 +67,7 @@ func TestRmNamespaceGuardChecksEveryTarget(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var requests atomic.Int32
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				requests.Add(1)
 				http.Error(w, "must reject before contacting storage", http.StatusForbidden)
 			}))
@@ -93,7 +93,7 @@ func TestRmNamespaceGuardChecksEveryTarget(t *testing.T) {
 
 func TestRmPurgeDryRunDoesNotDeleteRemotePrefix(t *testing.T) {
 	var requests atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
 		http.Error(w, "dry-run must not delete", http.StatusForbidden)
 	}))

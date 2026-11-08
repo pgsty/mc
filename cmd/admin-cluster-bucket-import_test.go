@@ -64,9 +64,16 @@ func TestBucketMetadataImportCLI(t *testing.T) {
 	}
 	// The SDK has nine per-configuration statuses plus the bucket-level error.
 	for _, field := range []struct{ key, label string }{
-		{"olock", "Object lock:"}, {"versioning", "Versioning:"}, {"policy", "Policy:"},
-		{"tagging", "Tagging:"}, {"sse", "Encryption:"}, {"lifecycle", "Lifecycle:"},
-		{"notification", "Notification:"}, {"quota", "Quota:"}, {"cors", "CORS:"}, {"error", "bucket rejected"},
+		{"olock", "Object lock:"},
+		{"versioning", "Versioning:"},
+		{"policy", "Policy:"},
+		{"tagging", "Tagging:"},
+		{"sse", "Encryption:"},
+		{"lifecycle", "Lifecycle:"},
+		{"notification", "Notification:"},
+		{"quota", "Quota:"},
+		{"cors", "CORS:"},
+		{"error", "bucket rejected"},
 	} {
 		for _, isSet := range []bool{true, false} {
 			if field.key == "error" && !isSet {
@@ -80,8 +87,10 @@ func TestBucketMetadataImportCLI(t *testing.T) {
 			if field.key == "error" {
 				status = `{"error":"bucket rejected"}`
 			}
-			cases = append(cases, testCase{name: fmt.Sprintf("%s/set=%t", field.key, isSet),
-				body: `{"buckets":{"bad-bucket":` + status + `}}`, summary: "0/1 buckets were imported successfully", detail: detail, exit: 1})
+			cases = append(cases, testCase{
+				name: fmt.Sprintf("%s/set=%t", field.key, isSet),
+				body: `{"buckets":{"bad-bucket":` + status + `}}`, summary: "0/1 buckets were imported successfully", detail: detail, exit: 1,
+			})
 		}
 	}
 	for _, mode := range []string{"text", "json"} {

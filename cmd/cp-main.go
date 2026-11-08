@@ -501,13 +501,13 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 
 	var retErr error
 	cpAllFilesErr := true
-	cancelled := ctx.Done()
+	canceled := ctx.Done()
 
 loop:
 	for {
 		select {
-		case <-cancelled:
-			cancelled = nil
+		case <-canceled:
+			canceled = nil
 			retErr = exitStatus(globalCancelExitStatus)
 			errSeen = true
 			close(quitCh)

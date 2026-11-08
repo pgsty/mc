@@ -110,7 +110,7 @@ func (p *progressBar) Read(buf []byte) (n int, err error) {
 }
 
 func (p *progressBar) SetTotal(total int64) {
-	p.ProgressBar.SetTotal64(total)
+	p.SetTotal64(total)
 }
 
 // cursorAnimate - returns a animated rune through read channel for every read.

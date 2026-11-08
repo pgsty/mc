@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -41,6 +42,9 @@ func TestCopyMoveTags(t *testing.T) {
 			for _, preserve := range []bool{false, true} {
 				for _, tagCase := range []string{"unset", "replace", "clear", "invalid"} {
 					t.Run(fmt.Sprintf("%s/stream=%v/preserve=%v/%s", command, stream, preserve, tagCase), func(t *testing.T) {
+						if preserve && runtime.GOOS == "windows" {
+							t.Skip("--preserve is not supported on Windows")
+						}
 						const payload = "source bytes"
 						var mu sync.Mutex
 						var headers http.Header
@@ -60,7 +64,8 @@ func TestCopyMoveTags(t *testing.T) {
 							case r.Method == http.MethodGet && r.URL.Query().Has("list-type"):
 								_, _ = io.WriteString(w, `<ListBucketResult><Name>bucket</Name><IsTruncated>false</IsTruncated></ListBucketResult>`)
 							case r.Method == http.MethodHead || r.Method == http.MethodGet:
-								if r.URL.Path == "/bucket/source" {
+								switch r.URL.Path {
+								case "/bucket/source":
 									w.Header().Set("Content-Length", fmt.Sprint(len(payload)))
 									if r.Header.Get("X-Amz-Tagging-Directive") == "ACCESS" {
 										w.Header().Set("X-Amz-Tagging", "owner=source")
@@ -68,7 +73,7 @@ func TestCopyMoveTags(t *testing.T) {
 									if r.Method == http.MethodGet {
 										_, _ = io.WriteString(w, payload)
 									}
-								} else if r.URL.Path == "/bucket/target" {
+								case "/bucket/target":
 									w.Header().Set("X-Minio-Error-Code", "NoSuchKey")
 									w.WriteHeader(http.StatusNotFound)
 								}

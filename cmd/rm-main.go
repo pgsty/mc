@@ -205,7 +205,7 @@ func (r rmMessage) JSON() string {
 }
 
 // Validate command line arguments.
-func checkRmSyntax(ctx context.Context, cliCtx *cli.Context) {
+func checkRmSyntax(_ context.Context, cliCtx *cli.Context) {
 	// Set command flags from context.
 	isForce := cliCtx.Bool("force")
 	isRecursive := cliCtx.Bool("recursive")
