@@ -20,6 +20,32 @@
 - Format heal progress through EiB, baseline the first drive I/O sample instead
   of presenting cumulative counters as an interval, and retain fractional site
   speed-test durations.
+- Keep `rm --purge --dry-run` read-only and enforce namespace removal protection
+  for every command-line and stdin target. Retain permission failures in the
+  final exit status while continuing independent removals.
+- Resolve each source alias independently for multi-source `cp` and `mv`, and
+  reject moves onto the same resolved object, filesystem path, symlink or
+  hardlink before transferring or deleting that source.
+- Download the requested `od` multipart sequence instead of repeating the last
+  part, and close opened part readers on completion or failure.
+- Propagate copy and move preparation failures to the final exit status. Keep
+  copy counters race-free, report accurate monotonic JSON totals, and drain
+  workers on cancellation while retaining bounded streaming queues.
+- Apply explicit `--tags` to server-side and streaming copies and moves,
+  including with `--preserve`; an explicit empty value clears tags. Reject
+  malformed `--attr` before starting a copy or move.
+- Generate executable POSIX-shell `share upload` commands by quoting complete
+  arguments and uploading policy fields as literal form values.
+- Decode IAM import failure details without replaying a failed V2 import through
+  the legacy API. Return nonzero for failed IAM entities and bucket metadata
+  imports while preserving their detailed reports.
+
+**Script compatibility:** partial copy/move preparation failures, removal
+permission failures, and IAM or bucket metadata import failures that previously
+returned 0 now return 1. Independent successful operations are not rolled back.
+Inspect the final exit status and error reports; copy start messages and byte
+counters do not confirm successful completion. The legacy IAM API is retried
+only when the server explicitly reports that the V2 API is not implemented.
 
 A retrieved complete, complete-with-skips or failed batch result exits zero;
 scripts must inspect the status and skip counters for the job outcome. Paused
