@@ -18,16 +18,27 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"encoding/xml"
+	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/minio/cli"
+	"github.com/minio/mc/pkg/probe"
 )
 
 // This fixture keeps different source bytes at identical keys on two endpoints.
@@ -131,5 +142,142 @@ func TestCopyMoveMultipleAliases(t *testing.T) {
 				t.Fatalf("wrong sources removed: %+v", objects)
 			}
 		})
+	}
+}
+
+func TestCopyMovePreparationFailures(t *testing.T) {
+	for _, command := range []string{"cp", "mv"} {
+		for _, missingFirst := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/missing-first=%v", command, missingFirst), func(t *testing.T) {
+				dir := t.TempDir()
+				good, missing, target := filepath.Join(dir, "good"), filepath.Join(dir, "missing"), filepath.Join(dir, "target")
+				if err := os.WriteFile(good, []byte("keep"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Mkdir(target, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				sources := []string{good, missing}
+				if missingFirst {
+					sources[0], sources[1] = sources[1], sources[0]
+				}
+				args := append([]string{"--json", command}, sources...)
+				args = append(args, target)
+				result := runChecksumVerifyCLI(t, "http://127.0.0.1:1", nil, args...)
+				if result.exitCode != 1 || !strings.Contains(string(result.stdout), "Unable to prepare") {
+					t.Fatalf("exit=%d stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
+				}
+				if data, err := os.ReadFile(filepath.Join(target, "good")); err != nil || string(data) != "keep" {
+					t.Fatalf("valid source not copied: %q %v", data, err)
+				}
+				_, err := os.Stat(good)
+				if (err == nil) != (command == "cp") {
+					t.Fatalf("unexpected source state after %s: %v", command, err)
+				}
+			})
+		}
+	}
+}
+
+func TestCopyStreamingTotals(t *testing.T) {
+	const count, size = 200, 13
+	source, target := t.TempDir(), t.TempDir()
+	for i := range count {
+		if err := os.WriteFile(filepath.Join(source, fmt.Sprintf("%03d", i)), bytes.Repeat([]byte("a"), size), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result := runChecksumVerifyCLI(t, "http://127.0.0.1:1", nil, "--json", "cp", "--recursive", source+string(filepath.Separator), target)
+	if result.exitCode != 0 {
+		t.Fatalf("exit=%d stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
+	}
+	decoder := json.NewDecoder(bytes.NewReader(result.stdout))
+	seen := make(map[int64]bool)
+	var total, transferred int64
+	for {
+		var record struct {
+			Source      string
+			TotalCount  int64
+			TotalSize   int64
+			Total       int64
+			Transferred int64
+		}
+		if err := decoder.Decode(&record); err == io.EOF {
+			break
+		} else if err != nil {
+			t.Fatal(err)
+		}
+		if record.Source != "" {
+			if record.TotalCount < 1 || record.TotalCount > count || record.TotalSize != record.TotalCount*size || seen[record.TotalCount] {
+				t.Fatalf("bad cumulative totals: %+v", record)
+			}
+			seen[record.TotalCount] = true
+		} else {
+			total, transferred = record.Total, record.Transferred
+		}
+	}
+	if len(seen) != count || total != count*size || transferred != count*size {
+		t.Fatalf("objects=%d total=%d transferred=%d", len(seen), total, transferred)
+	}
+}
+
+func TestCopyCancellationDrainsWorkers(t *testing.T) {
+	oldLoad := loadMcConfig
+	defer func() { loadMcConfig = oldLoad }()
+	loadMcConfig = func() (*configV10, *probe.Error) { return &configV10{}, nil }
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	started, released := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Query().Has("location"):
+			_, _ = io.WriteString(w, `<LocationConstraint>us-east-1</LocationConstraint>`)
+		case r.Method == http.MethodHead:
+			w.Header().Set("Content-Length", "7")
+			w.Header().Set("Last-Modified", "Thu, 01 Jan 2026 00:00:00 GMT")
+			w.Header().Set("ETag", `"etag"`)
+		case r.Method == http.MethodGet:
+			once.Do(func() { close(started) })
+			<-r.Context().Done()
+			close(released)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("MC_HOST_cancelcopy", "http://access:secret@"+strings.TrimPrefix(server.URL, "http://"))
+	target := filepath.Join(t.TempDir(), "target")
+	flags := flag.NewFlagSet("cp", flag.ContinueOnError)
+	for _, f := range cpFlags {
+		f.Apply(flags)
+	}
+	if err := flags.Parse([]string{"cancelcopy/bucket/source", target}); err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		select {
+		case <-started:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	captureCommandJSON(t, func() {
+		err := doCopySession(ctx, cancel, cli.NewContext(cli.NewApp(), flags, nil), nil, false)
+		var exit cli.ExitCoder
+		if !errors.As(err, &exit) || exit.ExitCode() != globalCancelExitStatus {
+			t.Errorf("canceled copy returned %v", err)
+		}
+	})
+	if ctx.Err() != context.Canceled {
+		t.Fatal("copy did not cancel during the transfer")
+	}
+	select {
+	case <-released:
+	case <-time.After(time.Second):
+		t.Fatal("request was not released")
+	}
+	if _, err := os.Stat(target); !os.IsNotExist(err) {
+		t.Fatalf("canceled copy left destination: %v", err)
 	}
 }

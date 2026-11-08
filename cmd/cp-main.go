@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/fatih/color"
 	"github.com/minio/cli"
@@ -336,7 +337,7 @@ func printCopyURLsError(cpURLs *URLs) {
 
 func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.Context, encryptionKeys map[string][]prefixSSEPair, isMvCmd bool) error {
 	var isCopied func(string) bool
-	var totalObjects, totalBytes int64
+	var totalObjects int64
 
 	cpURLsCh := make(chan URLs, 10000)
 	errSeen := false
@@ -346,9 +347,9 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 
 	// Enable progress bar reader only during default mode.
 	if !globalQuiet && !globalJSON { // set up progress bar
-		pg = newProgressBar(totalBytes)
+		pg = newProgressBar(0)
 	} else {
-		pg = newAccounter(totalBytes)
+		pg = newAccounter(0)
 	}
 	sourceURLs := cli.Args()[:len(cli.Args())-1]
 	targetURL := cli.Args()[len(cli.Args())-1] // Last one is target
@@ -368,7 +369,7 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 	}
 
 	go func() {
-		totalBytes := int64(0)
+		var preparedObjects, preparedBytes int64
 		opts := prepareCopyURLsOpts{
 			sourceURLs:  sourceURLs,
 			targetURL:   targetURL,
@@ -382,16 +383,20 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 		}
 
 		for cpURLs := range prepareCopyURLs(ctx, opts) {
-			if cpURLs.Error != nil {
-				errSeen = true
-				printCopyURLsError(&cpURLs)
-				break
+			if cpURLs.Error == nil {
+				preparedBytes += cpURLs.SourceContent.Size
+				preparedObjects++
+				pg.SetTotal(preparedBytes)
 			}
-
-			totalBytes += cpURLs.SourceContent.Size
-			pg.SetTotal(totalBytes)
-			totalObjects++
-			cpURLsCh <- cpURLs
+			// Transfer immutable scan totals and preparation errors with each
+			// result instead of sharing mutable counters across goroutines.
+			cpURLs.TotalCount = preparedObjects
+			cpURLs.TotalSize = preparedBytes
+			select {
+			case cpURLsCh <- cpURLs:
+			case <-ctx.Done():
+				// Drain preparation so its producers can finish after cancellation.
+			}
 		}
 		close(cpURLsCh)
 	}()
@@ -409,6 +414,8 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 		for {
 			select {
 			case <-quitCh:
+				for range cpURLsCh {
+				}
 				gracefulStop()
 				return
 			case cpURLs, ok := <-cpURLsCh:
@@ -417,11 +424,13 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 					return
 				}
 
-				// Save total count.
-				cpURLs.TotalCount = totalObjects
-
-				// Save totalSize.
-				cpURLs.TotalSize = totalBytes
+				if ctx.Err() != nil {
+					continue
+				}
+				if cpURLs.Error != nil {
+					statusCh <- cpURLs
+					continue
+				}
 
 				// Initialize target metadata.
 				cpURLs.TargetContent.Metadata = make(map[string]string)
@@ -485,22 +494,33 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 
 	var retErr error
 	cpAllFilesErr := true
+	cancelled := ctx.Done()
 
 loop:
 	for {
 		select {
-		case <-globalContext.Done():
+		case <-cancelled:
+			cancelled = nil
+			retErr = exitStatus(globalCancelExitStatus)
+			errSeen = true
 			close(quitCh)
 			cancelCopy()
 			// Receive interrupt notification.
 			if !globalQuiet && !globalJSON {
 				console.Eraseline()
 			}
-			break loop
+			// Keep receiving until workers stop, including pending mv deletions.
 		case cpURLs, ok := <-statusCh:
 			// Status channel is closed, we should return.
 			if !ok {
 				break loop
+			}
+			totalObjects = max(totalObjects, cpURLs.TotalCount)
+			if cpURLs.Error != nil && cpURLs.SourceContent == nil {
+				printCopyURLsError(&cpURLs)
+				errSeen = true
+				retErr = exitStatus(globalErrorExitStatus)
+				continue
 			}
 			if cpURLs.Error == nil {
 				cpAllFilesErr = false
@@ -525,7 +545,7 @@ loop:
 				if progressReader, pgok := pg.(*progressBar); pgok {
 					if progressReader.Get() > 0 {
 						writeContSize := int(cpURLs.SourceContent.Size)
-						totalPGSize := int(progressReader.Total)
+						totalPGSize := int(atomic.LoadInt64(&progressReader.Total))
 						written := int(progressReader.Get())
 						if totalPGSize > writeContSize && written > writeContSize {
 							progressReader.Set(written - writeContSize)
@@ -549,19 +569,24 @@ loop:
 		}
 	} else {
 		if accntReader, ok := pg.(*accounter); ok {
+			stat := accntReader.Stat()
 			if errSeen || (cpAllFilesErr && totalObjects > 0) {
 				// We only erase a line if we are displaying a progress bar
 				if !globalQuiet && !globalJSON {
 					console.Eraseline()
 				}
 			} else {
-				printMsg(accntReader.Stat())
+				printMsg(stat)
 			}
 		}
 	}
 
+	if ctx.Err() != nil {
+		return exitStatus(globalCancelExitStatus)
+	}
+
 	// Source has error
-	if errSeen && totalObjects == 0 && retErr == nil {
+	if errSeen && retErr == nil {
 		retErr = exitStatus(globalErrorExitStatus)
 	}
 
