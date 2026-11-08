@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -99,13 +100,18 @@ func TestODRejectsMalformedOperand(t *testing.T) {
 }
 
 func TestODRejectsInvalidNumericArguments(t *testing.T) {
+	partsOverflow, skipOverflow := "parts and size exceed", "skip and size exceed"
+	if strconv.IntSize == 32 {
+		// These counts are rejected by Atoi before transfer-size arithmetic.
+		partsOverflow, skipOverflow = "value out of range", "value out of range"
+	}
 	for _, tc := range []struct {
 		name, extra, wantError string
 	}{
 		{name: "negative_parts", extra: "parts=-1", wantError: "parts must be non-negative"},
 		{name: "negative_skip", extra: "skip=-1", wantError: "skip must be non-negative"},
-		{name: "parts_overflow", extra: "parts=9223372036854775807", wantError: "parts and size exceed"},
-		{name: "skip_overflow", extra: "skip=9223372036854775807", wantError: "skip and size exceed"},
+		{name: "parts_overflow", extra: "parts=9223372036854775807", wantError: partsOverflow},
+		{name: "skip_overflow", extra: "skip=9223372036854775807", wantError: skipOverflow},
 		{name: "skip_beyond_source", extra: "skip=6", wantError: "skip exceeds source size"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
