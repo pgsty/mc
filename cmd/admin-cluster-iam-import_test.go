@@ -152,12 +152,30 @@ func TestIAMImportCLI(t *testing.T) {
 
 func TestIAMImportTransportFailureCLI(t *testing.T) {
 	archive, _ := iamImportArchive(t)
-	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
-	endpoint := server.URL
-	server.Close()
-	result := runChecksumVerifyCLI(t, endpoint, nil, "--json", "admin", "cluster", "iam", "import", "b4", archive)
-	if result.exitCode != 1 || !bytes.Contains(result.stdout, []byte("Unable to import IAM info")) {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
+	var modern, legacy atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		switch r.URL.Path {
+		case "/minio/admin/v3/import-iam-v2":
+			modern.Add(1)
+			// An incomplete error body fails in the SDK's response reader.
+			// Unlike a closed port, this does not depend on platform-specific
+			// connection-refused handling or network retry delays.
+			w.Header().Set("Content-Length", "64")
+			w.WriteHeader(http.StatusBadGateway)
+			_, _ = io.WriteString(w, "{")
+		case "/minio/admin/v3/import-iam":
+			legacy.Add(1)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected request: %s", r.URL)
+			w.WriteHeader(http.StatusBadRequest)
+		}
+	}))
+	defer server.Close()
+	result := runChecksumVerifyCLI(t, server.URL, nil, "--json", "admin", "cluster", "iam", "import", "b4", archive)
+	if result.exitCode != 1 || modern.Load() != 1 || legacy.Load() != 0 || !bytes.Contains(result.stdout, []byte("Unable to import IAM info")) {
+		t.Fatalf("exit=%d modern=%d legacy=%d stdout=%s stderr=%s", result.exitCode, modern.Load(), legacy.Load(), result.stdout, result.stderr)
 	}
 }
 
