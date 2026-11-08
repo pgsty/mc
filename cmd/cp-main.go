@@ -336,6 +336,16 @@ func printCopyURLsError(cpURLs *URLs) {
 }
 
 func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.Context, encryptionKeys map[string][]prefixSSEPair, isMvCmd bool) error {
+	var userMetadata map[string]string
+	if attr := cli.String("attr"); attr != "" {
+		var err *probe.Error
+		userMetadata, err = getMetaDataEntry(attr)
+		if err != nil {
+			errorIf(err, "Unable to parse --attr.")
+			return exitStatus(globalErrorExitStatus)
+		}
+	}
+
 	var isCopied func(string) bool
 	var totalObjects int64
 
@@ -461,10 +471,7 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 
 				preserve := cli.Bool("preserve")
 				isZip := cli.Bool("zip")
-				if cli.String("attr") != "" {
-					userMetaMap, _ := getMetaDataEntry(cli.String("attr"))
-					maps.Copy(cpURLs.TargetContent.UserMetadata, userMetaMap)
-				}
+				maps.Copy(cpURLs.TargetContent.UserMetadata, userMetadata)
 
 				cpURLs.MD5 = md5
 				cpURLs.checksum = checksum

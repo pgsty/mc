@@ -24,8 +24,11 @@ import (
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 )
 
@@ -145,5 +148,83 @@ func TestCopyMoveTags(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestCopyMoveRejectInvalidAttributesBeforeTransfer(t *testing.T) {
+	var requests atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+	for _, command := range []string{"cp", "mv"} {
+		for _, jsonOutput := range []bool{false, true} {
+			for _, attr := range []string{"owner=alice;malformed", "owner='unterminated", "owner=alice;"} {
+				t.Run(fmt.Sprintf("%s/json=%v/%s", command, jsonOutput, attr), func(t *testing.T) {
+					source := filepath.Join(t.TempDir(), "source")
+					if err := os.WriteFile(source, []byte("keep"), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					args := []string{command, "--attr", attr, source, "b4/bucket/target"}
+					if jsonOutput {
+						args = append([]string{"--json"}, args...)
+					}
+					result := runChecksumVerifyCLI(t, server.URL, nil, args...)
+					if result.exitCode != 1 || !strings.Contains(string(result.stdout)+string(result.stderr), "Unable to parse --attr") {
+						t.Fatalf("exit=%d output=%s %s", result.exitCode, result.stdout, result.stderr)
+					}
+					if data, err := os.ReadFile(source); err != nil || string(data) != "keep" {
+						t.Fatalf("invalid attributes changed source: %q %v", data, err)
+					}
+					if requests.Load() != 0 {
+						t.Fatalf("invalid attributes reached the server: %d requests", requests.Load())
+					}
+				})
+			}
+		}
+	}
+}
+
+func TestCopyMoveValidAttributes(t *testing.T) {
+	for _, command := range []string{"cp", "mv"} {
+		t.Run(command, func(t *testing.T) {
+			source := filepath.Join(t.TempDir(), "source")
+			if err := os.WriteFile(source, []byte("payload"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var uploads atomic.Int64
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/xml")
+				switch {
+				case r.URL.Query().Has("object-lock"):
+					_, _ = io.WriteString(w, `<ObjectLockConfiguration/>`)
+				case r.Method == http.MethodHead:
+					w.Header().Set("Content-Length", "0")
+					w.Header().Set("Last-Modified", "Thu, 01 Jan 2026 00:00:00 GMT")
+				case r.Method == http.MethodPut:
+					_, _ = io.Copy(io.Discard, r.Body)
+					uploads.Add(1)
+					for key, want := range map[string]string{"X-Amz-Meta-Owner": "alice", "X-Amz-Meta-Note": "a;b=c", "Content-Type": "text/plain"} {
+						if got := r.Header.Get(key); got != want {
+							t.Errorf("%s=%q, want %q", key, got, want)
+						}
+					}
+				default:
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			}))
+			defer server.Close()
+			result := runChecksumVerifyCLI(t, server.URL, []string{"MC_REGION=us-east-1"}, "--json", command,
+				"--attr", "owner=alice;note='a;b=c';Content-Type=text/plain", source, "b4/bucket/target")
+			if result.exitCode != 0 || uploads.Load() != 1 {
+				t.Fatalf("exit=%d uploads=%d output=%s %s", result.exitCode, uploads.Load(), result.stdout, result.stderr)
+			}
+			_, err := os.Stat(source)
+			if (err == nil) != (command == "cp") {
+				t.Fatalf("unexpected source state after %s: %v", command, err)
+			}
+		})
 	}
 }
