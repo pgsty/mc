@@ -180,44 +180,52 @@ func TestCopyMovePreparationFailures(t *testing.T) {
 }
 
 func TestCopyStreamingTotals(t *testing.T) {
-	const count, size = 200, 13
-	source, target := t.TempDir(), t.TempDir()
+	const count = 200
+	source := t.TempDir()
+	var expectedBytes int64
 	for i := range count {
+		size := 13 + (i%7)*257
+		expectedBytes += int64(size)
 		if err := os.WriteFile(filepath.Join(source, fmt.Sprintf("%03d", i)), bytes.Repeat([]byte("a"), size), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	result := runChecksumVerifyCLI(t, "http://127.0.0.1:1", nil, "--json", "cp", "--recursive", source+string(filepath.Separator), target)
-	if result.exitCode != 0 {
-		t.Fatalf("exit=%d stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
-	}
-	decoder := json.NewDecoder(bytes.NewReader(result.stdout))
-	seen := make(map[int64]bool)
-	var total, transferred int64
-	for {
-		var record struct {
-			Source      string
-			TotalCount  int64
-			TotalSize   int64
-			Total       int64
-			Transferred int64
-		}
-		if err := decoder.Decode(&record); err == io.EOF {
-			break
-		} else if err != nil {
-			t.Fatal(err)
-		}
-		if record.Source != "" {
-			if record.TotalCount < 1 || record.TotalCount > count || record.TotalSize != record.TotalCount*size || seen[record.TotalCount] {
-				t.Fatalf("bad cumulative totals: %+v", record)
+	for _, workers := range []int{1, 4, 32} {
+		t.Run(fmt.Sprintf("workers=%d", workers), func(t *testing.T) {
+			result := runChecksumVerifyCLI(t, "http://127.0.0.1:1", nil, "--json", "cp", "--recursive", "--max-workers", fmt.Sprint(workers), source+string(filepath.Separator), t.TempDir())
+			if result.exitCode != 0 {
+				t.Fatalf("exit=%d stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
 			}
-			seen[record.TotalCount] = true
-		} else {
-			total, transferred = record.Total, record.Transferred
-		}
-	}
-	if len(seen) != count || total != count*size || transferred != count*size {
-		t.Fatalf("objects=%d total=%d transferred=%d", len(seen), total, transferred)
+			decoder := json.NewDecoder(bytes.NewReader(result.stdout))
+			var seen, preparedBytes, total, transferred int64
+			for {
+				var record struct {
+					Source      string
+					Size        int64
+					TotalCount  int64
+					TotalSize   int64
+					Total       int64
+					Transferred int64
+				}
+				if err := decoder.Decode(&record); err == io.EOF {
+					break
+				} else if err != nil {
+					t.Fatal(err)
+				}
+				if record.Source != "" {
+					seen++
+					preparedBytes += record.Size
+					if record.TotalCount != seen || record.TotalSize != preparedBytes {
+						t.Fatalf("bad cumulative totals: record=%+v want count=%d size=%d", record, seen, preparedBytes)
+					}
+				} else {
+					total, transferred = record.Total, record.Transferred
+				}
+			}
+			if seen != count || total != expectedBytes || transferred != expectedBytes {
+				t.Fatalf("objects=%d total=%d transferred=%d, expected %d objects and %d bytes", seen, total, transferred, count, expectedBytes)
+			}
+		})
 	}
 }
 

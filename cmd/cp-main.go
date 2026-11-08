@@ -247,28 +247,11 @@ func doCopy(ctx context.Context, copyOpts doCopyOpts) URLs {
 
 	sourceAlias := copyOpts.cpURLs.SourceAlias
 	sourceURL := copyOpts.cpURLs.SourceContent.URL
-	targetAlias := copyOpts.cpURLs.TargetAlias
-	targetURL := copyOpts.cpURLs.TargetContent.URL
-	// Directory expansion and alias resolution have finished at this point.
-	// Reject this move before copying or scheduling removal of its source.
-	if copyOpts.isMvCmd && sameCopyObject(copyOpts.cpURLs) {
-		return copyOpts.cpURLs.WithError(errCopyIntoSelf(sourceURL.String()).Trace(targetURL.String()))
-	}
-
-	length := copyOpts.cpURLs.SourceContent.Size
-	sourcePath := filepath.ToSlash(filepath.Join(sourceAlias, sourceURL.Path))
 
 	if progressReader, ok := copyOpts.pg.(*progressBar); ok {
 		progressReader.SetCaption(copyOpts.cpURLs.SourceContent.URL.String() + ":")
-	} else {
-		targetPath := filepath.ToSlash(filepath.Join(targetAlias, targetURL.Path))
-		printMsg(copyMessage{
-			Source:     sourcePath,
-			Target:     targetPath,
-			Size:       length,
-			TotalCount: copyOpts.cpURLs.TotalCount,
-			TotalSize:  copyOpts.cpURLs.TotalSize,
-		})
+	} else if !copyOpts.skipMessage {
+		printCopyMessage(copyOpts.cpURLs)
 	}
 
 	urls := uploadSourceToTargetURL(ctx, uploadSourceToTargetURLOpts{
@@ -287,6 +270,16 @@ func doCopy(ctx context.Context, copyOpts doCopyOpts) URLs {
 	}
 
 	return urls
+}
+
+func printCopyMessage(urls URLs) {
+	printMsg(copyMessage{
+		Source:     filepath.ToSlash(filepath.Join(urls.SourceAlias, urls.SourceContent.URL.Path)),
+		Target:     filepath.ToSlash(filepath.Join(urls.TargetAlias, urls.TargetContent.URL.Path)),
+		Size:       urls.SourceContent.Size,
+		TotalCount: urls.TotalCount,
+		TotalSize:  urls.TotalSize,
+	})
 }
 
 // sameCopyObject compares resolved URLs. Object keys are literal; filesystem
@@ -441,6 +434,12 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 					statusCh <- cpURLs
 					continue
 				}
+				// Compare each resolved destination before announcing or queuing
+				// a move, so an identical source can never be removed.
+				if isMvCmd && sameCopyObject(cpURLs) {
+					statusCh <- cpURLs.WithError(errCopyIntoSelf(cpURLs.SourceContent.URL.String()).Trace(cpURLs.TargetContent.URL.String()))
+					continue
+				}
 
 				// Initialize target metadata.
 				cpURLs.TargetContent.Metadata = make(map[string]string)
@@ -483,7 +482,11 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 						return doCopyFake(cpURLs, pg)
 					}, 0)
 				} else {
-					// Print the copy resume summary once in start
+					// Emit scan totals in dispatch order; concurrent workers may
+					// start in a different order and make cumulative values regress.
+					if _, ok := pg.(*progressBar); !ok {
+						printCopyMessage(cpURLs)
+					}
 					parallel.queueTask(func() URLs {
 						return doCopy(ctx, doCopyOpts{
 							cpURLs:         cpURLs,
@@ -492,6 +495,7 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 							isMvCmd:        isMvCmd,
 							preserve:       preserve,
 							isZip:          isZip,
+							skipMessage:    true,
 						})
 					}, cpURLs.SourceContent.Size)
 				}
@@ -625,6 +629,7 @@ type doCopyOpts struct {
 	pg                       ProgressReader
 	encryptionKeys           map[string][]prefixSSEPair
 	isMvCmd, preserve, isZip bool
+	skipMessage              bool
 	updateProgressTotal      bool
 	multipartSize            string
 	multipartThreads         string
