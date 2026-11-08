@@ -455,7 +455,7 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 					cpURLs.TargetContent.LegalHoldEnabled = true
 				}
 
-				if tags := cli.String("tags"); tags != "" {
+				if tags := cli.String("tags"); tags != "" || cli.IsSet("tags") {
 					cpURLs.TargetContent.Metadata["X-Amz-Tagging"] = tags
 				}
 
