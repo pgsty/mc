@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -40,6 +39,9 @@ func odSetSizes(odURLs URLs, args argKVS) (combinedSize int64, partSize uint64, 
 		if e != nil {
 			return 0, 0, 0, 0, e
 		}
+		if parts < 0 {
+			return 0, 0, 0, 0, fmt.Errorf("parts must be non-negative")
+		}
 	}
 
 	// Get number of parts to skip, defaults to 0.
@@ -51,6 +53,9 @@ func odSetSizes(odURLs URLs, args argKVS) (combinedSize int64, partSize uint64, 
 		skipInt, e = strconv.Atoi(sk)
 		if e != nil {
 			return 0, 0, 0, 0, e
+		}
+		if skipInt < 0 {
+			return 0, 0, 0, 0, fmt.Errorf("skip must be non-negative")
 		}
 	}
 
@@ -64,8 +69,20 @@ func odSetSizes(odURLs URLs, args argKVS) (combinedSize int64, partSize uint64, 
 
 	// If size is not specified, calculate the size based on parts and upload full file.
 	if s == "" {
-		partSize = uint64(math.Ceil(float64(sourceSize) / float64(parts)))
-		skip = int64(skipInt) * int64(partSize)
+		partSize = odPartSize(sourceSize, parts)
+		if sourceSize > 0 {
+			// A requested part count can exceed the number of non-empty parts
+			// available in a finite source. Report the effective count instead
+			// of carrying an impossible count into the transfer summary.
+			parts = odPartCount(sourceSize, partSize)
+		}
+		if skipInt > parts {
+			return 0, 0, 0, 0, fmt.Errorf("skip exceeds source parts")
+		}
+		skip, e = odPartBytes(skipInt, partSize, "skip")
+		if e != nil {
+			return 0, 0, 0, 0, e
+		}
 		parts = parts - skipInt
 		return -1, partSize, parts, skip, nil
 	}
@@ -79,7 +96,13 @@ func odSetSizes(odURLs URLs, args argKVS) (combinedSize int64, partSize uint64, 
 	}
 
 	// Convert skipInt to bytes.
-	skip = int64(skipInt) * int64(partSize)
+	skip, e = odPartBytes(skipInt, partSize, "skip")
+	if e != nil {
+		return 0, 0, 0, 0, e
+	}
+	if sourceSize > 0 && skip > sourceSize {
+		return 0, 0, 0, 0, fmt.Errorf("skip exceeds source size")
+	}
 
 	// If source has no content, calculate combined size and return.
 	// This is needed for when source is /dev/zero.
@@ -87,7 +110,10 @@ func odSetSizes(odURLs URLs, args argKVS) (combinedSize int64, partSize uint64, 
 		if parts == 0 {
 			parts = 1
 		}
-		combinedSize = int64(partSize * uint64(parts))
+		combinedSize, e = odPartBytes(parts, partSize, "parts")
+		if e != nil {
+			return 0, 0, 0, 0, e
+		}
 		return combinedSize, partSize, parts, skip, nil
 	}
 
@@ -98,18 +124,60 @@ func odSetSizes(odURLs URLs, args argKVS) (combinedSize int64, partSize uint64, 
 
 	// If parts is not specified, calculate number of parts and upload full file.
 	if parts < 1 {
-		parts = int(math.Ceil(float64(sourceSize)/float64(partSize))) - skipInt
-		return sourceSize, partSize, parts, skip, nil
+		parts = odPartCount(sourceSize, partSize) - skipInt
+		return sourceSize - skip, partSize, parts, skip, nil
 	}
 
-	combinedSize = int64(partSize * uint64(parts))
+	combinedSize, e = odPartBytes(parts, partSize, "parts")
+	if e != nil {
+		return 0, 0, 0, 0, e
+	}
 
 	// If combined size is larger than source after skip, recalculate number of parts.
 	if sourceSize-skip < combinedSize {
 		combinedSize = sourceSize - skip
-		parts = int(math.Ceil(float64(sourceSize)/float64(partSize))) - skipInt
+		parts = odPartCount(sourceSize, partSize) - skipInt
 	}
 	return combinedSize, partSize, parts, skip, nil
+}
+
+const maxODInt64 = uint64(1<<63 - 1)
+
+func odPartSize(sourceSize int64, parts int) uint64 {
+	if sourceSize <= 0 || parts <= 0 {
+		return 0
+	}
+	size := uint64(sourceSize)
+	partSize := size / uint64(parts)
+	if size%uint64(parts) != 0 {
+		partSize++
+	}
+	return partSize
+}
+
+func odPartBytes(count int, partSize uint64, name string) (int64, error) {
+	if count < 0 {
+		return 0, fmt.Errorf("%s must be non-negative", name)
+	}
+	if count == 0 || partSize == 0 {
+		return 0, nil
+	}
+	if uint64(count) > maxODInt64/partSize {
+		return 0, fmt.Errorf("%s and size exceed the maximum supported transfer size", name)
+	}
+	return int64(uint64(count) * partSize), nil
+}
+
+func odPartCount(sourceSize int64, partSize uint64) int {
+	if sourceSize <= 0 || partSize == 0 {
+		return 0
+	}
+	size := uint64(sourceSize)
+	parts := size / partSize
+	if size%partSize != 0 {
+		parts++
+	}
+	return int(parts)
 }
 
 // odCopy copies a file/object from local to server, server to server, or local to local.
@@ -212,6 +280,9 @@ func odSetParts(args argKVS) (parts, skip int, e error) {
 	}
 	if e != nil {
 		return 0, 0, e
+	}
+	if skip < 0 {
+		return 0, 0, fmt.Errorf("skip must be non-negative")
 	}
 
 	return parts, skip, nil

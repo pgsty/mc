@@ -38,6 +38,7 @@ func TestODCopySizesCLI(t *testing.T) {
 		{name: "explicit_zero_empty_source", target: "keep", extra: []string{"size=0"}, want: "keep", wantExit: 1},
 		{name: "normal", source: "0123456789", target: "old", want: "0123456789", partSize: 10, parts: 1},
 		{name: "parts_skip", source: "0123456789", extra: []string{"size=2", "parts=2", "skip=1"}, want: "2345", partSize: 2, parts: 2, skip: 1},
+		{name: "size_skip_auto_parts", source: "0123456789", extra: []string{"size=2", "skip=1"}, want: "23456789", partSize: 2, parts: 4, skip: 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
@@ -70,6 +71,70 @@ func TestODCopySizesCLI(t *testing.T) {
 			if message.Status != "success" || message.TotalSize != int64(len(tc.want)) ||
 				message.PartSize != tc.partSize || message.Parts != tc.parts || message.Skip != tc.skip {
 				t.Errorf("unexpected copy summary: %+v", message)
+			}
+		})
+	}
+}
+
+func TestODRejectsMalformedOperand(t *testing.T) {
+	result := runChecksumVerifyCLI(t, "http://127.0.0.1:1", nil, "--json", "od", "badoperand")
+	if result.exitCode != 1 {
+		t.Fatalf("exit=%d, want 1; stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
+	}
+	var message struct {
+		Status string       `json:"status"`
+		Error  errorMessage `json:"error"`
+	}
+	if err := json.Unmarshal(result.stdout, &message); err != nil {
+		t.Fatalf("expected JSON error: %v; stdout=%q stderr=%q", err, result.stdout, result.stderr)
+	}
+	if message.Status != "error" || message.Error.Type != "fatal" ||
+		!strings.Contains(message.Error.Message, "Invalid od operand") ||
+		!strings.Contains(message.Error.Cause.Message, "Invalid arguments provided") {
+		t.Fatalf("unexpected malformed operand error: %+v", message)
+	}
+	if len(result.stderr) != 0 {
+		t.Fatalf("unexpected stderr: %q", result.stderr)
+	}
+}
+
+func TestODRejectsInvalidNumericArguments(t *testing.T) {
+	for _, tc := range []struct {
+		name, extra, wantError string
+	}{
+		{name: "negative_parts", extra: "parts=-1", wantError: "parts must be non-negative"},
+		{name: "negative_skip", extra: "skip=-1", wantError: "skip must be non-negative"},
+		{name: "parts_overflow", extra: "parts=9223372036854775807", wantError: "parts and size exceed"},
+		{name: "skip_overflow", extra: "skip=9223372036854775807", wantError: "skip and size exceed"},
+		{name: "skip_beyond_source", extra: "skip=6", wantError: "skip exceeds source size"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			source, target := filepath.Join(dir, "source"), filepath.Join(dir, "target")
+			if err := os.WriteFile(source, []byte("0123456789"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(target, []byte("keep"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			args := []string{"--json", "od", "if=" + source, "of=" + target, "size=2", tc.extra}
+			result := runChecksumVerifyCLI(t, "http://127.0.0.1:1", nil, args...)
+			if result.exitCode != 1 {
+				t.Fatalf("exit=%d, want 1; stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
+			}
+			var message struct {
+				Status string       `json:"status"`
+				Error  errorMessage `json:"error"`
+			}
+			if err := json.Unmarshal(result.stdout, &message); err != nil {
+				t.Fatalf("expected JSON error: %v; stdout=%q stderr=%q", err, result.stdout, result.stderr)
+			}
+			if message.Status != "error" || !strings.Contains(message.Error.Cause.Message, tc.wantError) {
+				t.Fatalf("error cause=%q, want %q", message.Error.Cause.Message, tc.wantError)
+			}
+			if got, err := os.ReadFile(target); err != nil || string(got) != "keep" {
+				t.Fatalf("target=%q, error=%v, want keep", got, err)
 			}
 		})
 	}

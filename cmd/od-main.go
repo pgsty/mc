@@ -149,8 +149,11 @@ func mainOD(cliCtx *cli.Context) error {
 
 	var kvsArgs argKVS
 	for _, arg := range cliCtx.Args() {
-		kv := strings.SplitN(arg, "=", 2)
-		kvsArgs.Set(kv[0], kv[1])
+		key, value, ok := strings.Cut(arg, "=")
+		if !ok || key == "" {
+			fatalIf(errInvalidArgument().Trace(), "Invalid od operand: expected key=value")
+		}
+		kvsArgs.Set(key, value)
 	}
 
 	// Get content from source.
