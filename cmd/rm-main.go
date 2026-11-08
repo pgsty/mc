@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -217,7 +216,6 @@ func checkRmSyntax(ctx context.Context, cliCtx *cli.Context) {
 	isForceDel := cliCtx.Bool("purge")
 	versionID := cliCtx.String("version-id")
 	rewind := cliCtx.String("rewind")
-	isNamespaceRemoval := false
 
 	if versionID != "" && (isRecursive || isVersions || rewind != "") {
 		fatalIf(errDummy().Trace(),
@@ -244,27 +242,8 @@ func checkRmSyntax(ctx context.Context, cliCtx *cli.Context) {
 			"You cannot specify --purge flag with any flag(s) other than --force.")
 	}
 
-	if !isForceDel {
-		for _, url := range cliCtx.Args() {
-			// clean path for aliases like s3/.
-			// Note: UNC path using / works properly in go 1.9.2 even though it breaks the UNC specification.
-			url = filepath.ToSlash(filepath.Clean(url))
-			// namespace removal applies only for non FS. So filter out if passed url represents a directory
-			dir, _ := isAliasURLDir(ctx, url, nil, time.Time{}, false)
-			if dir {
-				_, path := url2Alias(url)
-				isNamespaceRemoval = (path == "")
-				break
-			}
-			if dir && isRecursive && !isForce {
-				fatalIf(errDummy().Trace(),
-					"Removal requires --force flag. This operation is *IRREVERSIBLE*. Please review carefully before performing this *DANGEROUS* operation.")
-			}
-			if dir && !isRecursive {
-				fatalIf(errDummy().Trace(),
-					"Removal requires --recursive flag. This operation is *IRREVERSIBLE*. Please review carefully before performing this *DANGEROUS* operation.")
-			}
-		}
+	for _, url := range cliCtx.Args() {
+		checkRmNamespace(url, isDangerous, isForce)
 	}
 
 	if !cliCtx.Args().Present() && !isStdin {
@@ -277,8 +256,14 @@ func checkRmSyntax(ctx context.Context, cliCtx *cli.Context) {
 		fatalIf(errDummy().Trace(),
 			"Removal requires --force flag. This operation is *IRREVERSIBLE*. Please review carefully before performing this *DANGEROUS* operation.")
 	}
+}
 
-	if isNamespaceRemoval && (!isDangerous || !isForce) {
+// Check the resolved endpoint without a network lookup. A preceding bucket or
+// local directory must never hide a later site-wide target.
+func checkRmNamespace(url string, isDangerous, isForce bool) {
+	_, expanded, _ := mustExpandAlias(url)
+	u := newClientURL(expanded)
+	if u.Type == objectStorage && path.Clean(u.Path) == "/" && (!isDangerous || !isForce) {
 		fatalIf(errDummy().Trace(),
 			"This operation results in site-wide removal of objects. If you are really sure, retry this command with ‘--dangerous’ and ‘--force’ flags.")
 	}
@@ -302,6 +287,13 @@ func removeSingle(url, versionID string, opts removeOpts) error {
 	)
 
 	targetAlias, targetURL, _ := mustExpandAlias(url)
+	if opts.isForceDel && opts.isFake {
+		// Purge operates on the requested prefix, which need not have a HEAD
+		// result of its own. Preview that target without issuing a deletion.
+		printMsg(rmMessage{Key: url, DryRun: true})
+		return nil
+	}
+
 	if !opts.isForceDel {
 		_, content, pErr := url2Stat(ctx, url2StatOptions{
 			urlStr:                  url,
@@ -763,6 +755,7 @@ func mainRm(cliCtx *cli.Context) error {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		url := scanner.Text()
+		checkRmNamespace(url, cliCtx.Bool("dangerous"), isForce)
 		if isRecursive || withVersions {
 			e = listAndRemove(url, removeOpts{
 				timeRef:           rewind,
@@ -790,6 +783,11 @@ func mainRm(cliCtx *cli.Context) error {
 		if rerr == nil {
 			rerr = e
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		errorIf(probe.NewError(err), "Unable to read removal targets.")
+		return exitStatus(globalErrorExitStatus)
 	}
 
 	return rerr
