@@ -23,10 +23,14 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net"
+	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/minio/cli"
@@ -302,6 +306,76 @@ func sameCopyObject(urls URLs) bool {
 	return sourceErr == nil && targetErr == nil && os.SameFile(sourceInfo, targetInfo)
 }
 
+// checkMoveTarget rejects known self-moves and ambiguous same-key moves through
+// different endpoint names. Shared IPs do not prove storage identity (virtual
+// hosts can differ), but cannot safely authorize deleting the source either.
+func checkMoveTarget(ctx context.Context, urls URLs, resolved map[string]moveEndpointResolution) *probe.Error {
+	if sameCopyObject(urls) {
+		return errCopyIntoSelf(urls.SourceContent.URL.String()).Trace(urls.TargetContent.URL.String())
+	}
+	source, target := urls.SourceContent.URL, urls.TargetContent.URL
+	if source.Type != objectStorage || target.Type != objectStorage || source.Scheme != target.Scheme || source.Path != target.Path {
+		return nil
+	}
+	sourceURL, targetURL := url.URL{Scheme: source.Scheme, Host: source.Host}, url.URL{Scheme: target.Scheme, Host: target.Host}
+	port := func(u url.URL) string {
+		if p := u.Port(); p != "" {
+			return p
+		}
+		if u.Scheme == "https" {
+			return "443"
+		}
+		return "80"
+	}
+	if port(sourceURL) != port(targetURL) {
+		return nil
+	}
+	lookup := func(u url.URL) ([]netip.Addr, error) {
+		address := net.JoinHostPort(u.Hostname(), port(u))
+		if cached, ok := resolved[address]; ok {
+			return cached.ips, cached.err
+		}
+		var result moveEndpointResolution
+		if ip, ok := globalResolvers[address]; ok {
+			result.ips = []netip.Addr{ip.Unmap()}
+		} else if ip, err := netip.ParseAddr(u.Hostname()); err == nil {
+			result.ips = []netip.Addr{ip.Unmap()}
+		} else {
+			lookupCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			result.ips, result.err = net.DefaultResolver.LookupNetIP(lookupCtx, "ip", u.Hostname())
+			for i := range result.ips {
+				result.ips[i] = result.ips[i].Unmap()
+			}
+		}
+		// Retain failures too: a large listing must not retry a failed DNS
+		// lookup separately for every object in the same move session.
+		resolved[address] = result
+		return result.ips, result.err
+	}
+	sourceIPs, err := lookup(sourceURL)
+	if err != nil {
+		return probe.NewError(err).Trace(source.String())
+	}
+	targetIPs, err := lookup(targetURL)
+	if err != nil {
+		return probe.NewError(err).Trace(target.String())
+	}
+	for _, sourceIP := range sourceIPs {
+		for _, targetIP := range targetIPs {
+			if sourceIP == targetIP {
+				return probe.NewError(errors.New("Cannot safely move the same object path between endpoints that share a network address")).Trace(source.String(), target.String())
+			}
+		}
+	}
+	return nil
+}
+
+type moveEndpointResolution struct {
+	ips []netip.Addr
+	err error
+}
+
 // doCopyFake - Perform a fake copy to update the progress bar appropriately.
 func doCopyFake(cpURLs URLs, pg Progress) URLs {
 	if progressReader, ok := pg.(*progressBar); ok {
@@ -409,6 +483,7 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 	parallel := newParallelManager(statusCh, cli.Int("max-workers"))
 
 	go func() {
+		moveEndpoints := make(map[string]moveEndpointResolution)
 		gracefulStop := func() {
 			parallel.stopAndWait()
 			close(statusCh)
@@ -436,9 +511,11 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 				}
 				// Compare each resolved destination before announcing or queuing
 				// a move, so an identical source can never be removed.
-				if isMvCmd && sameCopyObject(cpURLs) {
-					statusCh <- cpURLs.WithError(errCopyIntoSelf(cpURLs.SourceContent.URL.String()).Trace(cpURLs.TargetContent.URL.String()))
-					continue
+				if isMvCmd {
+					if err := checkMoveTarget(ctx, cpURLs, moveEndpoints); err != nil {
+						statusCh <- cpURLs.WithError(err)
+						continue
+					}
 				}
 
 				// Initialize target metadata.
