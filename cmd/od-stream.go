@@ -26,6 +26,7 @@ import (
 	"time"
 
 	humanize "github.com/dustin/go-humanize"
+	"github.com/minio/mc/pkg/probe"
 )
 
 // odSetSizes sets necessary values for object transfer.
@@ -303,16 +304,22 @@ func odDownload(ctx context.Context, odURLs URLs, args argKVS) (odMessage, error
 
 	// Get server client.
 	cli, err := newClientFromAlias(sourceAlias, sourceURL.String())
-	fatalIf(err, "Unable to initialize client")
+	if err != nil {
+		return odMessage{}, err.ToGoError()
+	}
 
-	var reader io.Reader
+	var reader io.ReadCloser
 	if parts == 0 {
 		// Get the full file.
-		reader = singleGet(ctx, cli)
+		reader, err = cli.GetPart(ctx, 0)
 	} else {
 		// Get the file in parts.
-		reader = multiGet(ctx, cli, parts, skip)
+		reader, err = multiGet(ctx, cli, parts, skip)
 	}
+	if err != nil {
+		return odMessage{}, err.ToGoError()
+	}
+	defer reader.Close()
 
 	// Accounter to get transfer time.
 	pg := newAccounter(-1)
@@ -320,7 +327,9 @@ func odDownload(ctx context.Context, odURLs URLs, args argKVS) (odMessage, error
 	// Upload the file.
 	total, err := putTargetStream(ctx, "", targetPath, "", "", "",
 		reader, -1, pg, PutOptions{})
-	fatalIf(err.Trace(targetPath), "Unable to upload an object")
+	if err != nil {
+		return odMessage{}, err.Trace(targetPath).ToGoError()
+	}
 
 	// Get upload time.
 	elapsed := time.Since(pg.startTime)
@@ -339,25 +348,41 @@ func odDownload(ctx context.Context, odURLs URLs, args argKVS) (odMessage, error
 	return message, nil
 }
 
-// singleGet helps odDownload download a single part.
-func singleGet(ctx context.Context, cli Client) io.ReadCloser {
-	reader, err := cli.GetPart(ctx, 0)
-	fatalIf(err, "Unable to download object")
-
-	return reader
+// multiPartReader retains the closers that io.MultiReader does not expose.
+type multiPartReader struct {
+	readers []io.ReadCloser
+	reader  io.Reader
 }
 
-// multiGet helps odDownload download multiple parts.
-func multiGet(ctx context.Context, cli Client, parts, skip int) io.Reader {
-	var readers []io.Reader
+func (r *multiPartReader) Read(p []byte) (int, error) { return r.reader.Read(p) }
+
+func (r *multiPartReader) Close() error {
+	var firstErr error
+	for _, reader := range r.readers {
+		if err := reader.Close(); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+func multiGet(ctx context.Context, cli Client, parts, skip int) (io.ReadCloser, *probe.Error) {
+	var readers []io.ReadCloser
 
 	// Get reader for each part.
 	for i := 1 + skip; i <= parts; i++ {
-		reader, err := cli.GetPart(ctx, parts)
-		fatalIf(err, "Unable to download part of an object")
+		reader, err := cli.GetPart(ctx, i)
+		if err != nil {
+			for _, opened := range readers {
+				_ = opened.Close()
+			}
+			return nil, err
+		}
 		readers = append(readers, reader)
 	}
-	reader := io.MultiReader(readers...)
-
-	return reader
+	genericReaders := make([]io.Reader, len(readers))
+	for i, reader := range readers {
+		genericReaders[i] = reader
+	}
+	return &multiPartReader{readers: readers, reader: io.MultiReader(genericReaders...)}, nil
 }

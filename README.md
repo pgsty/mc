@@ -47,12 +47,6 @@ and the [compatibility notes](https://silo.pgsty.com/compatibility/mcli/).
 
 Docker Hub amd64/arm64 images are published as `pgsty/mc:RELEASE.2026-10-26T00-00-00Z`; `latest` points to the same release.
 
-The next release candidate uses Go 1.27.3 and silo-pkg v3.16.0, with cpuid,
-YAML and gjson fixes. It also includes the batch-state, `od` validation and
-numeric-display fixes listed under [Unreleased](CHANGELOG.md#unreleased).
-This source is being prepared for release; the published artifacts above retain
-their original dependencies.
-
 ## Overview
 
 `pgsty/mc` maintains one downstream release line based on the final upstream MinIO Client commit, [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88). After the upstream repository was archived, this fork keeps the client built, patched, tested, and released through the same maintained supply chain as the [Silo](https://silo.pgsty.com/) object storage server, while remaining a general-purpose client for filesystems and Amazon S3-compatible object stores.

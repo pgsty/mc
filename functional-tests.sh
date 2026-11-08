@@ -462,7 +462,7 @@ function test_presigned_post_policy_error() {
 	upload=$(echo "$upload" | sed "s|http://${BUCKET_NAME}.${SERVER_ENDPOINT}/|http://${BUCKET_NAME}.${SERVER_ENDPOINT}/${object_name}|g")
 	upload=$(echo "$upload" | sed "s|https://${BUCKET_NAME}.${SERVER_ENDPOINT}/|https://${BUCKET_NAME}.${SERVER_ENDPOINT}/${object_name}|g")
 
-	ret=$($upload 2>&1 | sed -n 's/.*<Code>\([^<]*\)<\/Code>.*/\1/p')
+	ret=$(sh -c "$upload" 2>&1 | sed -n 's/.*<Code>\([^<]*\)<\/Code>.*/\1/p')
 	# Check if the command execution failed.
 	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "unknown failure in upload of $FILE_1_MB using presigned post policy"
 	if [ -z "$ret" ]; then
@@ -483,10 +483,10 @@ function test_presigned_put_object() {
 	start_time=$(get_time)
 	object_name="mc-test-object-$RANDOM"
 
-	out=$("${MC_CMD[@]}" --json share upload "${SERVER_ALIAS}/${BUCKET_NAME}/${object_name}")
+	out=$("${MC_CMD[@]}" --json share upload --content-type 'text/plain; charset=utf-8' "${SERVER_ALIAS}/${BUCKET_NAME}/${object_name}")
 	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "unable to get presigned put object url"
 	upload=$(echo "$out" | jq -r .share | sed "s|<FILE>|$FILE_1_MB|g" | sed "s|curl|curl -sSg|g")
-	$upload >/dev/null 2>&1
+	sh -c "$upload" >/dev/null 2>&1
 	assert_success "$start_time" "${FUNCNAME[0]}" show_on_failure $? "unable to upload $FILE_1_MB presigned put object url"
 
 	assert_success "$start_time" "${FUNCNAME[0]}" mc_cmd cp "${SERVER_ALIAS}/${BUCKET_NAME}/${object_name}" "${object_name}.downloaded"

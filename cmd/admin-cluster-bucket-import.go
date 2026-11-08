@@ -120,6 +120,11 @@ func mainClusterBucketImport(ctx *cli.Context) error {
 		Op:                   ctx.Command.Name,
 	})
 
+	for _, status := range rpt.Buckets {
+		if bucketImportFailed(status) {
+			return exitStatus(globalErrorExitStatus)
+		}
+	}
 	return nil
 }
 
@@ -128,6 +133,14 @@ type importMetaMsg struct {
 	Op     string
 	URL    string `json:"url"`
 	Status string `json:"status"`
+}
+
+func bucketImportFailed(st madmin.BucketStatus) bool {
+	return st.ObjectLock.Err != "" || st.Versioning.Err != "" ||
+		st.SSEConfig.Err != "" || st.Tagging.Err != "" ||
+		st.Lifecycle.Err != "" || st.Quota.Err != "" ||
+		st.Policy.Err != "" || st.Notification.Err != "" ||
+		st.Cors.Err != "" || st.Err != ""
 }
 
 func statusTick(s madmin.MetaStatus) string {
@@ -146,11 +159,7 @@ func (i importMetaMsg) String() string {
 	totBuckets := len(m)
 	totErrs := 0
 	for _, st := range m {
-		if st.ObjectLock.Err != "" || st.Versioning.Err != "" ||
-			st.SSEConfig.Err != "" || st.Tagging.Err != "" ||
-			st.Lifecycle.Err != "" || st.Quota.Err != "" ||
-			st.Policy.Err != "" || st.Notification.Err != "" ||
-			st.Cors.Err != "" || st.Err != "" {
+		if bucketImportFailed(st) {
 			totErrs++
 		}
 	}
@@ -167,11 +176,7 @@ func (i importMetaMsg) String() string {
 	if totErrs > 0 {
 		fmt.Fprintln(&b, console.Colorize("errors", "Errors: \n"))
 		for bucket, st := range m {
-			if st.ObjectLock.Err != "" || st.Versioning.Err != "" ||
-				st.SSEConfig.Err != "" || st.Tagging.Err != "" ||
-				st.Lifecycle.Err != "" || st.Quota.Err != "" ||
-				st.Policy.Err != "" || st.Notification.Err != "" ||
-				st.Cors.Err != "" || st.Err != "" {
+			if bucketImportFailed(st) {
 				fmt.Fprintln(&b, printImportErrs(bucket, st))
 			}
 		}

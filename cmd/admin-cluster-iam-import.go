@@ -19,15 +19,18 @@ package cmd
 
 import (
 	"context"
+	stdjson "encoding/json"
+	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/klauspost/compress/zip"
 	"github.com/minio/cli"
-	json "github.com/minio/colorjson"
 	"github.com/minio/madmin-go/v3"
 	"github.com/minio/mc/pkg/probe"
 	"github.com/pgsty/silo-pkg/v3/console"
@@ -57,22 +60,85 @@ EXAMPLES:
 `,
 }
 
-type iamImportInfo madmin.ImportIAMResult
+// The SDK uses error interface fields for failed entities, which cannot decode
+// SILO's JSON error objects. Keep the wire value intact for reporting.
+type iamImportInfo struct {
+	Skipped madmin.IAMEntities `json:"skipped,omitempty"`
+	Removed madmin.IAMEntities `json:"removed,omitempty"`
+	Added   madmin.IAMEntities `json:"added,omitempty"`
+	Failed  iamImportFailures  `json:"failed,omitempty"`
+}
+
+type iamImportFailure struct {
+	Name     string             `json:"name,omitempty"`
+	Policies []string           `json:"policies,omitempty"`
+	Error    stdjson.RawMessage `json:"error,omitempty"`
+}
+
+type iamImportFailures struct {
+	Policies        []iamImportFailure `json:"policies,omitempty"`
+	Users           []iamImportFailure `json:"users,omitempty"`
+	Groups          []iamImportFailure `json:"groups,omitempty"`
+	ServiceAccounts []iamImportFailure `json:"serviceAccounts,omitempty"`
+	UserPolicies    []iamImportFailure `json:"userPolicies,omitempty"`
+	GroupPolicies   []iamImportFailure `json:"groupPolicies,omitempty"`
+	STSPolicies     []iamImportFailure `json:"stsPolicies,omitempty"`
+}
+
+func importIAMV2(ctx context.Context, client *madmin.AdminClient, source io.Reader) (result iamImportInfo, err error) {
+	content, err := io.ReadAll(source)
+	if err != nil {
+		return result, err
+	}
+	response, err := client.ExecuteMethod(ctx, http.MethodPut, madmin.RequestData{
+		RelPath: "/v3/import-iam-v2", Content: content,
+	})
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
+	if err != nil {
+		return result, err
+	}
+	if response == nil || response.Body == nil {
+		return result, errors.New("empty IAM import response")
+	}
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return result, err
+	}
+	// ExecuteMethod also returns non-200 responses with a nil error.
+	if response.StatusCode != http.StatusOK {
+		var apiErr madmin.ErrorResponse
+		if err := stdjson.Unmarshal(body, &apiErr); err != nil {
+			if err := xml.Unmarshal(body, &apiErr); err != nil {
+				return result, fmt.Errorf("IAM import returned HTTP %d: %s", response.StatusCode, body)
+			}
+		}
+		if apiErr.Code == "" {
+			return result, fmt.Errorf("IAM import returned HTTP %d: %s", response.StatusCode, body)
+		}
+		if apiErr.Message == "" {
+			apiErr.Message = apiErr.Code
+		}
+		return result, apiErr
+	}
+	err = stdjson.Unmarshal(body, &result)
+	return result, err
+}
 
 func (i iamImportInfo) JSON() string {
-	bs, e := json.MarshalIndent(madmin.ImportIAMResult(i), "", " ")
+	output, e := scrubJSONOutput(i)
 	fatalIf(probe.NewError(e), "Unable to marshal into JSON.")
-	return string(bs)
+	return output
 }
 
 func (i iamImportInfo) String() string {
 	var messages []string
-	info := madmin.ImportIAMResult(i)
-	messages = append(messages, processIAMEntities(info.Skipped, "Skipped")...)
-	messages = append(messages, processIAMEntities(info.Removed, "Removed")...)
-	messages = append(messages, processIAMEntities(info.Added, "Added")...)
-	messages = append(messages, processErrIAMEntities(info.Failed)...)
-	return strings.Join(messages, "\n")
+	messages = append(messages, processIAMEntities(i.Skipped, "Skipped")...)
+	messages = append(messages, processIAMEntities(i.Removed, "Removed")...)
+	messages = append(messages, processIAMEntities(i.Added, "Added")...)
+	messages = append(messages, processErrIAMEntities(i.Failed)...)
+	return scrubSecretsFromOutput(strings.Join(messages, "\n"))
 }
 
 func processIAMEntities(entities madmin.IAMEntities, action string) []string {
@@ -119,59 +185,50 @@ func processIAMEntities(entities madmin.IAMEntities, action string) []string {
 	return messages
 }
 
-func processErrIAMEntities(entities madmin.IAMErrEntities) []string {
+func processErrIAMEntities(entities iamImportFailures) []string {
 	var messages []string
-
-	var policies []string
-	for _, entry := range entities.Policies {
-		policies = append(policies, entry.Name)
-	}
-	if len(policies) > 0 {
-		messages = append(messages, fmt.Sprintf("Failed to add policies: %v", strings.Join(policies, ", ")))
-	}
-	var users []string
-	for _, entry := range entities.Users {
-		users = append(users, entry.Name)
-	}
-	if len(users) > 0 {
-		messages = append(messages, fmt.Sprintf("Failed to add users: %v", strings.Join(users, ", ")))
-	}
-	var groups []string
-	for _, entry := range entities.Groups {
-		groups = append(groups, entry.Name)
-	}
-	if len(groups) > 0 {
-		messages = append(messages, fmt.Sprintf("Failed to add groups: %v", strings.Join(groups, ", ")))
-	}
-	var sas []string
-	for _, entry := range entities.ServiceAccounts {
-		sas = append(sas, entry.Name)
-	}
-	if len(sas) > 0 {
-		messages = append(messages, fmt.Sprintf("Failed to add service accounts: %v", strings.Join(sas, ", ")))
-	}
-	var polusers []string
-	for _, pol := range entities.UserPolicies {
-		polusers = append(polusers, pol.Name)
-	}
-	if len(polusers) > 0 {
-		messages = append(messages, fmt.Sprintf("Failed to add policies for users: %v", strings.Join(polusers, ", ")))
-	}
-	var polgroups []string
-	for _, pol := range entities.GroupPolicies {
-		polgroups = append(polgroups, pol.Name)
-	}
-	if len(polgroups) > 0 {
-		messages = append(messages, fmt.Sprintf("Failed to add policies for groups: %v", strings.Join(polgroups, ", ")))
-	}
-	var polsts []string
-	for _, pol := range entities.STSPolicies {
-		polsts = append(polsts, pol.Name)
-	}
-	if len(polsts) > 0 {
-		messages = append(messages, fmt.Sprintf("Failed to add policies for sts: %v", strings.Join(polsts, ", ")))
+	for _, category := range []struct {
+		name    string
+		entries []iamImportFailure
+	}{
+		{"policies", entities.Policies},
+		{"users", entities.Users},
+		{"groups", entities.Groups},
+		{"service accounts", entities.ServiceAccounts},
+		{"policies for users", entities.UserPolicies},
+		{"policies for groups", entities.GroupPolicies},
+		{"policies for sts", entities.STSPolicies},
+	} {
+		for _, entry := range category.entries {
+			detail := entry.Name
+			if len(entry.Policies) > 0 {
+				detail += " (" + strings.Join(entry.Policies, ", ") + ")"
+			}
+			if len(entry.Error) > 0 {
+				var message string
+				if stdjson.Unmarshal(entry.Error, &message) != nil {
+					message = string(entry.Error)
+				}
+				detail += ": " + message
+			}
+			messages = append(messages, fmt.Sprintf("Failed to add %s: %s", category.name, detail))
+		}
 	}
 	return messages
+}
+
+func hasIAMImportFailures(entities iamImportFailures) bool {
+	return len(entities.Policies) > 0 || len(entities.Users) > 0 || len(entities.Groups) > 0 ||
+		len(entities.ServiceAccounts) > 0 || len(entities.UserPolicies) > 0 ||
+		len(entities.GroupPolicies) > 0 || len(entities.STSPolicies) > 0
+}
+
+func isIAMV2Unsupported(err error) bool {
+	var response madmin.ErrorResponse
+	if !errors.As(err, &response) {
+		return false
+	}
+	return response.Code == "NotImplemented" || response.Code == "XMinioAdminVersionMismatch"
 }
 
 func checkIAMImportSyntax(ctx *cli.Context) {
@@ -216,16 +273,24 @@ func mainClusterIAMImport(ctx *cli.Context) error {
 		return nil
 	}
 
-	iamr, e := client.ImportIAMV2(context.Background(), f)
+	iamr, e := importIAMV2(globalContext, client, f)
 	if e != nil {
-		f.Seek(0, 0)
-		e = client.ImportIAM(context.Background(), f)
+		if !isIAMV2Unsupported(e) {
+			fatalIf(probe.NewError(e).Trace(aliasedURL), "Unable to import IAM info.")
+			return nil
+		}
+		_, e = f.Seek(0, io.SeekStart)
+		fatalIf(probe.NewError(e), "Unable to rewind IAM archive.")
+		e = client.ImportIAM(globalContext, f)
 		fatalIf(probe.NewError(e).Trace(aliasedURL), "Unable to import IAM info.")
 		if !globalJSON {
 			console.Infof("IAM info imported to %s from %s\n", aliasedURL, args.Get(1))
 		}
 	} else {
-		printMsg(iamImportInfo(iamr))
+		printMsg(iamr)
+		if hasIAMImportFailures(iamr.Failed) {
+			return exitStatus(globalErrorExitStatus)
+		}
 	}
 
 	return nil

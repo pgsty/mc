@@ -20,6 +20,7 @@ package cmd
 import (
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/cheggaaa/pb"
@@ -100,7 +101,7 @@ func (p *progressBar) Set64(length int64) *progressBar {
 func (p *progressBar) Read(buf []byte) (n int, err error) {
 	defer func() {
 		// Upload retry can read one object twice; Avoid read to be greater than Total
-		if n, t := p.Get(), p.Total; t > 0 && n > t {
+		if n, t := p.Get(), atomic.LoadInt64(&p.Total); t > 0 && n > t {
 			p.ProgressBar.Set64(t)
 		}
 	}()
@@ -109,7 +110,7 @@ func (p *progressBar) Read(buf []byte) (n int, err error) {
 }
 
 func (p *progressBar) SetTotal(total int64) {
-	p.Total = total
+	p.SetTotal64(total)
 }
 
 // cursorAnimate - returns a animated rune through read channel for every read.

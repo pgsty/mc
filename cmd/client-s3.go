@@ -989,6 +989,15 @@ func (c *S3Client) Copy(ctx context.Context, source string, opts CopyOptions, pr
 		Progress:   progress,
 		Size:       opts.size,
 	}
+	if rawTags, ok := metadata["X-Amz-Tagging"]; ok {
+		tagSet, e := tags.Parse(rawTags, true)
+		if e != nil {
+			return probe.NewError(e)
+		}
+		destOpts.UserTags = tagSet.ToMap()
+		destOpts.ReplaceTags = true
+		delete(metadata, "X-Amz-Tagging")
+	}
 
 	if lockModeStr, ok := metadata[AmzObjectLockMode]; ok {
 		destOpts.Mode = minio.RetentionMode(strings.ToUpper(lockModeStr))

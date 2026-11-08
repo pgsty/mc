@@ -23,8 +23,14 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net"
+	"net/netip"
+	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/minio/cli"
@@ -245,22 +251,11 @@ func doCopy(ctx context.Context, copyOpts doCopyOpts) URLs {
 
 	sourceAlias := copyOpts.cpURLs.SourceAlias
 	sourceURL := copyOpts.cpURLs.SourceContent.URL
-	targetAlias := copyOpts.cpURLs.TargetAlias
-	targetURL := copyOpts.cpURLs.TargetContent.URL
-	length := copyOpts.cpURLs.SourceContent.Size
-	sourcePath := filepath.ToSlash(filepath.Join(sourceAlias, sourceURL.Path))
 
 	if progressReader, ok := copyOpts.pg.(*progressBar); ok {
 		progressReader.SetCaption(copyOpts.cpURLs.SourceContent.URL.String() + ":")
-	} else {
-		targetPath := filepath.ToSlash(filepath.Join(targetAlias, targetURL.Path))
-		printMsg(copyMessage{
-			Source:     sourcePath,
-			Target:     targetPath,
-			Size:       length,
-			TotalCount: copyOpts.cpURLs.TotalCount,
-			TotalSize:  copyOpts.cpURLs.TotalSize,
-		})
+	} else if !copyOpts.skipMessage {
+		printCopyMessage(copyOpts.cpURLs)
 	}
 
 	urls := uploadSourceToTargetURL(ctx, uploadSourceToTargetURLOpts{
@@ -279,6 +274,106 @@ func doCopy(ctx context.Context, copyOpts doCopyOpts) URLs {
 	}
 
 	return urls
+}
+
+func printCopyMessage(urls URLs) {
+	printMsg(copyMessage{
+		Source:     filepath.ToSlash(filepath.Join(urls.SourceAlias, urls.SourceContent.URL.Path)),
+		Target:     filepath.ToSlash(filepath.Join(urls.TargetAlias, urls.TargetContent.URL.Path)),
+		Size:       urls.SourceContent.Size,
+		TotalCount: urls.TotalCount,
+		TotalSize:  urls.TotalSize,
+	})
+}
+
+// sameCopyObject compares resolved URLs. Object keys are literal; filesystem
+// paths additionally need normalization and file identity (symlinks/hardlinks).
+func sameCopyObject(urls URLs) bool {
+	source, target := urls.SourceContent.URL, urls.TargetContent.URL
+	if source.Type != target.Type {
+		return false
+	}
+	if source.Type == objectStorage {
+		return source.Scheme == target.Scheme && strings.EqualFold(source.Host, target.Host) && source.Path == target.Path
+	}
+	sourcePath, sourceErr := filepath.Abs(source.Path)
+	targetPath, targetErr := filepath.Abs(target.Path)
+	if sourceErr == nil && targetErr == nil && sourcePath == targetPath {
+		return true
+	}
+	sourceInfo, sourceErr := os.Stat(source.Path)
+	targetInfo, targetErr := os.Stat(target.Path)
+	return sourceErr == nil && targetErr == nil && os.SameFile(sourceInfo, targetInfo)
+}
+
+// checkMoveTarget rejects known self-moves and ambiguous same-key moves through
+// different endpoint names. Shared IPs do not prove storage identity (virtual
+// hosts can differ), but cannot safely authorize deleting the source either.
+func checkMoveTarget(ctx context.Context, urls URLs, resolved map[string]moveEndpointResolution) *probe.Error {
+	if sameCopyObject(urls) {
+		return errCopyIntoSelf(urls.SourceContent.URL.String()).Trace(urls.TargetContent.URL.String())
+	}
+	source, target := urls.SourceContent.URL, urls.TargetContent.URL
+	if source.Type != objectStorage || target.Type != objectStorage || source.Scheme != target.Scheme || source.Path != target.Path {
+		return nil
+	}
+	sourceURL, targetURL := url.URL{Scheme: source.Scheme, Host: source.Host}, url.URL{Scheme: target.Scheme, Host: target.Host}
+	port := func(u url.URL) string {
+		if p := u.Port(); p != "" {
+			return p
+		}
+		if u.Scheme == "https" {
+			return "443"
+		}
+		return "80"
+	}
+	if port(sourceURL) != port(targetURL) {
+		return nil
+	}
+	lookup := func(u url.URL) ([]netip.Addr, error) {
+		address := net.JoinHostPort(u.Hostname(), port(u))
+		if cached, ok := resolved[address]; ok {
+			return cached.ips, cached.err
+		}
+		var result moveEndpointResolution
+		if ip, ok := globalResolvers[address]; ok {
+			result.ips = []netip.Addr{ip.Unmap()}
+		} else if ip, err := netip.ParseAddr(u.Hostname()); err == nil {
+			result.ips = []netip.Addr{ip.Unmap()}
+		} else {
+			lookupCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			result.ips, result.err = net.DefaultResolver.LookupNetIP(lookupCtx, "ip", u.Hostname())
+			for i := range result.ips {
+				result.ips[i] = result.ips[i].Unmap()
+			}
+		}
+		// Retain failures too: a large listing must not retry a failed DNS
+		// lookup separately for every object in the same move session.
+		resolved[address] = result
+		return result.ips, result.err
+	}
+	sourceIPs, err := lookup(sourceURL)
+	if err != nil {
+		return probe.NewError(err).Trace(source.String())
+	}
+	targetIPs, err := lookup(targetURL)
+	if err != nil {
+		return probe.NewError(err).Trace(target.String())
+	}
+	for _, sourceIP := range sourceIPs {
+		for _, targetIP := range targetIPs {
+			if sourceIP == targetIP {
+				return probe.NewError(errors.New("Cannot safely move the same object path between endpoints that share a network address")).Trace(source.String(), target.String())
+			}
+		}
+	}
+	return nil
+}
+
+type moveEndpointResolution struct {
+	ips []netip.Addr
+	err error
 }
 
 // doCopyFake - Perform a fake copy to update the progress bar appropriately.
@@ -308,8 +403,18 @@ func printCopyURLsError(cpURLs *URLs) {
 }
 
 func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.Context, encryptionKeys map[string][]prefixSSEPair, isMvCmd bool) error {
+	var userMetadata map[string]string
+	if attr := cli.String("attr"); attr != "" {
+		var err *probe.Error
+		userMetadata, err = getMetaDataEntry(attr)
+		if err != nil {
+			errorIf(err, "Unable to parse --attr.")
+			return exitStatus(globalErrorExitStatus)
+		}
+	}
+
 	var isCopied func(string) bool
-	var totalObjects, totalBytes int64
+	var totalObjects int64
 
 	cpURLsCh := make(chan URLs, 10000)
 	errSeen := false
@@ -319,9 +424,9 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 
 	// Enable progress bar reader only during default mode.
 	if !globalQuiet && !globalJSON { // set up progress bar
-		pg = newProgressBar(totalBytes)
+		pg = newProgressBar(0)
 	} else {
-		pg = newAccounter(totalBytes)
+		pg = newAccounter(0)
 	}
 	sourceURLs := cli.Args()[:len(cli.Args())-1]
 	targetURL := cli.Args()[len(cli.Args())-1] // Last one is target
@@ -341,7 +446,7 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 	}
 
 	go func() {
-		totalBytes := int64(0)
+		var preparedObjects, preparedBytes int64
 		opts := prepareCopyURLsOpts{
 			sourceURLs:  sourceURLs,
 			targetURL:   targetURL,
@@ -355,16 +460,20 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 		}
 
 		for cpURLs := range prepareCopyURLs(ctx, opts) {
-			if cpURLs.Error != nil {
-				errSeen = true
-				printCopyURLsError(&cpURLs)
-				break
+			if cpURLs.Error == nil {
+				preparedBytes += cpURLs.SourceContent.Size
+				preparedObjects++
+				pg.SetTotal(preparedBytes)
 			}
-
-			totalBytes += cpURLs.SourceContent.Size
-			pg.SetTotal(totalBytes)
-			totalObjects++
-			cpURLsCh <- cpURLs
+			// Transfer immutable scan totals and preparation errors with each
+			// result instead of sharing mutable counters across goroutines.
+			cpURLs.TotalCount = preparedObjects
+			cpURLs.TotalSize = preparedBytes
+			select {
+			case cpURLsCh <- cpURLs:
+			case <-ctx.Done():
+				// Drain preparation so its producers can finish after cancellation.
+			}
 		}
 		close(cpURLsCh)
 	}()
@@ -374,6 +483,7 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 	parallel := newParallelManager(statusCh, cli.Int("max-workers"))
 
 	go func() {
+		moveEndpoints := make(map[string]moveEndpointResolution)
 		gracefulStop := func() {
 			parallel.stopAndWait()
 			close(statusCh)
@@ -382,6 +492,8 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 		for {
 			select {
 			case <-quitCh:
+				for range cpURLsCh {
+				}
 				gracefulStop()
 				return
 			case cpURLs, ok := <-cpURLsCh:
@@ -390,11 +502,21 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 					return
 				}
 
-				// Save total count.
-				cpURLs.TotalCount = totalObjects
-
-				// Save totalSize.
-				cpURLs.TotalSize = totalBytes
+				if ctx.Err() != nil {
+					continue
+				}
+				if cpURLs.Error != nil {
+					statusCh <- cpURLs
+					continue
+				}
+				// Compare each resolved destination before announcing or queuing
+				// a move, so an identical source can never be removed.
+				if isMvCmd {
+					if err := checkMoveTarget(ctx, cpURLs, moveEndpoints); err != nil {
+						statusCh <- cpURLs.WithError(err)
+						continue
+					}
+				}
 
 				// Initialize target metadata.
 				cpURLs.TargetContent.Metadata = make(map[string]string)
@@ -419,16 +541,13 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 					cpURLs.TargetContent.LegalHoldEnabled = true
 				}
 
-				if tags := cli.String("tags"); tags != "" {
+				if tags := cli.String("tags"); tags != "" || cli.IsSet("tags") {
 					cpURLs.TargetContent.Metadata["X-Amz-Tagging"] = tags
 				}
 
 				preserve := cli.Bool("preserve")
 				isZip := cli.Bool("zip")
-				if cli.String("attr") != "" {
-					userMetaMap, _ := getMetaDataEntry(cli.String("attr"))
-					maps.Copy(cpURLs.TargetContent.UserMetadata, userMetaMap)
-				}
+				maps.Copy(cpURLs.TargetContent.UserMetadata, userMetadata)
 
 				cpURLs.MD5 = md5
 				cpURLs.checksum = checksum
@@ -440,7 +559,11 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 						return doCopyFake(cpURLs, pg)
 					}, 0)
 				} else {
-					// Print the copy resume summary once in start
+					// Emit scan totals in dispatch order; concurrent workers may
+					// start in a different order and make cumulative values regress.
+					if _, ok := pg.(*progressBar); !ok {
+						printCopyMessage(cpURLs)
+					}
 					parallel.queueTask(func() URLs {
 						return doCopy(ctx, doCopyOpts{
 							cpURLs:         cpURLs,
@@ -449,6 +572,7 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 							isMvCmd:        isMvCmd,
 							preserve:       preserve,
 							isZip:          isZip,
+							skipMessage:    true,
 						})
 					}, cpURLs.SourceContent.Size)
 				}
@@ -458,22 +582,33 @@ func doCopySession(ctx context.Context, cancelCopy context.CancelFunc, cli *cli.
 
 	var retErr error
 	cpAllFilesErr := true
+	canceled := ctx.Done()
 
 loop:
 	for {
 		select {
-		case <-globalContext.Done():
+		case <-canceled:
+			canceled = nil
+			retErr = exitStatus(globalCancelExitStatus)
+			errSeen = true
 			close(quitCh)
 			cancelCopy()
 			// Receive interrupt notification.
 			if !globalQuiet && !globalJSON {
 				console.Eraseline()
 			}
-			break loop
+			// Keep receiving until workers stop, including pending mv deletions.
 		case cpURLs, ok := <-statusCh:
 			// Status channel is closed, we should return.
 			if !ok {
 				break loop
+			}
+			totalObjects = max(totalObjects, cpURLs.TotalCount)
+			if cpURLs.Error != nil && cpURLs.SourceContent == nil {
+				printCopyURLsError(&cpURLs)
+				errSeen = true
+				retErr = exitStatus(globalErrorExitStatus)
+				continue
 			}
 			if cpURLs.Error == nil {
 				cpAllFilesErr = false
@@ -498,7 +633,7 @@ loop:
 				if progressReader, pgok := pg.(*progressBar); pgok {
 					if progressReader.Get() > 0 {
 						writeContSize := int(cpURLs.SourceContent.Size)
-						totalPGSize := int(progressReader.Total)
+						totalPGSize := int(atomic.LoadInt64(&progressReader.Total))
 						written := int(progressReader.Get())
 						if totalPGSize > writeContSize && written > writeContSize {
 							progressReader.Set(written - writeContSize)
@@ -522,19 +657,24 @@ loop:
 		}
 	} else {
 		if accntReader, ok := pg.(*accounter); ok {
+			stat := accntReader.Stat()
 			if errSeen || (cpAllFilesErr && totalObjects > 0) {
 				// We only erase a line if we are displaying a progress bar
 				if !globalQuiet && !globalJSON {
 					console.Eraseline()
 				}
 			} else {
-				printMsg(accntReader.Stat())
+				printMsg(stat)
 			}
 		}
 	}
 
+	if ctx.Err() != nil {
+		return exitStatus(globalCancelExitStatus)
+	}
+
 	// Source has error
-	if errSeen && totalObjects == 0 && retErr == nil {
+	if errSeen && retErr == nil {
 		retErr = exitStatus(globalErrorExitStatus)
 	}
 
@@ -566,6 +706,7 @@ type doCopyOpts struct {
 	pg                       ProgressReader
 	encryptionKeys           map[string][]prefixSSEPair
 	isMvCmd, preserve, isZip bool
+	skipMessage              bool
 	updateProgressTotal      bool
 	multipartSize            string
 	multipartThreads         string

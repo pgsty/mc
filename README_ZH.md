@@ -46,10 +46,6 @@
 
 Docker Hub amd64/arm64 镜像已发布为 `pgsty/mc:RELEASE.2026-10-26T00-00-00Z`，`latest` 指向同一版本。
 
-当前候选源码使用 Go 1.27.3 与 silo-pkg v3.16.0，纳入 cpuid、YAML、gjson
-修复，以及 [Unreleased](CHANGELOG.md#unreleased) 中列出的批任务状态、`od`
-参数校验与数值显示修复。候选源码正在准备发版；上述已发布制品仍保留原有依赖。
-
 ## 概述
 
 `pgsty/mc` 维护一条基于上游 MinIO Client 最后一个提交 [`77f82e18`](https://github.com/minio/mc/commit/77f82e18b5401a65958f1619df6ebb994634bd88) 的下游版本线。在上游仓库归档后，本分支让客户端与 [Silo](https://silo.pgsty.com/zh/) 对象存储服务器共用同一条受维护的供应链完成构建、修补、测试和发布，同时仍是面向文件系统与 Amazon S3 兼容对象存储的通用客户端。

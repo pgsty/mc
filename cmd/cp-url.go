@@ -278,6 +278,7 @@ func prepareCopyURLsTypeD(ctx context.Context, cc copyURLsContent, o prepareCopy
 			// Clone CC
 			newCC := cc
 			newCC.sourceURL = sourceURL
+			newCC.sourceAlias, _, _ = mustExpandAlias(sourceURL)
 
 			for cpURLs := range prepareCopyURLsTypeC(ctx, newCC, o) {
 				copyURLsFilterCh <- cpURLs

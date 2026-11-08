@@ -20,6 +20,62 @@
 - Format heal progress through EiB, baseline the first drive I/O sample instead
   of presenting cumulative counters as an interval, and retain fractional site
   speed-test durations.
+- Keep `rm --purge --dry-run` read-only and enforce namespace removal protection
+  for every command-line and stdin target. Retain permission failures in the
+  final exit status while continuing independent removals.
+- Resolve each source alias independently for multi-source `cp` and `mv`, and
+  reject moves onto the same resolved object, filesystem path, symlink or
+  hardlink before transferring or deleting that source. Also reject ambiguous
+  same-key moves through endpoint names sharing an IP address and port.
+- Download the requested `od` multipart sequence instead of repeating the last
+  part, and close opened part readers on completion or failure.
+- Propagate copy and move preparation failures to the final exit status. Keep
+  copy counters race-free, report accurate monotonic JSON totals, and drain
+  workers on cancellation while retaining bounded streaming queues.
+- Apply explicit `--tags` to server-side and streaming copies and moves,
+  including with `--preserve`; an explicit empty value clears tags. Reject
+  malformed `--attr` before starting a copy or move.
+- Generate executable POSIX-shell `share upload` commands by quoting complete
+  arguments and uploading policy fields as literal form values.
+- Decode IAM import failure details without replaying a failed V2 import through
+  the legacy API. Return nonzero for failed IAM entities and bucket metadata
+  imports while preserving their detailed reports.
+- Retain WORM protection errors in the final status of batch removals while
+  continuing to remove independent, unprotected objects.
+
+**Script compatibility:**
+
+- Partial copy/move preparation failures, removal permission or WORM failures,
+  and IAM or bucket metadata import failures that previously returned 0 now
+  return 1. `cp` and `mv` continue processing independent sources after a
+  preparation error, including sources appearing later in the argument list.
+  A partially failed `mv` may therefore have moved and deleted those sources.
+  Successful operations are not rolled back.
+- Per-object `cp --json` / `mv --json` start records report cumulative prepared
+  counts and bytes in `totalCount` and `totalSize`, in dispatch order. These
+  fields grow as listing proceeds; they are not a fixed final workload or a
+  completion percentage denominator. Start records do not confirm completion.
+  Inspect the final exit status, error records and final byte summary.
+- Generated `share upload` commands use POSIX single quoting and
+  `--form-string` for text fields. After replacing placeholders with correctly
+  quoted values, execute the command in a POSIX shell; a command stored in
+  `upload` can be run with `sh -c "$upload"`. Expanding `$upload` as a command
+  performs word splitting without interpreting its quotes and is no longer
+  supported. Windows users need a POSIX shell such as Git Bash or WSL, rather
+  than pasting this output into `cmd.exe`.
+- Malformed `--attr`, including a trailing semicolon, fails before any transfer;
+  use `--attr 'key=value;other=value'` without a trailing separator.
+- Legacy IAM fallback requires the explicit server error `NotImplemented` or
+  `XMinioAdminVersionMismatch`. Other HTTP, transport and decoding failures do
+  not trigger a second import.
+- The move guard treats overlapping endpoint IPs as ambiguous, honoring
+  `--resolve`. Distinct virtual hosts sharing an IP and port can therefore be
+  rejected for the same bucket/key. Establish that the stores are independent
+  before copying, verifying and removing explicitly; matching bytes through
+  two aliases alone do not establish independence. Different IPs, ports,
+  proxy routing, virtual-host addressing or changing DNS can still hide a
+  shared backend. Use consistent endpoint URLs for aliases to the same store;
+  the client cannot infer arbitrary backend identity from endpoint names.
 
 A retrieved complete, complete-with-skips or failed batch result exits zero;
 scripts must inspect the status and skip counters for the job outcome. Paused

@@ -582,31 +582,21 @@ func ShareURLUploadErrorTests(t *testing.T) {
 	fatalIfErrorWMsg(err, out, t)
 
 	finalURL := strings.ReplaceAll(shareMsg.ShareURL, "<FILE>", file.diskFile.Name())
-	splitCommand := strings.Split(finalURL, " ")
 
 	if skipInsecure {
-		splitCommand = append(splitCommand, "--insecure")
+		finalURL += " --insecure"
 	}
 
 	bucketOnly := strings.ReplaceAll(shareURLErrorBucket, defaultAlias+"/", "")
 
 	// Modify base url bucket path
-	newCmd := make([]string, len(splitCommand))
-	copy(newCmd, splitCommand)
-	newCmd[1] = strings.ReplaceAll(newCmd[1], bucketOnly, "fake-bucket-name")
-	out, _ = RunCommand(newCmd[0], newCmd[1:]...)
+	newCmd := strings.Replace(finalURL, "/"+bucketOnly, "/fake-bucket-name", 1)
+	out, _ = RunCommand("sh", "-c", newCmd)
 	curlFatalIfNoErrorTag(out, t)
 
-	// Modify -F key=X
-	newCmd = make([]string, len(splitCommand))
-	copy(newCmd, splitCommand)
-	for i := range newCmd {
-		if strings.HasPrefix(newCmd[i], "key=") {
-			newCmd[i] = "key=fake-object-name"
-			break
-		}
-	}
-	out, _ = RunCommand(newCmd[0], newCmd[1:]...)
+	// Modify the literal key form field.
+	newCmd = strings.Replace(finalURL, shellQuote("key="+file.fileNameWithoutPath), shellQuote("key=fake-object-name"), 1)
+	out, _ = RunCommand("sh", "-c", newCmd)
 	curlFatalIfNoErrorTag(out, t)
 }
 
@@ -630,13 +620,12 @@ func ShareURLUploadTest(t *testing.T) {
 	fatalIfErrorWMsg(err, out, t)
 
 	finalURL := strings.ReplaceAll(shareMsg.ShareURL, "<FILE>", file.diskFile.Name())
-	splitCommand := strings.Split(finalURL, " ")
 
 	if skipInsecure {
-		splitCommand = append(splitCommand, "--insecure")
+		finalURL += " --insecure"
 	}
 
-	_, err = exec.Command(splitCommand[0], splitCommand[1:]...).CombinedOutput()
+	_, err = exec.Command("sh", "-c", finalURL).CombinedOutput()
 	fatalIfErrorWMsg(err, out, t)
 
 	out, err = RunMC(
