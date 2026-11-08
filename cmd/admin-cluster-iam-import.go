@@ -228,7 +228,7 @@ func isIAMV2Unsupported(err error) bool {
 	if !errors.As(err, &response) {
 		return false
 	}
-	return response.Code == "NotImplemented"
+	return response.Code == "NotImplemented" || response.Code == "XMinioAdminVersionMismatch"
 }
 
 func checkIAMImportSyntax(ctx *cli.Context) {
