@@ -358,12 +358,13 @@ func removeSingle(url, versionID string, opts removeOpts) error {
 	close(contentCh)
 	isRemoveBucket := false
 	resultCh := clnt.Remove(ctx, opts.isIncomplete, isRemoveBucket, opts.isBypass, opts.isForce && opts.isForceDel, contentCh)
+	var removeErr error
 	for result := range resultCh {
 		if result.Err != nil {
 			errorIf(result.Err.Trace(url), "Failed to remove `%s`.", url)
 			switch result.Err.ToGoError().(type) {
 			case PathInsufficientPermission:
-				// Ignore Permission error.
+				removeErr = exitStatus(globalErrorExitStatus)
 				continue
 			}
 			return exitStatus(globalErrorExitStatus)
@@ -378,7 +379,7 @@ func removeSingle(url, versionID string, opts removeOpts) error {
 		}
 		printMsg(msg)
 	}
-	return nil
+	return removeErr
 }
 
 type removeOpts struct {
@@ -439,6 +440,7 @@ func listAndRemove(url string, opts removeOpts) error {
 
 	resultCh := clnt.Remove(ctx, opts.isIncomplete, isRemoveBucket, opts.isBypass, false, contentCh)
 
+	var removeErr error
 	var lastPath string
 	var perObjectVersions []*ClientContent
 	for content := range clnt.List(ctx, listOpts) {
@@ -446,7 +448,7 @@ func listAndRemove(url string, opts removeOpts) error {
 			errorIf(content.Err.Trace(url), "Failed to remove `%s` recursively.", url)
 			switch content.Err.ToGoError().(type) {
 			case PathInsufficientPermission:
-				// Ignore Permission error.
+				removeErr = exitStatus(globalErrorExitStatus)
 				continue
 			}
 			close(contentCh)
@@ -507,7 +509,7 @@ func listAndRemove(url string, opts removeOpts) error {
 									"Failed to remove `%s`.", path)
 								switch result.Err.ToGoError().(type) {
 								case PathInsufficientPermission:
-									// Ignore Permission error.
+									removeErr = exitStatus(globalErrorExitStatus)
 									continue
 								}
 								close(contentCh)
@@ -565,7 +567,7 @@ func listAndRemove(url string, opts removeOpts) error {
 							"Failed to remove `%s`.", path)
 						switch e := result.Err.ToGoError().(type) {
 						case PathInsufficientPermission:
-							// Ignore Permission error.
+							removeErr = exitStatus(globalErrorExitStatus)
 							continue
 						case minio.ErrorResponse:
 							if strings.Contains(e.Message, "Object is WORM protected and cannot be overwritten") {
@@ -628,7 +630,7 @@ func listAndRemove(url string, opts removeOpts) error {
 							"Failed to remove `%s`.", path)
 						switch result.Err.ToGoError().(type) {
 						case PathInsufficientPermission:
-							// Ignore Permission error.
+							removeErr = exitStatus(globalErrorExitStatus)
 							continue
 						}
 						close(contentCh)
@@ -650,7 +652,7 @@ func listAndRemove(url string, opts removeOpts) error {
 
 	close(contentCh)
 	if opts.isFake {
-		return nil
+		return removeErr
 	}
 	for result := range resultCh {
 		path := path.Join(targetAlias, result.BucketName, result.ObjectName)
@@ -658,7 +660,7 @@ func listAndRemove(url string, opts removeOpts) error {
 			errorIf(result.Err.Trace(path), "Failed to remove `%s` recursively.", path)
 			switch result.Err.ToGoError().(type) {
 			case PathInsufficientPermission:
-				// Ignore Permission error.
+				removeErr = exitStatus(globalErrorExitStatus)
 				continue
 			}
 			return exitStatus(globalErrorExitStatus)
@@ -678,13 +680,13 @@ func listAndRemove(url string, opts removeOpts) error {
 		if opts.isForce {
 			// Do not throw an exit code with --force check unix `rm -f`
 			// behavior and do not print an error as well.
-			return nil
+			return removeErr
 		}
 		errorIf(errDummy().Trace(url), "No object/version found to be removed in `%s`.", url)
 		return exitStatus(globalErrorExitStatus)
 	}
 
-	return nil
+	return removeErr
 }
 
 // main for rm command.
