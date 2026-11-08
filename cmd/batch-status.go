@@ -48,9 +48,10 @@ DESCRIPTION:
 
   A retrieved complete, complete-with-skips, or failed result exits 0; inspect
   "status" and the skip counters for the job outcome. A paused job is waiting
-  for server retry and is not terminal. Saved details are refreshed every
-  five seconds and at the terminal result. Unconfirmed terminal details are
-  reported explicitly. An unavailable or missing job status exits nonzero.
+  for server retry and is not terminal. Details are read from live metrics
+  when available; otherwise saved details are refreshed every five seconds
+  and at the terminal result. Unconfirmed terminal details are reported
+  explicitly. An unavailable or missing job status exits nonzero.
   Retry this status command to resume observation of a queued or paused job.
 
 FLAGS:
@@ -88,6 +89,7 @@ func (d batchStatusDetails) empty() bool {
 type batchStatusMetric struct {
 	madmin.JobMetric
 	batchStatusDetails
+	detailsPresent bool
 }
 
 // JSON jsonified batchJobStatusMessage message
@@ -373,16 +375,12 @@ func watchBatchJobStatus(ctx context.Context, client batchStatusClient, jobID st
 	}
 
 	streamCtx, cancel := context.WithCancel(ctx)
-	samples := make(chan madmin.RealtimeMetrics)
+	samples := make(chan batchRealtimeMetrics)
 	result := make(chan error, 1)
 	stopped := make(chan struct{})
 	go func() {
 		defer close(stopped)
-		result <- client.Metrics(streamCtx, madmin.MetricsOptions{
-			Type:     madmin.MetricsBatchJobs,
-			ByJobID:  jobID,
-			Interval: time.Second,
-		}, func(sample madmin.RealtimeMetrics) {
+		result <- readBatchLiveMetrics(streamCtx, client, jobID, func(sample batchRealtimeMetrics) {
 			select {
 			case samples <- sample:
 			case <-streamCtx.Done():
@@ -393,7 +391,9 @@ func watchBatchJobStatus(ctx context.Context, client batchStatusClient, jobID st
 		cancel()
 		<-stopped
 	}()
-	detailResults, detailDone := pollBatchStatusDetails(streamCtx, client, jobID)
+	detailCtx, cancelDetails := context.WithCancel(streamCtx)
+	defer cancelDetails()
+	detailResults, detailDone := pollBatchStatusDetails(detailCtx, client, jobID)
 	if detailDone != nil {
 		defer func() {
 			cancel()
@@ -405,6 +405,7 @@ func watchBatchJobStatus(ctx context.Context, client batchStatusClient, jobID st
 	defer timer.Stop()
 	pending := false
 	var liveMetric madmin.JobMetric
+	var liveDetails bool
 	var saved batchStatusDetailsResult
 	var cause error
 observe:
@@ -428,7 +429,7 @@ observe:
 				detailResults = nil
 				continue
 			}
-			if detail.err != nil || detail.metric.JobID != jobID {
+			if liveDetails || detail.err != nil || detail.metric.JobID != jobID {
 				continue
 			}
 			msg, valid := batchStatusSnapshotMessage(liveMetric, detail.metric, detail.details)
@@ -452,10 +453,11 @@ observe:
 			}
 			emit(msg)
 		case sample := <-samples:
-			job, found := madmin.JobMetric{}, false
+			metric, found := batchStatusMetric{}, false
 			if sample.Aggregated.BatchJobs != nil {
-				job, found = sample.Aggregated.BatchJobs.Jobs[jobID]
+				metric, found = sample.Aggregated.BatchJobs.Jobs[jobID]
 			}
+			job := metric.JobMetric
 			if found && job.JobID != jobID {
 				cause = fmt.Errorf("live metrics returned job ID %q instead of %q", job.JobID, jobID)
 				break observe
@@ -470,8 +472,12 @@ observe:
 			// for why the saved status cannot.
 			if found && !job.LastUpdate.Before(liveMetric.LastUpdate) {
 				liveMetric = job
+				liveDetails = metric.detailsPresent
 				msg, _ := batchStatusSnapshotMessage(job, saved.metric, saved.details)
-				if job.Complete || job.Failed {
+				if liveDetails {
+					msg = batchStatusMessageWithDetails(job, metric.batchStatusDetails)
+					cancelDetails()
+				} else if job.Complete || job.Failed {
 					msg = terminalBatchStatusMessage(streamCtx, client, jobID, job)
 				}
 				if ctx.Err() != nil {
