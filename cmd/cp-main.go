@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -247,6 +248,12 @@ func doCopy(ctx context.Context, copyOpts doCopyOpts) URLs {
 	sourceURL := copyOpts.cpURLs.SourceContent.URL
 	targetAlias := copyOpts.cpURLs.TargetAlias
 	targetURL := copyOpts.cpURLs.TargetContent.URL
+	// Directory expansion and alias resolution have finished at this point.
+	// Reject this move before copying or scheduling removal of its source.
+	if copyOpts.isMvCmd && sameCopyObject(copyOpts.cpURLs) {
+		return copyOpts.cpURLs.WithError(errCopyIntoSelf(sourceURL.String()).Trace(targetURL.String()))
+	}
+
 	length := copyOpts.cpURLs.SourceContent.Size
 	sourcePath := filepath.ToSlash(filepath.Join(sourceAlias, sourceURL.Path))
 
@@ -279,6 +286,26 @@ func doCopy(ctx context.Context, copyOpts doCopyOpts) URLs {
 	}
 
 	return urls
+}
+
+// sameCopyObject compares resolved URLs. Object keys are literal; filesystem
+// paths additionally need normalization and file identity (symlinks/hardlinks).
+func sameCopyObject(urls URLs) bool {
+	source, target := urls.SourceContent.URL, urls.TargetContent.URL
+	if source.Type != target.Type {
+		return false
+	}
+	if source.Type == objectStorage {
+		return source.Scheme == target.Scheme && strings.EqualFold(source.Host, target.Host) && source.Path == target.Path
+	}
+	sourcePath, sourceErr := filepath.Abs(source.Path)
+	targetPath, targetErr := filepath.Abs(target.Path)
+	if sourceErr == nil && targetErr == nil && sourcePath == targetPath {
+		return true
+	}
+	sourceInfo, sourceErr := os.Stat(source.Path)
+	targetInfo, targetErr := os.Stat(target.Path)
+	return sourceErr == nil && targetErr == nil && os.SameFile(sourceInfo, targetInfo)
 }
 
 // doCopyFake - Perform a fake copy to update the progress bar appropriately.
