@@ -309,6 +309,9 @@ func sameCopyObject(urls URLs) bool {
 // checkMoveTarget rejects known self-moves and ambiguous same-key moves through
 // different endpoint names. Shared IPs do not prove storage identity (virtual
 // hosts can differ), but cannot safely authorize deleting the source either.
+// A direct endpoint that cannot be resolved is refused; its copy could not
+// connect anyway. A proxied endpoint is resolved by the proxy, so a local lookup
+// failure leaves its address unknown and only the literal comparison applies.
 func checkMoveTarget(ctx context.Context, urls URLs, resolved map[string]moveEndpointResolution) *probe.Error {
 	if sameCopyObject(urls) {
 		return errCopyIntoSelf(urls.SourceContent.URL.String()).Trace(urls.TargetContent.URL.String())
@@ -347,6 +350,9 @@ func checkMoveTarget(ctx context.Context, urls URLs, resolved map[string]moveEnd
 			for i := range result.ips {
 				result.ips[i] = result.ips[i].Unmap()
 			}
+			if result.err != nil && proxied(u) {
+				result.ips, result.err = nil, nil
+			}
 		}
 		// Retain failures too: a large listing must not retry a failed DNS
 		// lookup separately for every object in the same move session.
@@ -374,6 +380,13 @@ func checkMoveTarget(ctx context.Context, urls URLs, resolved map[string]moveEnd
 type moveEndpointResolution struct {
 	ips []netip.Addr
 	err error
+}
+
+// proxied reports whether S3 transports reach u through an HTTP proxy.
+func proxied(u url.URL) bool {
+	proxyConfig := environmentProxyConfig()
+	proxyURL, err := proxyConfig.ProxyFunc()(&u)
+	return err == nil && proxyURL != nil
 }
 
 // doCopyFake - Perform a fake copy to update the progress bar appropriately.

@@ -51,6 +51,15 @@ func TestParseMetaData(t *testing.T) {
 		{"\"Content-Disposition\"='form-data; name=\"description\"'", map[string]string{"Content-Disposition": "form-data; name=\"description\""}, nil, true},
 		// success: use value and key in quotes
 		{"\"Content=Disposition;Other key part=this is also key data\"='form-data; name=\"description\"'", map[string]string{"Content=Disposition;Other key part=this is also key data": "form-data; name=\"description\""}, nil, true},
+		// success: empty entries, such as a trailing separator, are ignored
+		{"key1=value1;", map[string]string{"Key1": "value1"}, nil, true},
+		{"key1=value1; ", map[string]string{"Key1": "value1"}, nil, true},
+		{"key1=value1;;key2=value2", map[string]string{"Key1": "value1", "Key2": "value2"}, nil, true},
+		// fail: no entry at all
+		{";", nil, ErrInvalidMetadata, false},
+		// fail: a key without a value, with or without a trailing separator
+		{"key1=value1;key2", nil, ErrInvalidMetadata, false},
+		{"key1=value1;key2;", nil, ErrInvalidMetadata, false},
 	}
 
 	for idx, testCase := range metaDataCases {

@@ -66,8 +66,16 @@ func getMetaDataEntry(metadataString string) (map[string]string, *probe.Error) {
 		ch, _, e := r.ReadRune()
 		if e != nil {
 			// eof
-			if ps == QSTRING || ps == DQSTRING || pt == KEY {
+			if ps == QSTRING || ps == DQSTRING {
 				return nil, probe.NewError(ErrInvalidMetadata)
+			}
+			if pt == KEY {
+				// Accept a trailing separator ("k=v;"), but not a key without
+				// a value ("k=v;other") or input without any entry (";").
+				if strings.TrimSpace(key.String()) != "" || len(metaDataMap) == 0 {
+					return nil, probe.NewError(ErrInvalidMetadata)
+				}
+				return metaDataMap, nil
 			}
 			metaDataMap[http.CanonicalHeaderKey(key.String())] = value.String()
 			return metaDataMap, nil
@@ -118,7 +126,11 @@ func getMetaDataEntry(metadataString string) (map[string]string, *probe.Error) {
 			if ps == QSTRING || ps == DQSTRING {
 				writeRune(ch, pt)
 			} else if pt == KEY {
-				return nil, probe.NewError(ErrInvalidMetadata)
+				// Skip an empty entry ("k=v;;k2=v2"); reject a key without '='.
+				if strings.TrimSpace(key.String()) != "" {
+					return nil, probe.NewError(ErrInvalidMetadata)
+				}
+				key.Reset()
 			} else if pt == VALUE {
 				metaDataMap[http.CanonicalHeaderKey(key.String())] = value.String()
 				key.Reset()

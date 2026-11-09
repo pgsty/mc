@@ -26,7 +26,9 @@
 - Resolve each source alias independently for multi-source `cp` and `mv`, and
   reject moves onto the same resolved object, filesystem path, symlink or
   hardlink before transferring or deleting that source. Also reject ambiguous
-  same-key moves through endpoint names sharing an IP address and port.
+  same-key moves through endpoint names sharing an IP address and port. An
+  endpoint reached through an HTTP proxy that local DNS cannot resolve is not
+  refused for that reason alone.
 - Download the requested `od` multipart sequence instead of repeating the last
   part, and close opened part readers on completion or failure.
 - Propagate copy and move preparation failures to the final exit status. Keep
@@ -34,7 +36,8 @@
   workers on cancellation while retaining bounded streaming queues.
 - Apply explicit `--tags` to server-side and streaming copies and moves,
   including with `--preserve`; an explicit empty value clears tags. Reject
-  malformed `--attr` before starting a copy or move.
+  malformed `--attr` before starting a copy or move instead of silently dropping
+  every attribute, and ignore empty entries such as a trailing semicolon.
 - Generate executable POSIX-shell `share upload` commands by quoting complete
   arguments and uploading policy fields as literal form values.
 - Decode IAM import failure details without replaying a failed V2 import through
@@ -63,8 +66,11 @@
   performs word splitting without interpreting its quotes and is no longer
   supported. Windows users need a POSIX shell such as Git Bash or WSL, rather
   than pasting this output into `cmd.exe`.
-- Malformed `--attr`, including a trailing semicolon, fails before any transfer;
-  use `--attr 'key=value;other=value'` without a trailing separator.
+- Malformed `--attr`, such as a key without a value or an unterminated quote,
+  fails `cp` and `mv` before any transfer; previously the copy proceeded
+  without any of the requested attributes. Empty entries, such as a trailing or
+  repeated semicolon in `--attr 'key=value;'`, are ignored by `cp`, `mv`,
+  `mirror` and `pipe`; `mirror` and `pipe` previously rejected them.
 - Legacy IAM fallback requires the explicit server error `NotImplemented` or
   `XMinioAdminVersionMismatch`. Other HTTP, transport and decoding failures do
   not trigger a second import.
@@ -76,6 +82,10 @@
   proxy routing, virtual-host addressing or changing DNS can still hide a
   shared backend. Use consistent endpoint URLs for aliases to the same store;
   the client cannot infer arbitrary backend identity from endpoint names.
+  The guard resolves endpoint names locally. A direct endpoint that cannot be
+  resolved is refused; an endpoint reached through `HTTP_PROXY` or
+  `HTTPS_PROXY` that local DNS cannot resolve is compared by name only, because
+  the proxy performs that resolution.
 
 A retrieved complete, complete-with-skips or failed batch result exits zero;
 scripts must inspect the status and skip counters for the job outcome. Paused
