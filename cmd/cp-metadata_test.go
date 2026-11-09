@@ -165,7 +165,7 @@ func TestCopyMoveRejectInvalidAttributesBeforeTransfer(t *testing.T) {
 	defer server.Close()
 	for _, command := range []string{"cp", "mv"} {
 		for _, jsonOutput := range []bool{false, true} {
-			for _, attr := range []string{"owner=alice;malformed", "owner='unterminated", "owner=alice;"} {
+			for _, attr := range []string{"owner=alice;malformed", "owner=alice;malformed;", "owner='unterminated", ";"} {
 				t.Run(fmt.Sprintf("%s/json=%v/%s", command, jsonOutput, attr), func(t *testing.T) {
 					source := filepath.Join(t.TempDir(), "source")
 					if err := os.WriteFile(source, []byte("keep"), 0o600); err != nil {
@@ -192,8 +192,15 @@ func TestCopyMoveRejectInvalidAttributesBeforeTransfer(t *testing.T) {
 }
 
 func TestCopyMoveValidAttributes(t *testing.T) {
-	for _, command := range []string{"cp", "mv"} {
-		t.Run(command, func(t *testing.T) {
+	for _, test := range []struct{ command, attr string }{
+		{"cp", "owner=alice;note='a;b=c';Content-Type=text/plain"},
+		{"mv", "owner=alice;note='a;b=c';Content-Type=text/plain"},
+		// Empty entries, such as a trailing separator, are ignored.
+		{"cp", "owner=alice;;note='a;b=c';Content-Type=text/plain;"},
+		{"mv", "owner=alice;;note='a;b=c';Content-Type=text/plain;"},
+	} {
+		command := test.command
+		t.Run(command+"/"+test.attr, func(t *testing.T) {
 			source := filepath.Join(t.TempDir(), "source")
 			if err := os.WriteFile(source, []byte("payload"), 0o600); err != nil {
 				t.Fatal(err)
@@ -222,7 +229,7 @@ func TestCopyMoveValidAttributes(t *testing.T) {
 			}))
 			defer server.Close()
 			result := runChecksumVerifyCLI(t, server.URL, []string{"MC_REGION=us-east-1"}, "--json", command,
-				"--attr", "owner=alice;note='a;b=c';Content-Type=text/plain", source, "b4/bucket/target")
+				"--attr", test.attr, source, "b4/bucket/target")
 			if result.exitCode != 0 || uploads.Load() != 1 {
 				t.Fatalf("exit=%d uploads=%d output=%s %s", result.exitCode, uploads.Load(), result.stdout, result.stderr)
 			}

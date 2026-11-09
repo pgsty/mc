@@ -36,7 +36,8 @@
   workers on cancellation while retaining bounded streaming queues.
 - Apply explicit `--tags` to server-side and streaming copies and moves,
   including with `--preserve`; an explicit empty value clears tags. Reject
-  malformed `--attr` before starting a copy or move.
+  malformed `--attr` before starting a copy or move instead of silently dropping
+  every attribute, and ignore empty entries such as a trailing semicolon.
 - Generate executable POSIX-shell `share upload` commands by quoting complete
   arguments and uploading policy fields as literal form values.
 - Decode IAM import failure details without replaying a failed V2 import through
@@ -65,8 +66,11 @@
   performs word splitting without interpreting its quotes and is no longer
   supported. Windows users need a POSIX shell such as Git Bash or WSL, rather
   than pasting this output into `cmd.exe`.
-- Malformed `--attr`, including a trailing semicolon, fails before any transfer;
-  use `--attr 'key=value;other=value'` without a trailing separator.
+- Malformed `--attr`, such as a key without a value or an unterminated quote,
+  fails `cp` and `mv` before any transfer; previously the copy proceeded
+  without any of the requested attributes. Empty entries, such as a trailing or
+  repeated semicolon in `--attr 'key=value;'`, are ignored by `cp`, `mv`,
+  `mirror` and `pipe`; `mirror` and `pipe` previously rejected them.
 - Legacy IAM fallback requires the explicit server error `NotImplemented` or
   `XMinioAdminVersionMismatch`. Other HTTP, transport and decoding failures do
   not trigger a second import.
