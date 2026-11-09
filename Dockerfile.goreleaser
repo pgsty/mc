@@ -42,6 +42,11 @@ COPY LICENSE /licenses/LICENSE
 COPY CREDITS /licenses/CREDITS
 COPY NOTICE /licenses/NOTICE
 
-RUN chmod +x /usr/bin/mc
+# root keeps /root/.mc. A UID with no passwd entry gets HOME=/ from the
+# runtime, so its default config directory is /.mc; pre-create it writable so
+# `--user` and runAsNonRoot work without flags. -C / MC_CONFIG_DIR still win,
+# and a persistent or read-only-rootfs setup should mount one of those.
+RUN chmod +x /usr/bin/mc && \
+    mkdir -m 1777 /.mc
 
 ENTRYPOINT ["/usr/bin/mc"]
