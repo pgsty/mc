@@ -1,11 +1,14 @@
 # Changelog
 
-## Unreleased
+## RELEASE.2026-11-09T00-00-00Z — 2026-11-09
+
+Package version: `20261109000000.0.0`. Publication status and artifacts are
+listed in [GitHub Releases](https://github.com/pgsty/mc/releases).
 
 - Adopt silo-pkg v3.16.0 with cpuid/v2 v2.4.2 and YAML v3.0.6. Retain
   Go 1.27.3 across source, CI and build images, the existing upstream minio-go
   commit, and the systemd, terminal-width and tablewriter compatibility pins.
-  The x/net v0.62.0 and x/crypto security floors are included in this candidate.
+  The x/net v0.62.0 and x/crypto security floors are included in this version.
 - Update gjson to v1.20.1 to preserve UTF-8 characters following malformed
   emoji input.
 - Expose paused and complete-with-skips batch states, pause reasons and skip
@@ -45,6 +48,11 @@
   imports while preserving their detailed reports.
 - Retain WORM protection errors in the final status of batch removals while
   continuing to remove independent, unprotected objects.
+- Allow non-root container UIDs without a passwd entry to use the default
+  configuration directory by pre-creating `/.mc` with sticky writable
+  permissions. Root retains `/root/.mc`; `--config-dir` and `MC_CONFIG_DIR`
+  still take precedence. Persistent and read-only-rootfs deployments should
+  mount a writable configuration directory.
 
 **Script compatibility:**
 
@@ -90,8 +98,7 @@
 A retrieved complete, complete-with-skips or failed batch result exits zero;
 scripts must inspect the status and skip counters for the job outcome. Paused
 jobs remain observable and are not terminal. Extended details require a server
-that supplies them. This candidate has not been tagged or published as standalone
-archives, packages or container images.
+that supplies them.
 
 ## RELEASE.2026-10-26T00-00-00Z — 2026-10-26
 

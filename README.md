@@ -31,21 +31,25 @@
 > [!IMPORTANT]
 > `pgsty/mc` is an independent, community-maintained fork of the open-source [MinIO Client](https://github.com/minio/mc), published by [Pigsty](https://pigsty.io). It is not affiliated with, endorsed by, or sponsored by MinIO, Inc. “MinIO” is used only to identify the upstream project and compatibility lineage.
 
-## Current release
+## Release status
 
-[20261026](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-26T00-00-00Z) (`20261026000000.0.0`) is released and uses Go 1.27.3, silo-pkg v3.15.2,
-and upstream minio-go `v7.4.2-0.20261025165926-320af050c445`.
-It fixes client identity and connection isolation, resync JSON/terminal/partial
-failure handling, batch status and rate overflow, and accepts successful HTTP
-204 responses when removing bucket replication.
+This checkout prepares **mcli 20261109**, tag `RELEASE.2026-11-09T00-00-00Z`
+and package version `20261109000000.0.0`, with Go 1.27.3, silo-pkg v3.16.0 and
+upstream minio-go `v7.4.2-0.20261025165926-320af050c445`.
 
-Scripts should handle the additive batch `pending` status and nonzero exits for
-partial resync mutations. Existing table formatting, character widths and NetBSD
-compatibility selections are retained. See [GitHub Releases](https://github.com/pgsty/mc/releases)
-for signed packages and attested archives, [CHANGELOG.md](CHANGELOG.md) for changes,
-and the [compatibility notes](https://silo.pgsty.com/compatibility/mcli/).
+The update fixes destructive dry runs and self-moves, multipart downloads,
+partial-failure exit status, metadata and tag handling, generated upload commands,
+batch status observation, and non-root container configuration. Review the
+[script compatibility changes](CHANGELOG.md) before upgrading automated jobs.
 
-Docker Hub amd64/arm64 images are published as `pgsty/mc:RELEASE.2026-10-26T00-00-00Z`; `latest` points to the same release.
+Release artifacts are prepared as a **GitHub Draft Release** before publication.
+The latest published release remains
+[20261026](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-26T00-00-00Z).
+Docker Hub `pgsty/mc:latest` and the published `RELEASE.2026-10-26T00-00-00Z`
+images remain on that version until the separate container publication step.
+See [GitHub Releases](https://github.com/pgsty/mc/releases) for publication status
+and the [compatibility notes](https://silo.pgsty.com/compatibility/mcli/) for
+upgrade behavior.
 
 ## Overview
 

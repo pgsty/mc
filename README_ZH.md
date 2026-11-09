@@ -31,20 +31,23 @@
 > [!IMPORTANT]
 > `pgsty/mc` 是由 [Pigsty](https://pigsty.cc) 独立维护、从开源 [MinIO Client](https://github.com/minio/mc) 延续而来的社区分支。本项目与 MinIO, Inc. 不存在隶属、背书或赞助关系；文中使用 “MinIO” 仅用于说明上游项目及兼容谱系。
 
-## 当前版本
+## 发布状态
 
-[20261026](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-26T00-00-00Z)（`20261026000000.0.0`）已正式发布，使用 Go 1.27.3、silo-pkg v3.15.2
-与上游 minio-go `v7.4.2-0.20261025165926-320af050c445`。
-本次修复客户端身份与连接配置隔离、resync JSON/终态/部分失败、batch 状态与速率溢出，
-并接受删除桶复制配置时成功返回的 HTTP 204。
+当前源码正在准备 **mcli 20261109**，tag 为 `RELEASE.2026-11-09T00-00-00Z`，
+软件包版本为 `20261109000000.0.0`，使用 Go 1.27.3、silo-pkg v3.16.0 和
+上游 minio-go `v7.4.2-0.20261025165926-320af050c445`。
 
-脚本应处理 batch 新增的 `pending` 状态，以及部分 resync 操作失败时的非零退出码。
-表格格式、字符宽度和 NetBSD 兼容性选择保持不变。
-签名软件包与带构建证明的归档见 [GitHub Releases](https://github.com/pgsty/mc/releases)，
-详细变化见 [CHANGELOG.md](CHANGELOG.md) 和
-[兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/)。
+本次修复 dry-run 误删除、自身搬移、分片下载、部分失败退出码、元数据与标签处理、
+上传命令生成、batch 状态观察，以及非 root 容器配置目录问题。
+升级自动化任务前，请阅读 [CHANGELOG.md 中的脚本兼容性变化](CHANGELOG.md)。
 
-Docker Hub amd64/arm64 镜像已发布为 `pgsty/mc:RELEASE.2026-10-26T00-00-00Z`，`latest` 指向同一版本。
+发行制品先生成 **GitHub Draft Release**，随后再正式发布。
+当前最新正式版本仍为
+[20261026](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-10-26T00-00-00Z)。
+Docker Hub 的 `pgsty/mc:latest` 与已发布的 `RELEASE.2026-10-26T00-00-00Z`
+镜像在独立的容器发布步骤完成前保持原版本。
+发布状态见 [GitHub Releases](https://github.com/pgsty/mc/releases)，
+升级行为见[兼容性说明](https://silo.pgsty.com/zh/compatibility/mcli/)。
 
 ## 概述
 
