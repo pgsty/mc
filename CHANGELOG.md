@@ -26,7 +26,9 @@
 - Resolve each source alias independently for multi-source `cp` and `mv`, and
   reject moves onto the same resolved object, filesystem path, symlink or
   hardlink before transferring or deleting that source. Also reject ambiguous
-  same-key moves through endpoint names sharing an IP address and port.
+  same-key moves through endpoint names sharing an IP address and port. An
+  endpoint reached through an HTTP proxy that local DNS cannot resolve is not
+  refused for that reason alone.
 - Download the requested `od` multipart sequence instead of repeating the last
   part, and close opened part readers on completion or failure.
 - Propagate copy and move preparation failures to the final exit status. Keep
@@ -76,6 +78,10 @@
   proxy routing, virtual-host addressing or changing DNS can still hide a
   shared backend. Use consistent endpoint URLs for aliases to the same store;
   the client cannot infer arbitrary backend identity from endpoint names.
+  The guard resolves endpoint names locally. A direct endpoint that cannot be
+  resolved is refused; an endpoint reached through `HTTP_PROXY` or
+  `HTTPS_PROXY` that local DNS cannot resolve is compared by name only, because
+  the proxy performs that resolution.
 
 A retrieved complete, complete-with-skips or failed batch result exits zero;
 scripts must inspect the status and skip counters for the job outcome. Paused

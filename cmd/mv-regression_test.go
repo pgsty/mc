@@ -29,6 +29,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"github.com/minio/mc/pkg/probe"
 )
 
 func TestMoveRejectsNormalizedSelfPath(t *testing.T) {
@@ -182,7 +184,15 @@ func TestMoveEndpointGuardBoundaries(t *testing.T) {
 	}
 }
 
+// clearProxyEnv makes endpoint resolution tests independent of the caller's proxy.
+func clearProxyEnv(t *testing.T) {
+	for _, key := range []string{"http_proxy", "https_proxy", "HTTP_PROXY", "HTTPS_PROXY", "no_proxy", "NO_PROXY", "REQUEST_METHOD"} {
+		t.Setenv(key, "")
+	}
+}
+
 func TestMoveEndpointLookupFailure(t *testing.T) {
+	clearProxyEnv(t)
 	urls := URLs{
 		SourceContent: &ClientContent{URL: *newClientURL("http://unresolved.invalid:9000/bucket/key")},
 		TargetContent: &ClientContent{URL: *newClientURL("http://127.0.0.1:9000/bucket/key")},
@@ -196,5 +206,32 @@ func TestMoveEndpointLookupFailure(t *testing.T) {
 	}
 	if next := checkMoveTarget(t.Context(), urls, resolved); next == nil || next.Cause != first.Cause {
 		t.Fatal("failed endpoint resolution was not retained for the session")
+	}
+}
+
+func TestMoveProxiedEndpointLookupFailure(t *testing.T) {
+	clearProxyEnv(t)
+	t.Setenv("HTTP_PROXY", "http://127.0.0.1:1")
+	t.Setenv("NO_PROXY", "direct-only.invalid")
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	check := func(source, target string) *probe.Error {
+		return checkMoveTarget(ctx, URLs{
+			SourceContent: &ClientContent{URL: *newClientURL(source)},
+			TargetContent: &ClientContent{URL: *newClientURL(target)},
+		}, make(map[string]moveEndpointResolution))
+	}
+	// The proxy, not local DNS, resolves this endpoint: an unresolved local
+	// lookup must not block moving to a distinct store.
+	if err := check("http://127.0.0.1:9000/bucket/key", "http://proxied-only.invalid:9000/bucket/key"); err != nil {
+		t.Fatalf("proxied endpoint unresolved by local DNS was refused: %v", err)
+	}
+	// NO_PROXY makes the connection direct, so an unresolved name still fails closed.
+	if check("http://127.0.0.1:9000/bucket/key", "http://direct-only.invalid:9000/bucket/key") == nil {
+		t.Fatal("unresolved direct endpoint allowed a destructive move")
+	}
+	// The literal self-move check still applies through a proxy.
+	if check("http://proxied-only.invalid:9000/bucket/key", "http://PROXIED-ONLY.invalid:9000/bucket/key") == nil {
+		t.Fatal("proxied self-move was allowed")
 	}
 }

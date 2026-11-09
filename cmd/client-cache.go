@@ -68,7 +68,8 @@ type transportSettings struct {
 	proxy        func(*url.URL) (*url.URL, error)
 }
 
-func snapshotTransport(config *Config, useTLS bool) transportSettings {
+// environmentProxyConfig returns the proxy settings S3 transports apply.
+func environmentProxyConfig() httpproxy.Config {
 	// Preserve net/http's uppercase-before-lowercase environment precedence.
 	proxyEnv := func(upper, lower string) string {
 		if value := os.Getenv(upper); value != "" {
@@ -76,10 +77,14 @@ func snapshotTransport(config *Config, useTLS bool) transportSettings {
 		}
 		return os.Getenv(lower)
 	}
-	proxyConfig := httpproxy.Config{
+	return httpproxy.Config{
 		HTTPProxy: proxyEnv("HTTP_PROXY", "http_proxy"), HTTPSProxy: proxyEnv("HTTPS_PROXY", "https_proxy"),
 		NoProxy: proxyEnv("NO_PROXY", "no_proxy"), CGI: os.Getenv("REQUEST_METHOD") != "",
 	}
+}
+
+func snapshotTransport(config *Config, useTLS bool) transportSettings {
+	proxyConfig := environmentProxyConfig()
 	settings := transportSettings{
 		key: transportCacheKey{
 			rootCAs: globalRootCAs,
