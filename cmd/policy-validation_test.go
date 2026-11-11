@@ -64,6 +64,16 @@ func TestParseNamedPolicyForWriteAppliesNamedPolicyInvariants(t *testing.T) {
 			document: `{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::bucket/*"]}]}`,
 		},
 		{
+			name:     "empty object",
+			document: `{}`,
+			wantErr:  true,
+		},
+		{
+			name:     "empty statements without version",
+			document: `{"Statement":[]}`,
+			wantErr:  true,
+		},
+		{
 			name:     "empty policy",
 			document: `{"Version":"2012-10-17","Statement":[]}`,
 			wantErr:  true,

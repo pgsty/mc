@@ -133,16 +133,13 @@ func accessKeyEditOpts(ctx *cli.Context) madmin.UpdateServiceAccountReq {
 	}
 
 	if policyPath != "" {
-		// Validate the policy document and ensure it has at least one statement
+		// An empty policy clears the inline policy and returns the account to its
+		// inherited policy. Keep validating the document shape strictly.
 		policyBytes, e := os.ReadFile(policyPath)
 		fatalIf(probe.NewError(e), "unable to read the policy document")
 
-		p, e := parsePolicyForWrite(policyBytes)
+		_, e = parsePolicyForWrite(policyBytes)
 		fatalIf(probe.NewError(e), "unable to parse the policy document")
-
-		if p.IsEmpty() {
-			fatalIf(errInvalidArgument(), "empty policies are not allowed")
-		}
 
 		opts.NewPolicy = policyBytes
 	}

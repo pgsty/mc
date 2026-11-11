@@ -19,6 +19,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 
 	"github.com/pgsty/silo-pkg/v3/policy"
@@ -33,9 +34,24 @@ var _ func(policy.Resource) bool = policy.Resource.IsBareARN
 // parsePolicyForWrite applies the strict validation required for new and
 // updated policy documents while read paths remain backward-compatible.
 func parsePolicyForWrite(policyBytes []byte) (*policy.Policy, error) {
-	if len(bytes.TrimSpace(policyBytes)) == 0 {
+	policyBytes = bytes.TrimSpace(policyBytes)
+	if len(policyBytes) == 0 {
 		return nil, errors.New("policy input cannot be empty")
 	}
+	if policyBytes[0] != '{' || !json.Valid(policyBytes) {
+		return nil, errors.New("policy input must be a JSON object")
+	}
+
+	// Bypass Policy.UnmarshalJSON so unknown fields cannot turn a misspelled
+	// document into an empty policy reset.
+	type policyDocument policy.Policy
+	var document policyDocument
+	decoder := json.NewDecoder(bytes.NewReader(policyBytes))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&document); err != nil {
+		return nil, err
+	}
+
 	return policy.ParseConfigStrict(bytes.NewReader(policyBytes))
 }
 
