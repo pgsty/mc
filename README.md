@@ -33,7 +33,7 @@
 
 ## Latest release
 
-**[mcli 20261109](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-11-09T00-00-00Z)** · Package version: `20261109000000.0.0`.
+**[mcli 20261112](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-11-12T00-00-00Z)** · Package version: `20261112000000.0.0`.
 
 See the [changelog](CHANGELOG.md) for fixes and script compatibility changes.
 
@@ -120,6 +120,8 @@ Use [Download & Install](https://silo.pgsty.com/download/#client) to choose a cl
 | Silo bundle | [`pgsty/silo`](https://hub.docker.com/r/pgsty/silo) includes the client as `mcli` with an `mc` compatibility alias |
 
 ### Go and TLS compatibility
+
+Building the current source requires Go 1.27.4 or later.
 
 Go 1.27 builds require macOS 13 or later. On macOS, builds targeting Go 1.27
 replace Keychain trust with on-disk roots and Go's verifier when either

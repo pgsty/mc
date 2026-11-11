@@ -56,7 +56,7 @@ func TestAccesskeyEditPolicyCLI(t *testing.T) {
 		{name: "malformed JSON", document: `{"Statement":`, wantError: "unable to parse the policy document"},
 		{name: "null", document: `null`, wantError: "unable to parse the policy document"},
 		{name: "array", document: `[]`, wantError: "unable to parse the policy document"},
-		{name: "unknown field", document: `{"Statment":[]}`, wantError: "unable to parse the policy document"},
+		{name: "unknown field", document: `{"Statment":[]}`, wantError: "unable to parse the policy document"}, //nolint:misspell // Intentionally invalid policy field tests strict parsing.
 		{name: "trailing document", document: `{} {}`, wantError: "unable to parse the policy document"},
 		{name: "trailing garbage", document: `{} invalid`, wantError: "unable to parse the policy document"},
 		{name: "invalid version", document: `{"Version":"invalid","Statement":[]}`, wantError: "unable to parse the policy document"},
@@ -145,7 +145,7 @@ func TestNamedPolicyWriteCLI(t *testing.T) {
 		{name: "versioned empty statements", document: `{"Version":"2012-10-17","Statement":[]}`, wantError: "empty policies are not allowed"},
 		{name: "missing version", document: `{"Statement":[{"Effect":"Allow","Action":["s3:GetObject"],"Resource":["arn:aws:s3:::bucket/*"]}]}`, wantError: "policy version cannot be empty"},
 		{name: "malformed JSON", document: `{"Statement":`, wantError: "Unable to parse policy"},
-		{name: "unknown field", document: `{"Statment":[]}`, wantError: "unknown field"},
+		{name: "unknown field", document: `{"Statment":[]}`, wantError: "unknown field"}, //nolint:misspell // Intentionally invalid policy field tests strict parsing.
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

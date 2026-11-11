@@ -33,7 +33,7 @@
 
 ## 最新版本
 
-**[mcli 20261109](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-11-09T00-00-00Z)** · 软件包版本：`20261109000000.0.0`。
+**[mcli 20261112](https://github.com/pgsty/mc/releases/tag/RELEASE.2026-11-12T00-00-00Z)** · 软件包版本：`20261112000000.0.0`。
 
 修复内容与脚本兼容性变化见[更新日志](CHANGELOG.md)。
 
@@ -120,6 +120,8 @@
 | Silo 内置客户端 | [`pgsty/silo`](https://hub.docker.com/r/pgsty/silo) 以 `mcli` 提供本客户端，并保留 `mc` 兼容别名 |
 
 ### Go 与 TLS 兼容性
+
+构建当前源码要求 Go 1.27.4 或更高版本。
 
 Go 1.27 构建要求 macOS 13 或更高版本。在 macOS 上，面向 Go 1.27 的构建在设置 `SSL_CERT_FILE` 或 `SSL_CERT_DIR` 时，会使用磁盘根证书与 Go 自身校验器替代系统钥匙串（Keychain）信任。陈旧或不完整的 CA 路径可能导致原本受信任的连接失败；取消设置继承的环境变量即可恢复钥匙串信任。mcli 配置的 `CAs` 目录中的证书仍会追加到所选根证书池中。
 

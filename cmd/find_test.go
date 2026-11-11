@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 )
@@ -443,35 +442,39 @@ func TestGetExitStatus(t *testing.T) {
 		return
 	}
 	testCases := []struct {
-		command            string
+		name               string
+		command            []string
 		expectedExitStatus int
 	}{
-		// Tests "No such file or directory", exit status code 2
+		// Explicit shell exit codes do not depend on GNU or BusyBox utilities.
 		{
-			command:            "ls asdf",
+			name:               "success",
+			command:            []string{"/bin/sh", "-c", "exit 0"},
+			expectedExitStatus: 0,
+		},
+		{
+			name:               "exit two",
+			command:            []string{"/bin/sh", "-c", "exit 2"},
 			expectedExitStatus: 2,
 		},
 		{
-			command:            "cp x x",
+			name:               "exit one",
+			command:            []string{"/bin/sh", "-c", "exit 1"},
 			expectedExitStatus: 1,
 		},
-		// expectedExitStatus for "command not found" case is 127,
-		// but exec command cannot capture anything since a process
-		// for the command could not be started at all,
-		// so the expectedExitStatus is 1
+		// A process that cannot start has no exit status; the fallback is 1.
 		{
-			command:            "asdf",
+			name:               "command not found",
+			command:            []string{filepath.Join(t.TempDir(), "missing-command")},
 			expectedExitStatus: 1,
 		},
 	}
-	for i, testCase := range testCases {
-		commandArgs := strings.Split(testCase.command, " ")
-		cmd := exec.Command(commandArgs[0], commandArgs[1:]...)
-		// Return exit status of the command run
-		exitStatus := getExitStatus(cmd.Run())
-		if exitStatus != testCase.expectedExitStatus {
-			t.Errorf("Test %d: Expected error status code for command \"%v\" is %v, got %v",
-				i+1, testCase.command, testCase.expectedExitStatus, exitStatus)
-		}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			cmd := exec.Command(testCase.command[0], testCase.command[1:]...)
+			if exitStatus := getExitStatus(cmd.Run()); exitStatus != testCase.expectedExitStatus {
+				t.Errorf("Expected exit status %d for %q, got %d", testCase.expectedExitStatus, testCase.command, exitStatus)
+			}
+		})
 	}
 }

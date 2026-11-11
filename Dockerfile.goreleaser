@@ -5,7 +5,7 @@
 #
 # This is not full reproducibility: the dnf install below still resolves
 # whatever the Red Hat repositories serve at build time.
-FROM registry.access.redhat.com/ubi9/ubi:latest@sha256:16e9e43d99e181463513cc84a514859b1abb9460f1c4d9e208da4b4e51cd5cc3 AS certs
+FROM registry.access.redhat.com/ubi9/ubi:latest@sha256:8b212f75a0e5a156ac28b1c5c030d2e8a07715254e19d522286118279399af81 AS certs
 # Native root blocklist mitigation: https://access.redhat.com/security/vulnerabilities/RHSB-2026-012
 RUN dnf -y install ca-certificates && \
     if [ -d /etc/pki/ca-trust/source/blocklist ]; then \
@@ -24,7 +24,7 @@ RUN dnf -y install ca-certificates && \
     dnf clean all && \
     rm -rf /var/cache/dnf
 
-FROM registry.access.redhat.com/ubi9/ubi-micro:latest@sha256:5be877a2a280ae36eb9ab80ca4efb28bbf77c57abbba38137cdc37a03b8465e6
+FROM registry.access.redhat.com/ubi9/ubi-micro:latest@sha256:b59ac4f291d86027c2681f7a7b1cbf7448972fc55a6cb8e25cab5aa5eef5ce5f
 
 LABEL maintainer="Ruohang Feng (@Vonng) <rh@vonng.com>" \
       vendor="PGSTY" \

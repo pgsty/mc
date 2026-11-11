@@ -118,6 +118,20 @@ func TestGetBandwidthInBytes(t *testing.T) {
 			},
 			want: 1024 * 1024,
 		},
+		{
+			name: "IntegerAboveFloatPrecision",
+			args: args{
+				bandwidthStr: "9007199254740993",
+			},
+			want: 9007199254740993,
+		},
+		{
+			name: "LargestSignedBandwidth",
+			args: args{
+				bandwidthStr: "9223372036854775807",
+			},
+			want: 9223372036854775807,
+		},
 	}
 	t.Parallel()
 	for _, tt := range tests {

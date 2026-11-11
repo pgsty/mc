@@ -1,5 +1,27 @@
 # Changelog
 
+## RELEASE.2026-11-12T00-00-00Z — 2026-11-12
+
+Package version: `20261112000000.0.0`. Publication status and artifacts are
+listed in [GitHub Releases](https://github.com/pgsty/mc/releases).
+
+- Adopt silo-pkg v3.16.1 with strict JSON policy decoding in
+  `policy.ParseConfigStrict` and `policy.ParseBucketPolicyConfig`.
+- Allow explicit empty policy documents (`{}` or `{"Statement":[]}`) when
+  resetting inline policies in `admin accesskey edit --policy`,
+  `idp ldap accesskey edit --policy`, and `idp openid accesskey edit --policy`,
+  while rejecting unknown fields and non-object inputs (`#78`).
+- Require Go 1.27.4 across source, CI and the development build image.
+- Update the Go base libraries, grpc-gateway to v2.33.0, gRPC to v1.85.0,
+  go-humanize to v1.1.0, compress to v1.20.4, and terminfo to v1.2.1.
+  Retain the existing crypto/minio-go commits, gjson/pretty output, and
+  systemd, terminal-width and tablewriter compatibility selections.
+- Update GoReleaser to v2.20.1 and refresh the pinned container bases.
+- Keep intentionally misspelled policy fields in negative tests while
+  excluding those two fixtures from the spelling linter.
+- Use explicit shell exit codes in Linux process-status tests so GNU and
+  BusyBox utility differences do not affect the result.
+
 ## RELEASE.2026-11-09T00-00-00Z — 2026-11-09
 
 Package version: `20261109000000.0.0`. Publication status and artifacts are
