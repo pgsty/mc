@@ -819,7 +819,7 @@ func (f *fsClient) List(_ context.Context, opts ListOptions) <-chan *ClientConte
 
 	if opts.Recursive {
 		if opts.ShowDir == DirNone {
-			go f.listRecursiveInRoutine(contentCh)
+			go f.listRecursiveInRoutine(contentCh, opts.IncludeEmptyDirs)
 		} else {
 			go f.listDirOpt(contentCh, opts.Incomplete, opts.WithMetadata, opts.ShowDir)
 		}
@@ -1088,7 +1088,7 @@ func (f *fsClient) listDirOpt(contentCh chan *ClientContent, isIncomplete, _ boo
 	}
 }
 
-func (f *fsClient) listRecursiveInRoutine(contentCh chan *ClientContent) {
+func (f *fsClient) listRecursiveInRoutine(contentCh chan *ClientContent, includeEmptyDirs bool) {
 	// close channels upon return.
 	defer close(contentCh)
 	var dirName string
@@ -1159,6 +1159,31 @@ func (f *fsClient) listRecursiveInRoutine(contentCh chan *ClientContent) {
 				// Ignore any errors for symlink
 				return nil
 			}
+		}
+		if includeEmptyDirs && fi.IsDir() {
+			entries, err := os.ReadDir(fp)
+			if err != nil {
+				return err
+			}
+			isEmpty := true
+			for _, entry := range entries {
+				if !isIgnoredFile(entry.Name()) {
+					isEmpty = false
+					break
+				}
+			}
+			if isEmpty {
+				markerPath := fp
+				if !strings.HasSuffix(markerPath, string(pathURL.Separator)) {
+					markerPath += string(pathURL.Separator)
+				}
+				contentCh <- &ClientContent{
+					URL:  *newClientURL(markerPath),
+					Time: fi.ModTime(),
+					Type: os.ModeDir,
+				}
+			}
+			return nil
 		}
 		if fi.Mode().IsRegular() {
 			contentCh <- &ClientContent{

@@ -421,16 +421,23 @@ func uploadSourceToTargetURL(ctx context.Context, uploadOpts uploadSourceToTarge
 			reader  io.ReadCloser
 		)
 
-		reader, content, err = getSourceStream(ctx, sourceAlias, sourceURL.String(), getSourceOpts{
-			GetOptions: GetOptions{
-				VersionID: sourceVersion,
-				SSE:       srcSSE,
-				Zip:       uploadOpts.isZip,
-				Preserve:  uploadOpts.preserve,
-			},
-		})
-		if err != nil {
-			return uploadOpts.urls.WithError(err.Trace(sourceURL.String()))
+		if uploadOpts.urls.SourceContent.Type.IsDir() {
+			// A directory marker has no data stream. In particular, opening a
+			// local directory as a file fails on some operating systems.
+			content = uploadOpts.urls.SourceContent
+			reader = io.NopCloser(strings.NewReader(""))
+		} else {
+			reader, content, err = getSourceStream(ctx, sourceAlias, sourceURL.String(), getSourceOpts{
+				GetOptions: GetOptions{
+					VersionID: sourceVersion,
+					SSE:       srcSSE,
+					Zip:       uploadOpts.isZip,
+					Preserve:  uploadOpts.preserve,
+				},
+			})
+			if err != nil {
+				return uploadOpts.urls.WithError(err.Trace(sourceURL.String()))
+			}
 		}
 		defer reader.Close()
 

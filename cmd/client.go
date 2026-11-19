@@ -106,6 +106,7 @@ type ListOptions struct {
 	TimeRef           time.Time
 	ShowDir           DirOpt
 	Count             int
+	IncludeEmptyDirs  bool
 }
 
 // CopyOptions holds options for copying operation
