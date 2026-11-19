@@ -169,10 +169,10 @@ func bucketObjectDifference(ctx context.Context, sourceClnt, targetClnt Client) 
 
 func objectDifference(ctx context.Context, sourceClnt, targetClnt Client, opts mirrorOptions) (diffCh chan diffMessage) {
 	sourceURL := sourceClnt.GetURL().String()
-	sourceCh := sourceClnt.List(ctx, ListOptions{Recursive: true, WithMetadata: opts.isMetadata, ShowDir: DirNone})
+	sourceCh := sourceClnt.List(ctx, ListOptions{Recursive: true, WithMetadata: opts.isMetadata, ShowDir: DirNone, IncludeEmptyDirs: true})
 
 	targetURL := targetClnt.GetURL().String()
-	targetCh := targetClnt.List(ctx, ListOptions{Recursive: true, WithMetadata: opts.isMetadata, ShowDir: DirNone})
+	targetCh := targetClnt.List(ctx, ListOptions{Recursive: true, WithMetadata: opts.isMetadata, ShowDir: DirNone, IncludeEmptyDirs: true})
 
 	return difference(sourceURL, sourceCh, targetURL, targetCh, opts, false)
 }
