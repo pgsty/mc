@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -198,12 +199,10 @@ func (s summaryMessage) JSON() string {
 }
 
 // Pretty print the list of versions belonging to one object
-func printObjectVersions(clntURL ClientURL, ctntVersions []*ClientContent, printAllVersions bool) {
+func getObjectVersions(clntURL ClientURL, ctntVersions []*ClientContent, printAllVersions bool) []contentMessage {
 	sortObjectVersions(ctntVersions)
 	msgs := generateContentMessages(clntURL, ctntVersions, printAllVersions)
-	for _, msg := range msgs {
-		printMsg(msg)
-	}
+	return msgs
 }
 
 type doListOptions struct {
@@ -214,10 +213,11 @@ type doListOptions struct {
 	withVersions bool
 	listZip      bool
 	filter       string
+	sortBy       string
 }
 
-// doList - list all entities inside a folder.
-func doList(ctx context.Context, clnt Client, o doListOptions) error {
+// Will loop over entities listed and call fn() for every object with all their versions
+func loopOverObjects(ctx context.Context, clnt Client, fn func(content *[]contentMessage) error, o doListOptions) (int64, int64, error) {
 	var (
 		lastPath          string
 		perObjectVersions []*ClientContent
@@ -245,9 +245,11 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 			continue
 		}
 
+		// Check if we have moved to a new object (or if this is another version of the last iteration's object)
 		if lastPath != content.URL.Path {
 			// Print any object in the current list before reinitializing it
-			printObjectVersions(clnt.GetURL(), perObjectVersions, o.withVersions)
+			objects := getObjectVersions(clnt.GetURL(), perObjectVersions, o.withVersions)
+			fn(&objects)
 			lastPath = content.URL.Path
 			perObjectVersions = []*ClientContent{}
 		}
@@ -257,7 +259,63 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 		totalObjects++
 	}
 
-	printObjectVersions(clnt.GetURL(), perObjectVersions, o.withVersions)
+	objects := getObjectVersions(clnt.GetURL(), perObjectVersions, o.withVersions)
+	fn(&objects)
+	return totalObjects, totalSize, cErr
+}
+
+// listContents collects every listed object as a message, sorted by o.sortBy.
+func listContents(ctx context.Context, clnt Client, o doListOptions) ([]contentMessage, int64, int64, error) {
+	var contents []contentMessage
+	collectFn := func(newObjects *[]contentMessage) error {
+		// Accumulate all objects for sorting later
+		contents = append(contents, *newObjects...)
+		return nil
+	}
+
+	totalObjects, totalSize, cErr := loopOverObjects(ctx, clnt, collectFn, o)
+
+	// Sort if requested
+	switch o.sortBy {
+	case "size":
+		slices.SortFunc(contents, func(a, b contentMessage) int {
+			if a.Size < b.Size {
+				return -1
+			} else if a.Size > b.Size {
+				return 1
+			}
+			return 0
+		})
+	}
+
+	return contents, totalObjects, totalSize, cErr
+}
+
+// doList - list all entities inside a folder.
+func doList(ctx context.Context, clnt Client, o doListOptions) error {
+	var (
+		contents     []contentMessage
+		totalObjects int64
+		totalSize    int64
+		cErr         error
+	)
+
+	if o.sortBy != "" {
+		// Sorting requires the whole listing: collect, sort, then print
+		contents, totalObjects, totalSize, cErr = listContents(ctx, clnt, o)
+		for _, content := range contents {
+			printMsg(content)
+		}
+	} else {
+		// No sorting: print objects as they come
+		printFn := func(objects *[]contentMessage) error {
+			for _, obj := range *objects {
+				printMsg(obj)
+			}
+			return nil
+		}
+		totalObjects, totalSize, cErr = loopOverObjects(ctx, clnt, printFn, o)
+	}
 
 	if o.isSummary {
 		printMsg(summaryMessage{
