@@ -264,50 +264,57 @@ func loopOverObjects(ctx context.Context, clnt Client, fn func(content *[]conten
 	return totalObjects, totalSize, cErr
 }
 
+// listContents collects every listed object as a message, sorted by o.sortBy.
+func listContents(ctx context.Context, clnt Client, o doListOptions) ([]contentMessage, int64, int64, error) {
+	var contents []contentMessage
+	collectFn := func(newObjects *[]contentMessage) error {
+		// Accumulate all objects for sorting later
+		contents = append(contents, *newObjects...)
+		return nil
+	}
+
+	totalObjects, totalSize, cErr := loopOverObjects(ctx, clnt, collectFn, o)
+
+	// Sort if requested
+	switch o.sortBy {
+	case "size":
+		slices.SortFunc(contents, func(a, b contentMessage) int {
+			if a.Size < b.Size {
+				return -1
+			} else if a.Size > b.Size {
+				return 1
+			}
+			return 0
+		})
+	}
+
+	return contents, totalObjects, totalSize, cErr
+}
+
 // doList - list all entities inside a folder.
 func doList(ctx context.Context, clnt Client, o doListOptions) error {
-	var cErr error
-	isAccumulating := o.sortBy == "size" // should objects be accumulated instead of printed directly
-	var accumulatedObjects []contentMessage
+	var (
+		contents     []contentMessage
+		totalObjects int64
+		totalSize    int64
+		cErr         error
+	)
 
-	var processFn func(objects *[]contentMessage) error
-	if isAccumulating {
-		processFn = func(newObjects *[]contentMessage) error {
-			// Accumulate all objects for sorting later
-			accumulatedObjects = append(accumulatedObjects, *newObjects...)
-			return nil
+	if o.sortBy != "" {
+		// Sorting requires the whole listing: collect, sort, then print
+		contents, totalObjects, totalSize, cErr = listContents(ctx, clnt, o)
+		for _, content := range contents {
+			printMsg(content)
 		}
 	} else {
-		processFn = func(objects *[]contentMessage) error {
-			// Print objects as they come
+		// No sorting: print objects as they come
+		printFn := func(objects *[]contentMessage) error {
 			for _, obj := range *objects {
 				printMsg(obj)
 			}
 			return nil
 		}
-	}
-
-	totalObjects, totalSize, cErr := loopOverObjects(ctx, clnt, processFn, o)
-
-	// if isAccumulating is true, objects have been accumulated instead of printed
-	if isAccumulating {
-		// Sort if requested
-		switch o.sortBy {
-		case "size":
-			slices.SortFunc(accumulatedObjects, func(a, b contentMessage) int {
-				if a.Size < b.Size {
-					return -1
-				} else if a.Size > b.Size {
-					return 1
-				}
-				return 0
-			})
-		}
-
-		// Print all objects
-		for _, obj := range accumulatedObjects {
-			printMsg(obj)
-		}
+		totalObjects, totalSize, cErr = loopOverObjects(ctx, clnt, printFn, o)
 	}
 
 	if o.isSummary {
