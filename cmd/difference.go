@@ -26,7 +26,6 @@ import (
 	// golang does not support flat keys for path matching, find does
 
 	"github.com/minio/mc/pkg/probe"
-	"github.com/minio/minio-go/v7"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -168,11 +167,12 @@ func bucketObjectDifference(ctx context.Context, sourceClnt, targetClnt Client) 
 }
 
 func objectDifference(ctx context.Context, sourceClnt, targetClnt Client, opts mirrorOptions) (diffCh chan diffMessage) {
+	listOpts := ListOptions{Recursive: true, WithMetadata: opts.isMetadata, IncludeEmptyDirs: opts.includeEmptyDirs}
 	sourceURL := sourceClnt.GetURL().String()
-	sourceCh := sourceClnt.List(ctx, ListOptions{Recursive: true, WithMetadata: opts.isMetadata, ShowDir: DirNone})
+	sourceCh := sourceClnt.List(ctx, listOpts)
 
 	targetURL := targetClnt.GetURL().String()
-	targetCh := targetClnt.List(ctx, ListOptions{Recursive: true, WithMetadata: opts.isMetadata, ShowDir: DirNone})
+	targetCh := targetClnt.List(ctx, listOpts)
 
 	return difference(sourceURL, sourceCh, targetURL, targetCh, opts, false)
 }
@@ -377,6 +377,14 @@ func differenceInternal(sourceURL string,
 			tgtCtnt, tgtOk = <-tgtCh
 			continue
 		}
+		// An empty local target directory is also the parent of any incoming
+		// child. Removing it while creating those children can lose its mode
+		// or race the copy. S3 directory markers are independent objects.
+		if opts.includeEmptyDirs && tgtCtnt.URL.Type == fileSystem && tgtCtnt.Type.IsDir() &&
+			strings.HasPrefix(normalizedCurrent, normalizedExpected) {
+			tgtCtnt, tgtOk = <-tgtCh
+			continue
+		}
 		// Differ in second
 		diffCh <- diffMessage{
 			SecondURL:     tgtCtnt.URL.String(),
@@ -400,23 +408,7 @@ func difference(sourceURL string, sourceCh <-chan *ClientContent, targetURL stri
 
 		err := differenceInternal(sourceURL, sourceCh, targetURL, targetCh, opts, returnSimilar, diffCh)
 		if err != nil {
-			// handle this specifically for filesystem related errors.
-			switch v := err.ToGoError().(type) {
-			case PathNotFound, PathInsufficientPermission, PathNotADirectory:
-				diffCh <- diffMessage{
-					Error: err,
-				}
-				return
-			case minio.ErrorResponse:
-				switch v.Code {
-				case "NoSuchBucket", "NoSuchKey", "SignatureDoesNotMatch":
-					diffCh <- diffMessage{
-						Error: err,
-					}
-					return
-				}
-			}
-			errorIf(err, "Unable to list comparison retrying..")
+			diffCh <- diffMessage{Error: err}
 		}
 	}()
 

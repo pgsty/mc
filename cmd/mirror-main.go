@@ -69,7 +69,7 @@ var (
 		},
 		cli.BoolFlag{
 			Name:  "watch, w",
-			Usage: "watch and synchronize changes",
+			Usage: "watch and synchronize changes (local empty directories are included in the initial scan only)",
 		},
 		cli.BoolFlag{
 			Name:  "remove",
@@ -1038,6 +1038,7 @@ func runMirror(ctx context.Context, srcURL, dstURL string, cli *cli.Context, enc
 	isFake := cli.Bool("fake") || cli.Bool("dry-run")
 
 	mopts := mirrorOptions{
+		includeEmptyDirs:      true,
 		isFake:                isFake,
 		isRemove:              isRemove,
 		isOverwrite:           isOverwrite,

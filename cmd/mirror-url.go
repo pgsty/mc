@@ -130,19 +130,18 @@ func matchExcludeBucketOptions(excludeBuckets []string, srcSuffix string) bool {
 }
 
 func deltaSourceTarget(ctx context.Context, sourceURL, targetURL string, opts mirrorOptions, URLsCh chan<- URLs) {
-	// source and targets are always directories
-	sourceSeparator := string(newClientURL(sourceURL).Separator)
-	if !strings.HasSuffix(sourceURL, sourceSeparator) {
-		sourceURL = sourceURL + sourceSeparator
-	}
-	targetSeparator := string(newClientURL(targetURL).Separator)
-	if !strings.HasSuffix(targetURL, targetSeparator) {
-		targetURL = targetURL + targetSeparator
-	}
-
-	// Extract alias and expanded URL
+	// Expand aliases before choosing the directory separator. S3 keys use
+	// slashes even when the local filesystem uses backslashes.
 	sourceAlias, sourceURL, _ := mustExpandAlias(sourceURL)
 	targetAlias, targetURL, _ := mustExpandAlias(targetURL)
+	sourceSeparator := string(newClientURL(sourceURL).Separator)
+	if !strings.HasSuffix(sourceURL, sourceSeparator) && !strings.HasSuffix(sourceURL, "/") {
+		sourceURL += sourceSeparator
+	}
+	targetSeparator := string(newClientURL(targetURL).Separator)
+	if !strings.HasSuffix(targetURL, targetSeparator) && !strings.HasSuffix(targetURL, "/") {
+		targetURL += targetSeparator
+	}
 
 	defer close(URLsCh)
 
@@ -158,14 +157,9 @@ func deltaSourceTarget(ctx context.Context, sourceURL, targetURL string, opts mi
 		return
 	}
 
-	// If the passed source URL points to fs, fetch the absolute src path
-	// to correctly calculate targetPath
-	if sourceAlias == "" {
-		tmpSrcURL, e := filepath.Abs(sourceURL)
-		if e == nil {
-			sourceURL = tmpSrcURL
-		}
-	}
+	// Use the same canonical roots as the listing when trimming relative keys.
+	sourceURL = sourceClnt.GetURL().String()
+	targetURL = targetClnt.GetURL().String()
 
 	// List both source and target, compare and return values through channel.
 	for diffMsg := range objectDifference(ctx, sourceClnt, targetClnt, opts) {
@@ -263,6 +257,7 @@ func deltaSourceTarget(ctx context.Context, sourceURL, targetURL string, opts mi
 }
 
 type mirrorOptions struct {
+	includeEmptyDirs                                      bool
 	isFake, isOverwrite, activeActive                     bool
 	isWatch, isRemove, isMetadata                         bool
 	isRetriable                                           bool

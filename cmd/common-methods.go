@@ -352,8 +352,12 @@ func uploadSourceToTargetURL(ctx context.Context, uploadOpts uploadSourceToTarge
 		metadata[http.CanonicalHeaderKey(k)] = v
 	}
 
+	// A local empty directory represents a zero-byte marker. A remote key
+	// ending in '/' can carry both object data and metadata.
+	localDirMarker := sourceURL.Type == fileSystem && length == 0 && uploadOpts.urls.SourceContent.Type.IsDir()
+
 	// Optimize for server side copy if the host is same.
-	if sourceAlias == targetAlias && !uploadOpts.isZip && !uploadOpts.urls.checksum.IsSet() {
+	if !localDirMarker && sourceAlias == targetAlias && !uploadOpts.isZip && !uploadOpts.urls.checksum.IsSet() {
 		// preserve new metadata and save existing ones.
 		if uploadOpts.preserve {
 			currentMetadata, err := getAllMetadata(ctx, sourceAlias, sourceURL.String(), srcSSE, uploadOpts.urls)
@@ -421,16 +425,27 @@ func uploadSourceToTargetURL(ctx context.Context, uploadOpts uploadSourceToTarge
 			reader  io.ReadCloser
 		)
 
-		reader, content, err = getSourceStream(ctx, sourceAlias, sourceURL.String(), getSourceOpts{
-			GetOptions: GetOptions{
-				VersionID: sourceVersion,
-				SSE:       srcSSE,
-				Zip:       uploadOpts.isZip,
-				Preserve:  uploadOpts.preserve,
-			},
-		})
-		if err != nil {
-			return uploadOpts.urls.WithError(err.Trace(sourceURL.String()))
+		if localDirMarker {
+			content = uploadOpts.urls.SourceContent
+			if uploadOpts.preserve {
+				content.Metadata, err = getAllMetadata(ctx, sourceAlias, sourceURL.String(), srcSSE, uploadOpts.urls)
+				if err != nil {
+					return uploadOpts.urls.WithError(err.Trace(sourceURL.String()))
+				}
+			}
+			reader = io.NopCloser(strings.NewReader(""))
+		} else {
+			reader, content, err = getSourceStream(ctx, sourceAlias, sourceURL.String(), getSourceOpts{
+				GetOptions: GetOptions{
+					VersionID: sourceVersion,
+					SSE:       srcSSE,
+					Zip:       uploadOpts.isZip,
+					Preserve:  uploadOpts.preserve,
+				},
+			})
+			if err != nil {
+				return uploadOpts.urls.WithError(err.Trace(sourceURL.String()))
+			}
 		}
 		defer reader.Close()
 

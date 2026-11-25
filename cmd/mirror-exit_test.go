@@ -166,6 +166,18 @@ func TestMirrorPermissionFailureCLI(t *testing.T) {
 			}
 		})
 	}
+	t.Run("unreadable source directory", func(t *testing.T) {
+		source, target := t.TempDir(), t.TempDir()
+		denied := filepath.Join(source, "denied")
+		if err := os.Mkdir(denied, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(denied, 0o700)
+		result := runChecksumVerifyCLI(t, "http://localhost", nil, "--json", "mirror", "--summary", source, target)
+		if result.exitCode != 1 || !bytes.Contains(result.stdout, []byte(`"status":"failure"`)) {
+			t.Fatalf("incomplete listing: exit=%d stdout=%s stderr=%s", result.exitCode, result.stdout, result.stderr)
+		}
+	})
 	t.Run("remove denied", func(t *testing.T) {
 		source, target := t.TempDir(), t.TempDir()
 		orphan := filepath.Join(target, "orphan")
