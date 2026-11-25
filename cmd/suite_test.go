@@ -28,8 +28,10 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"runtime/debug"
@@ -40,6 +42,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/minio/mc/pkg/disk"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // RUN: go test -v ./... -run Test_FullSuite
@@ -171,6 +175,7 @@ func testsThatDependOnOneAnother(t *testing.T) {
 	// Mirror
 	MirrorTempDirectoryStorageClassReducedRedundancy(t)
 	MirrorTempDirectory(t)
+	t.Run("MirrorDirectoryMarkers", mirrorDirectoryMarkers)
 	MirrorMinio2MinioWithTagsCopy(t)
 
 	// General object tests
@@ -775,6 +780,64 @@ func MirrorTempDirectory(t *testing.T) {
 
 		if !fileFound {
 			t.Fatalf("File was not uploaded: %s", f.fileNameWithPrefix)
+		}
+	}
+}
+
+// Exercise both filesystem directions and the streaming path between distinct aliases.
+func mirrorDirectoryMarkers(t *testing.T) {
+	ctx := t.Context()
+	client, err := minio.New(serverEndpoint, &minio.Options{
+		Creds: credentials.NewStaticV4(acessKey, secretKey, ""), Secure: protocol == "https://", Transport: HTTPClient.Transport,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bucketPath := CreateBucket(t)
+	bucket := strings.TrimPrefix(bucketPath, defaultAlias+"/")
+	for key, data := range map[string]string{"tree/nested/empty/": "", "tree/zero": "", "remote/empty/": "", "remote/data/": "payload"} {
+		_, err = client.PutObject(ctx, bucket, key, strings.NewReader(data), int64(len(data)), minio.PutObjectOptions{
+			ContentType: "application/x-marker", UserMetadata: map[string]string{"mirror-test": "keep"},
+		})
+		if err != nil {
+			t.Fatalf("put %q: %v", key, err)
+		}
+	}
+	local := t.TempDir()
+	out, err := RunMC("mirror", bucketPath+"/tree/", local)
+	fatalIfErrorWMsg(err, out, t)
+	for path, wantDir := range map[string]bool{"nested/empty": true, "zero": false} {
+		info, err := os.Stat(filepath.Join(local, path))
+		if err != nil || info.IsDir() != wantDir || (!wantDir && info.Size() != 0) {
+			t.Fatalf("local %q: info=%v error=%v", path, info, err)
+		}
+	}
+	out, err = RunMC("mirror", local, bucketPath+"/roundtrip/")
+	fatalIfErrorWMsg(err, out, t)
+	for _, key := range []string{"roundtrip/nested/empty/", "roundtrip/zero"} {
+		info, err := client.StatObject(ctx, bucket, key, minio.StatObjectOptions{})
+		if err != nil || info.Size != 0 {
+			t.Fatalf("HEAD %q: size=%d error=%v", key, info.Size, err)
+		}
+	}
+
+	endpoint := url.URL{Scheme: strings.TrimSuffix(protocol, "://"), Host: serverEndpoint, User: url.UserPassword(acessKey, secretKey)}
+	t.Setenv("MC_HOST_markerpeer", endpoint.String())
+	out, err = RunMC("mirror", "--preserve", bucketPath+"/remote/", "markerpeer/"+bucket+"/copy/")
+	fatalIfErrorWMsg(err, out, t)
+	for key, want := range map[string]string{"copy/empty/": "", "copy/data/": "payload"} {
+		info, err := client.StatObject(ctx, bucket, key, minio.StatObjectOptions{})
+		if err != nil || info.ContentType != "application/x-marker" || info.Metadata.Get("X-Amz-Meta-Mirror-Test") != "keep" {
+			t.Fatalf("HEAD %q: metadata=%v error=%v", key, info.Metadata, err)
+		}
+		obj, err := client.GetObject(ctx, bucket, key, minio.GetObjectOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(obj)
+		obj.Close()
+		if err != nil || string(data) != want {
+			t.Fatalf("GET %q: data=%q error=%v", key, data, err)
 		}
 	}
 }

@@ -81,7 +81,7 @@ func fsNew(path string) (Client, *probe.Error) {
 	// filepath.Abs removes the trailing slash in a path
 	// but we still need it because fsClient.List() does not
 	// traverse a directory without a trailing slash in the name
-	if path[len(path)-1] == filepath.Separator {
+	if os.IsPathSeparator(path[len(path)-1]) && !os.IsPathSeparator(absPath[len(absPath)-1]) {
 		absPath += string(filepath.Separator)
 	}
 	return &fsClient{
@@ -857,17 +857,15 @@ type byDirName []os.FileInfo
 
 func (f byDirName) Len() int { return len(f) }
 func (f byDirName) Less(i, j int) bool {
-	// For directory add an ending separator fortrue lexical
-	// order.
-	if f[i].Mode().IsDir() {
-		return f[i].Name()+string(filepath.Separator) < f[j].Name()
+	// Object keys use a slash on every platform.
+	left, right := f[i].Name(), f[j].Name()
+	if f[i].IsDir() {
+		left += "/"
 	}
-	// For directory add an ending separator for true lexical
-	// order.
-	if f[j].Mode().IsDir() {
-		return f[i].Name() < f[j].Name()+string(filepath.Separator)
+	if f[j].IsDir() {
+		right += "/"
 	}
-	return f[i].Name() < f[j].Name()
+	return left < right
 }
 func (f byDirName) Swap(i, j int) { f[i], f[j] = f[j], f[i] }
 
@@ -878,11 +876,11 @@ func readDir(dirname string) ([]os.FileInfo, error) {
 	if e != nil {
 		return nil, e
 	}
+	defer f.Close()
 	list, e := f.Readdir(-1)
 	if e != nil {
 		return nil, e
 	}
-	defer f.Close()
 	sort.Sort(byDirName(list))
 	return list, nil
 }
@@ -1088,9 +1086,61 @@ func (f *fsClient) listDirOpt(contentCh chan *ClientContent, isIncomplete, _ boo
 	}
 }
 
+// listMirrorDir emits regular files and empty leaf directories in object-key order.
+// The root maps to the destination itself and has no marker of its own.
+func (f *fsClient) listMirrorDir(dir, prefix string, info os.FileInfo, out chan<- *ClientContent) *probe.Error {
+	entries, err := readDir(dir)
+	if err != nil {
+		if info == nil && os.IsNotExist(err) {
+			return nil // A new local mirror destination has no entries yet.
+		}
+		return f.toClientError(err, dir)
+	}
+
+	empty := true
+	for _, entry := range entries {
+		if !strings.HasPrefix(entry.Name(), prefix) {
+			continue
+		}
+		name := filepath.Join(dir, entry.Name())
+		if entry.IsDir() {
+			empty = false
+			if err := f.listMirrorDir(name, "", entry, out); err != nil {
+				return err
+			}
+			continue
+		}
+		if isIgnoredFile(entry.Name()) {
+			continue
+		}
+		empty = false
+		if entry.Mode()&os.ModeSymlink != 0 {
+			// Recursive filesystem listings follow links to regular files only.
+			entry, err = os.Stat(name)
+			if err != nil {
+				continue
+			}
+		}
+		if entry.Mode().IsRegular() {
+			out <- &ClientContent{URL: *newClientURL(name), Time: entry.ModTime(), Size: entry.Size(), Type: entry.Mode()}
+		}
+	}
+	if empty && info != nil && !isIgnoredFile(info.Name()) {
+		out <- &ClientContent{URL: *newClientURL(dir + string(filepath.Separator)), Time: info.ModTime(), Type: os.ModeDir}
+	}
+	return nil
+}
+
 func (f *fsClient) listRecursiveInRoutine(contentCh chan *ClientContent, includeEmptyDirs bool) {
 	// close channels upon return.
 	defer close(contentCh)
+	if includeEmptyDirs {
+		dir, prefix := filepath.Split(filepath.FromSlash(f.PathURL.Path))
+		if err := f.listMirrorDir(dir, prefix, nil, contentCh); err != nil {
+			contentCh <- &ClientContent{Err: err}
+		}
+		return
+	}
 	var dirName string
 	var filePrefix string
 	pathURL := *f.PathURL
@@ -1159,31 +1209,6 @@ func (f *fsClient) listRecursiveInRoutine(contentCh chan *ClientContent, include
 				// Ignore any errors for symlink
 				return nil
 			}
-		}
-		if includeEmptyDirs && fi.IsDir() {
-			entries, err := os.ReadDir(fp)
-			if err != nil {
-				return err
-			}
-			isEmpty := true
-			for _, entry := range entries {
-				if !isIgnoredFile(entry.Name()) {
-					isEmpty = false
-					break
-				}
-			}
-			if isEmpty {
-				markerPath := fp
-				if !strings.HasSuffix(markerPath, string(pathURL.Separator)) {
-					markerPath += string(pathURL.Separator)
-				}
-				contentCh <- &ClientContent{
-					URL:  *newClientURL(markerPath),
-					Time: fi.ModTime(),
-					Type: os.ModeDir,
-				}
-			}
-			return nil
 		}
 		if fi.Mode().IsRegular() {
 			contentCh <- &ClientContent{
