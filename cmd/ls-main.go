@@ -62,7 +62,7 @@ var (
 		},
 		cli.StringFlag{
 			Name:  "sort",
-			Usage: "sort each target by size, largest first (buffers all matching entries in memory)",
+			Usage: "sort each target by `size`, largest first (buffers all matching entries in memory)",
 		},
 	}
 )
