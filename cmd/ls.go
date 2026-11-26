@@ -254,11 +254,12 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 		sort.SliceStable(buffered, func(i, j int) bool {
 			return buffered[i].Size > buffered[j].Size
 		})
-		for _, msg := range buffered {
+		for i, msg := range buffered {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
 			printMsg(msg)
+			buffered[i] = nil // Allow printed rows to be collected while a slow consumer drains the list.
 		}
 	}
 
