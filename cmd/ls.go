@@ -203,7 +203,7 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 		cErr              error
 		totalSize         int64
 		totalObjects      int64
-		buffered          []contentMessage
+		buffered          []*contentMessage
 	)
 
 	target := clnt.GetURL()
@@ -212,7 +212,8 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 	prefix = strings.TrimPrefix(prefix, "./")
 	emit := func(msg contentMessage) { printMsg(msg) }
 	if o.sortBySize {
-		emit = func(msg contentMessage) { buffered = append(buffered, msg) }
+		// Move pointers as the buffer grows and sorts, keeping each row in place.
+		emit = func(msg contentMessage) { buffered = append(buffered, &msg) }
 	}
 
 	for content := range clnt.List(ctx, ListOptions{
