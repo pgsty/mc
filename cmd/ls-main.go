@@ -60,6 +60,10 @@ var (
 			Name:  "zip",
 			Usage: "list files inside zip archive (Silo/MinIO servers only)",
 		},
+		cli.StringFlag{
+			Name:  "sort",
+			Usage: "sort each target by size, largest first (buffers all matching entries in memory)",
+		},
 	}
 )
 
@@ -112,6 +116,9 @@ EXAMPLES:
   
   10. List all objects on mybucket, for the GLACIER storage class
      {{.Prompt}} {{.HelpName}} --storage-class 'GLACIER' s3/mybucket 
+
+  11. List objects under a prefix recursively, largest first.
+     {{.Prompt}} {{.HelpName}} --recursive --sort=size s3/mybucket/backups/
 `,
 }
 
@@ -177,6 +184,11 @@ func checkListSyntax(cliCtx *cli.Context) ([]string, doListOptions) {
 
 	timeRef := parseRewindFlag(cliCtx.String("rewind"))
 
+	sortBy := cliCtx.String("sort")
+	if sortBy != "" && sortBy != "size" {
+		fatalIf(errInvalidArgument().Trace(args...), "Unsupported --sort value. Use --sort=size.")
+	}
+
 	if listZip && (withVersions || !timeRef.IsZero()) {
 		fatalIf(errInvalidArgument().Trace(args...), "Zip file listing can only be performed on the latest version")
 	}
@@ -189,6 +201,7 @@ func checkListSyntax(cliCtx *cli.Context) ([]string, doListOptions) {
 		withVersions: withVersions,
 		listZip:      listZip,
 		filter:       storageClasss,
+		sortBySize:   sortBy == "size",
 	}
 	return args, opts
 }
