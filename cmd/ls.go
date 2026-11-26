@@ -20,6 +20,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -109,24 +110,10 @@ func getKey(c *ClientContent) string {
 	return getOSDependantKey(c.URL.Path, c.Type.IsDir())
 }
 
-// Generate printable listing from a list of sorted client
-// contents, the latest created content comes first.
-func generateContentMessages(clntURL ClientURL, ctnts []*ClientContent, printAllVersions bool) (msgs []contentMessage) {
-	prefixPath := clntURL.Path
-	prefixPath = filepath.ToSlash(prefixPath)
-	if !strings.HasSuffix(prefixPath, "/") {
-		prefixPath = prefixPath[:strings.LastIndex(prefixPath, "/")+1]
-	}
-	prefixPath = strings.TrimPrefix(prefixPath, "./")
-
-	nrVersions := len(ctnts)
-
-	for i, c := range ctnts {
-		// Convert any os specific delimiters to "/".
-		contentURL := filepath.ToSlash(c.URL.Path)
-		// Trim prefix path from the content path.
-		c.URL.Path = strings.TrimPrefix(contentURL, prefixPath)
-
+// Emit the selected versions of an object, newest first.
+func emitObjectVersions(versions []*ClientContent, allVersions bool, prefix, targetURL string, emit func(contentMessage)) {
+	sortObjectVersions(versions)
+	for i, c := range versions {
 		contentMsg := contentMessage{}
 		contentMsg.Time = c.Time.Local()
 
@@ -140,28 +127,28 @@ func generateContentMessages(clntURL ClientURL, ctnts []*ClientContent, printAll
 
 		contentMsg.Size = c.Size
 		contentMsg.StorageClass = c.StorageClass
-		contentMsg.Metadata = c.Metadata
-		contentMsg.Tags = c.Tags
+		if len(c.Metadata) > 0 {
+			contentMsg.Metadata = c.Metadata
+		}
+		if len(c.Tags) > 0 {
+			contentMsg.Tags = c.Tags
+		}
 
 		md5sum := strings.TrimPrefix(c.ETag, "\"")
 		md5sum = strings.TrimSuffix(md5sum, "\"")
 		contentMsg.ETag = md5sum
 		// Convert OS Type to match console file printing style.
-		contentMsg.Key = getKey(c)
+		key := strings.TrimPrefix(filepath.ToSlash(c.URL.Path), prefix)
+		contentMsg.Key = getOSDependantKey(key, c.Type.IsDir())
 		contentMsg.VersionID = c.VersionID
 		contentMsg.IsDeleteMarker = c.IsDeleteMarker
-		contentMsg.VersionOrd = nrVersions - i
-		// URL is empty by default
-		// Set it to either relative dir (host) or public url (remote)
-		contentMsg.URL = clntURL.String()
-
-		msgs = append(msgs, contentMsg)
-
-		if !printAllVersions {
+		contentMsg.VersionOrd = len(versions) - i
+		contentMsg.URL = targetURL
+		emit(contentMsg)
+		if !allVersions {
 			break
 		}
 	}
-	return
 }
 
 func sortObjectVersions(ctntVersions []*ClientContent) {
@@ -197,15 +184,6 @@ func (s summaryMessage) JSON() string {
 	return string(jsonMessageBytes)
 }
 
-// Pretty print the list of versions belonging to one object
-func printObjectVersions(clntURL ClientURL, ctntVersions []*ClientContent, printAllVersions bool) {
-	sortObjectVersions(ctntVersions)
-	msgs := generateContentMessages(clntURL, ctntVersions, printAllVersions)
-	for _, msg := range msgs {
-		printMsg(msg)
-	}
-}
-
 type doListOptions struct {
 	timeRef      time.Time
 	isRecursive  bool
@@ -214,6 +192,7 @@ type doListOptions struct {
 	withVersions bool
 	listZip      bool
 	filter       string
+	sortBySize   bool
 }
 
 // doList - list all entities inside a folder.
@@ -224,7 +203,17 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 		cErr              error
 		totalSize         int64
 		totalObjects      int64
+		buffered          []contentMessage
 	)
+
+	target := clnt.GetURL()
+	targetURL := target.String()
+	prefix, _ := path.Split(filepath.ToSlash(target.Path))
+	prefix = strings.TrimPrefix(prefix, "./")
+	emit := func(msg contentMessage) { printMsg(msg) }
+	if o.sortBySize {
+		emit = func(msg contentMessage) { buffered = append(buffered, msg) }
+	}
 
 	for content := range clnt.List(ctx, ListOptions{
 		Recursive:         o.isRecursive,
@@ -236,7 +225,7 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 		ListZip:           o.listZip,
 	}) {
 		if content.Err != nil {
-			errorIf(content.Err.Trace(clnt.GetURL().String()), "Unable to list folder.")
+			errorIf(content.Err.Trace(targetURL), "Unable to list folder.")
 			cErr = exitStatus(globalErrorExitStatus) // Set the exit status.
 			continue
 		}
@@ -246,8 +235,7 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 		}
 
 		if lastPath != content.URL.Path {
-			// Print any object in the current list before reinitializing it
-			printObjectVersions(clnt.GetURL(), perObjectVersions, o.withVersions)
+			emitObjectVersions(perObjectVersions, o.withVersions, prefix, targetURL, emit)
 			lastPath = content.URL.Path
 			perObjectVersions = []*ClientContent{}
 		}
@@ -257,7 +245,21 @@ func doList(ctx context.Context, clnt Client, o doListOptions) error {
 		totalObjects++
 	}
 
-	printObjectVersions(clnt.GetURL(), perObjectVersions, o.withVersions)
+	emitObjectVersions(perObjectVersions, o.withVersions, prefix, targetURL, emit)
+	if o.sortBySize {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		sort.SliceStable(buffered, func(i, j int) bool {
+			return buffered[i].Size > buffered[j].Size
+		})
+		for _, msg := range buffered {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			printMsg(msg)
+		}
+	}
 
 	if o.isSummary {
 		printMsg(summaryMessage{
